@@ -36,6 +36,34 @@ class HFO_Golf_Registration_Settings {
 	const PRODUCT_MAPPING_SECTION = 'hfo_golf_registration_product_mapping';
 
 	/**
+	 * Default WooCommerce products section ID.
+	 *
+	 * @var string
+	 */
+	const DEFAULT_PRODUCTS_SECTION = 'hfo_golf_registration_default_products';
+
+	/**
+	 * Action name used to create default products.
+	 *
+	 * @var string
+	 */
+	const CREATE_DEFAULT_PRODUCTS_ACTION = 'hfo_golf_registration_create_default_products';
+
+	/**
+	 * Nonce action used to create default products.
+	 *
+	 * @var string
+	 */
+	const CREATE_DEFAULT_PRODUCTS_NONCE_ACTION = 'hfo_golf_registration_create_default_products_nonce';
+
+	/**
+	 * Product meta key used to identify products created by this plugin.
+	 *
+	 * @var string
+	 */
+	const PRODUCT_TYPE_META_KEY = '_hfo_golf_registration_product_type';
+
+	/**
 	 * Registers WordPress hooks used by the settings page.
 	 *
 	 * @return void
@@ -44,6 +72,8 @@ class HFO_Golf_Registration_Settings {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_notices', array( $this, 'render_woocommerce_required_notice' ) );
+		add_action( 'admin_notices', array( $this, 'render_default_products_notice' ) );
+		add_action( 'admin_post_' . self::CREATE_DEFAULT_PRODUCTS_ACTION, array( $this, 'handle_create_default_products' ) );
 	}
 
 	/**
@@ -80,6 +110,13 @@ class HFO_Golf_Registration_Settings {
 		}
 
 		add_settings_section(
+			self::DEFAULT_PRODUCTS_SECTION,
+			esc_html__( 'Default WooCommerce Products', 'hfo-golf-registration' ),
+			array( $this, 'render_default_products_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_section(
 			self::PRODUCT_MAPPING_SECTION,
 			esc_html__( 'WooCommerce Product Mapping', 'hfo-golf-registration' ),
 			array( $this, 'render_product_mapping_section' ),
@@ -114,6 +151,11 @@ class HFO_Golf_Registration_Settings {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Golf Registration Settings', 'hfo-golf-registration' ); ?></h1>
+			<form id="hfo-golf-registration-create-default-products-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+				<?php wp_nonce_field( self::CREATE_DEFAULT_PRODUCTS_NONCE_ACTION ); ?>
+				<input type="hidden" name="action" value="<?php echo esc_attr( self::CREATE_DEFAULT_PRODUCTS_ACTION ); ?>" />
+			</form>
+
 			<form action="options.php" method="post">
 				<?php
 				settings_fields( self::SETTINGS_GROUP );
@@ -123,6 +165,28 @@ class HFO_Golf_Registration_Settings {
 			</form>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Renders the default products section description.
+	 *
+	 * @return void
+	 */
+	public function render_default_products_section() {
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'Create the default WooCommerce checkout container products for golf registrations, guests, and sponsorships. Final cart prices may be overridden later from the selected golf event.', 'hfo-golf-registration' )
+		);
+
+		submit_button(
+			esc_html__( 'Create Default Products', 'hfo-golf-registration' ),
+			'primary',
+			'submit',
+			true,
+			array(
+				'form' => 'hfo-golf-registration-create-default-products-form',
+			)
+		);
 	}
 
 	/**
@@ -205,6 +269,97 @@ class HFO_Golf_Registration_Settings {
 	}
 
 	/**
+	 * Displays the result notice after attempting to create default products.
+	 *
+	 * @return void
+	 */
+	public function render_default_products_notice() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$notice = get_transient( $this->get_default_products_notice_transient_key() );
+
+		if ( ! is_array( $notice ) ) {
+			return;
+		}
+
+		delete_transient( $this->get_default_products_notice_transient_key() );
+
+		$type    = isset( $notice['type'] ) ? sanitize_html_class( $notice['type'] ) : 'success';
+		$message = isset( $notice['message'] ) ? (string) $notice['message'] : '';
+
+		if ( '' === $message ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+			esc_attr( $type ),
+			esc_html( $message )
+		);
+	}
+
+	/**
+	 * Handles the default product creation action.
+	 *
+	 * @return void
+	 */
+	public function handle_create_default_products() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to create default products.', 'hfo-golf-registration' ) );
+		}
+
+		check_admin_referer( self::CREATE_DEFAULT_PRODUCTS_NONCE_ACTION );
+
+		if ( ! $this->is_woocommerce_active() ) {
+			$this->set_default_products_notice(
+				'error',
+				esc_html__( 'WooCommerce must be active before default products can be created.', 'hfo-golf-registration' )
+			);
+			$this->redirect_to_settings_page();
+		}
+
+		$created = 0;
+		$reused  = 0;
+
+		foreach ( $this->get_default_product_definitions() as $definition ) {
+			$mapped_product_id = absint( get_option( $definition['option_name'], 0 ) );
+
+			if ( $mapped_product_id && $this->is_valid_published_product_id( $mapped_product_id ) ) {
+				continue;
+			}
+
+			$existing_product_id = $this->get_plugin_product_id_by_type( $definition['type'] );
+
+			if ( $existing_product_id ) {
+				update_option( $definition['option_name'], $existing_product_id );
+				++$reused;
+				continue;
+			}
+
+			$product_id = $this->create_default_product( $definition );
+
+			if ( $product_id ) {
+				update_option( $definition['option_name'], $product_id );
+				++$created;
+			}
+		}
+
+		$this->set_default_products_notice(
+			'success',
+			sprintf(
+				/* translators: 1: number of created products, 2: number of reused products. */
+				esc_html__( 'Default WooCommerce products processed. Created: %1$d. Reused: %2$d.', 'hfo-golf-registration' ),
+				$created,
+				$reused
+			)
+		);
+
+		$this->redirect_to_settings_page();
+	}
+
+	/**
 	 * Sanitizes and validates a product ID before saving it as an option.
 	 *
 	 * @param mixed $value Raw option value.
@@ -276,6 +431,184 @@ class HFO_Golf_Registration_Settings {
 		$product = get_post( $product_id );
 
 		return $product instanceof WP_Post && 'product' === $product->post_type && 'publish' === $product->post_status;
+	}
+
+	/**
+	 * Redirects back to the settings page.
+	 *
+	 * @return void
+	 */
+	private function redirect_to_settings_page() {
+		wp_safe_redirect( admin_url( 'options-general.php?page=' . self::PAGE_SLUG ) );
+		exit;
+	}
+
+	/**
+	 * Stores a default products admin notice for the next page load.
+	 *
+	 * @param string $type    Notice type.
+	 * @param string $message Notice message.
+	 * @return void
+	 */
+	private function set_default_products_notice( $type, $message ) {
+		set_transient(
+			$this->get_default_products_notice_transient_key(),
+			array(
+				'type'    => $type,
+				'message' => $message,
+			),
+			MINUTE_IN_SECONDS
+		);
+	}
+
+	/**
+	 * Gets the transient key used for default products notices.
+	 *
+	 * @return string
+	 */
+	private function get_default_products_notice_transient_key() {
+		return 'hfo_golf_registration_default_products_notice_' . get_current_user_id();
+	}
+
+	/**
+	 * Creates a default WooCommerce product.
+	 *
+	 * @param array<string,string|int> $definition Product definition.
+	 * @return int
+	 */
+	private function create_default_product( $definition ) {
+		if ( ! class_exists( 'WC_Product_Simple' ) ) {
+			return 0;
+		}
+
+		$product = new WC_Product_Simple();
+		$product->set_name( $definition['name'] );
+		$product->set_status( 'publish' );
+		$product->set_catalog_visibility( 'hidden' );
+		$product->set_virtual( true );
+		$product->set_regular_price( (string) $definition['price'] );
+		$product->set_price( (string) $definition['price'] );
+
+		if ( method_exists( $product, 'set_tax_status' ) ) {
+			$product->set_tax_status( 'none' );
+		}
+
+		$product_id = $product->save();
+
+		if ( $product_id ) {
+			update_post_meta( $product_id, self::PRODUCT_TYPE_META_KEY, $definition['type'] );
+			$this->hide_product_from_catalog_and_search( $product_id );
+		}
+
+		return absint( $product_id );
+	}
+
+	/**
+	 * Hides a WooCommerce product from catalog and search listings when visibility terms are available.
+	 *
+	 * @param int $product_id Product ID.
+	 * @return void
+	 */
+	private function hide_product_from_catalog_and_search( $product_id ) {
+		if ( ! taxonomy_exists( 'product_visibility' ) ) {
+			return;
+		}
+
+		if ( function_exists( 'wc_get_product_visibility_term_ids' ) ) {
+			$visibility_terms = wc_get_product_visibility_term_ids();
+			$term_ids         = array();
+
+			foreach ( array( 'exclude-from-catalog', 'exclude-from-search' ) as $term_key ) {
+				if ( ! empty( $visibility_terms[ $term_key ] ) ) {
+					$term_ids[] = absint( $visibility_terms[ $term_key ] );
+				}
+			}
+
+			if ( ! empty( $term_ids ) ) {
+				wp_set_object_terms( $product_id, $term_ids, 'product_visibility', false );
+			}
+
+			return;
+		}
+
+		wp_set_object_terms( $product_id, array( 'exclude-from-catalog', 'exclude-from-search' ), 'product_visibility', false );
+	}
+
+	/**
+	 * Finds an existing product created by this plugin for the requested product type.
+	 *
+	 * @param string $product_type Plugin product type.
+	 * @return int
+	 */
+	private function get_plugin_product_id_by_type( $product_type ) {
+		$products = get_posts(
+			array(
+				'post_type'      => 'product',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'meta_key'       => self::PRODUCT_TYPE_META_KEY, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Required one-time admin lookup for plugin-created products.
+				'meta_value'     => $product_type, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Required one-time admin lookup for plugin-created products.
+			)
+		);
+
+		if ( empty( $products ) ) {
+			return 0;
+		}
+
+		return absint( $products[0] );
+	}
+
+	/**
+	 * Gets default WooCommerce checkout container product definitions.
+	 *
+	 * @return array<int,array{name:string,price:int,type:string,option_name:string}>
+	 */
+	private function get_default_product_definitions() {
+		return array(
+			array(
+				'name'        => esc_html__( 'Golf Player Registration', 'hfo-golf-registration' ),
+				'price'       => 150,
+				'type'        => 'golf',
+				'option_name' => 'hfo_golf_registration_golf_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Lunch Only Guest', 'hfo-golf-registration' ),
+				'price'       => 40,
+				'type'        => 'lunch',
+				'option_name' => 'hfo_golf_registration_lunch_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Dinner Only Guest', 'hfo-golf-registration' ),
+				'price'       => 40,
+				'type'        => 'dinner',
+				'option_name' => 'hfo_golf_registration_dinner_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Platinum Sponsor', 'hfo-golf-registration' ),
+				'price'       => 1000,
+				'type'        => 'platinum_sponsor',
+				'option_name' => 'hfo_golf_registration_platinum_sponsor_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Gold Sponsor', 'hfo-golf-registration' ),
+				'price'       => 500,
+				'type'        => 'gold_sponsor',
+				'option_name' => 'hfo_golf_registration_gold_sponsor_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Silver Sponsor', 'hfo-golf-registration' ),
+				'price'       => 250,
+				'type'        => 'silver_sponsor',
+				'option_name' => 'hfo_golf_registration_silver_sponsor_product_id',
+			),
+			array(
+				'name'        => esc_html__( 'Tee Sponsor', 'hfo-golf-registration' ),
+				'price'       => 100,
+				'type'        => 'tee_sponsor',
+				'option_name' => 'hfo_golf_registration_tee_sponsor_product_id',
+			),
+		);
 	}
 
 	/**
