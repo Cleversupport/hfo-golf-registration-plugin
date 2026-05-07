@@ -22,6 +22,7 @@ define( 'HFO_GOLF_REGISTRATION_PATH', plugin_dir_path( __FILE__ ) );
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/post-types/class-hfo-golf-event-post-type.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/post-types/class-hfo-golf-registration-post-type.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-event-meta-boxes.php';
+require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-registration-meta-boxes.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-activator.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-deactivator.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration.php';
