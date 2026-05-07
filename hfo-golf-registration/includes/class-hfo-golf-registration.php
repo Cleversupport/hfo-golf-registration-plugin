@@ -21,6 +21,9 @@ class HFO_Golf_Registration {
 	 */
 	public function run() {
 		add_action( 'init', array( $this, 'register_post_types' ) );
+
+		$event_meta_boxes = new HFO_Golf_Event_Meta_Boxes();
+		$event_meta_boxes->register_hooks();
 	}
 
 	/**
