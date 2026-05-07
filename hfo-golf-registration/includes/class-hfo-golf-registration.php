@@ -24,6 +24,9 @@ class HFO_Golf_Registration {
 
 		$event_meta_boxes = new HFO_Golf_Event_Meta_Boxes();
 		$event_meta_boxes->register_hooks();
+
+		$registration_meta_boxes = new HFO_Golf_Registration_Meta_Boxes();
+		$registration_meta_boxes->register_hooks();
 	}
 
 	/**
