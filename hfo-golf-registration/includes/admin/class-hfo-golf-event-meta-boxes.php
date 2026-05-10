@@ -46,7 +46,105 @@ class HFO_Golf_Event_Meta_Boxes {
 	 */
 	public function register_hooks() {
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
+		add_action( 'admin_notices', array( $this, 'show_missing_title_notice' ) );
 		add_action( 'save_post_' . HFO_Golf_Event_Post_Type::POST_TYPE, array( $this, 'save_meta_boxes' ) );
+		add_filter( 'enter_title_here', array( $this, 'change_title_placeholder' ), 10, 2 );
+		add_filter( 'manage_' . HFO_Golf_Event_Post_Type::POST_TYPE . '_posts_columns', array( $this, 'add_admin_columns' ) );
+		add_action( 'manage_' . HFO_Golf_Event_Post_Type::POST_TYPE . '_posts_custom_column', array( $this, 'render_admin_column' ), 10, 2 );
+	}
+
+	/**
+	 * Changes the title field placeholder for golf events.
+	 *
+	 * @param string  $placeholder Current title placeholder text.
+	 * @param WP_Post $post        Current post object.
+	 * @return string
+	 */
+	public function change_title_placeholder( $placeholder, $post ) {
+		if ( ! $post instanceof WP_Post || HFO_Golf_Event_Post_Type::POST_TYPE !== $post->post_type ) {
+			return $placeholder;
+		}
+
+		return __( 'Enter event name, e.g. 2026 Golf Tournament for the Orphans', 'hfo-golf-registration' );
+	}
+
+	/**
+	 * Adds event details columns to the golf events admin list table.
+	 *
+	 * @param array<string,string> $columns Existing columns.
+	 * @return array<string,string>
+	 */
+	public function add_admin_columns( $columns ) {
+		$custom_columns = array(
+			'event_year'          => __( 'Event Year', 'hfo-golf-registration' ),
+			'event_date'          => __( 'Event Date', 'hfo-golf-registration' ),
+			'registration_status' => __( 'Registration Status', 'hfo-golf-registration' ),
+		);
+
+		if ( isset( $columns['date'] ) ) {
+			$date_column = array( 'date' => $columns['date'] );
+			unset( $columns['date'] );
+
+			return array_merge( $columns, $custom_columns, $date_column );
+		}
+
+		return array_merge( $columns, $custom_columns );
+	}
+
+	/**
+	 * Renders custom event detail columns in the golf events admin list table.
+	 *
+	 * @param string $column  Column key.
+	 * @param int    $post_id Post ID.
+	 * @return void
+	 */
+	public function render_admin_column( $column, $post_id ) {
+		if ( ! in_array( $column, array( 'event_year', 'event_date', 'registration_status' ), true ) ) {
+			return;
+		}
+
+		$value = get_post_meta( $post_id, $column, true );
+
+		if ( 'registration_status' === $column ) {
+			$value = $this->get_registration_status_label( $value );
+		}
+
+		if ( '' === $value ) {
+			echo '&mdash;';
+			return;
+		}
+
+		echo esc_html( $value );
+	}
+
+	/**
+	 * Shows an admin notice when a saved golf event does not have a title.
+	 *
+	 * @return void
+	 */
+	public function show_missing_title_notice() {
+		$screen = get_current_screen();
+
+		if ( ! $screen || HFO_Golf_Event_Post_Type::POST_TYPE !== $screen->post_type || 'post' !== $screen->base ) {
+			return;
+		}
+
+		$post_id = isset( $_GET['post'] ) ? absint( wp_unslash( $_GET['post'] ) ) : 0;
+
+		if ( 0 === $post_id ) {
+			return;
+		}
+
+		$post = get_post( $post_id );
+
+		if ( ! $post || HFO_Golf_Event_Post_Type::POST_TYPE !== $post->post_type || '' !== trim( $post->post_title ) ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			esc_html__( 'Please add an event title before using this event for registrations.', 'hfo-golf-registration' )
+		);
 	}
 
 	/**
@@ -360,6 +458,18 @@ class HFO_Golf_Event_Meta_Boxes {
 			</select>
 		</p>
 		<?php
+	}
+
+	/**
+	 * Gets the display label for a registration status value.
+	 *
+	 * @param string $status Registration status meta value.
+	 * @return string
+	 */
+	private function get_registration_status_label( $status ) {
+		$status = sanitize_key( $status );
+
+		return array_key_exists( $status, $this->registration_statuses ) ? $this->registration_statuses[ $status ] : $status;
 	}
 
 	/**
