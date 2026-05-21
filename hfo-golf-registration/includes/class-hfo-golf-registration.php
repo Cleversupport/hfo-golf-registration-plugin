@@ -33,6 +33,9 @@ class HFO_Golf_Registration {
 
 		$frontend = new HFO_Golf_Registration_Frontend();
 		$frontend->register_hooks();
+
+		$jetformbuilder = new HFO_Golf_Registration_JetFormBuilder();
+		$jetformbuilder->register_hooks();
 	}
 
 	/**
