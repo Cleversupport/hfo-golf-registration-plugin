@@ -76,8 +76,8 @@ class HFO_Golf_Event_Meta_Boxes {
 	 */
 	public function add_admin_columns( $columns ) {
 		$custom_columns = array(
-			'event_year'          => __( 'Event Year', 'hfo-golf-registration' ),
 			'event_date'          => __( 'Event Date', 'hfo-golf-registration' ),
+			'event_time'          => __( 'Event Time', 'hfo-golf-registration' ),
 			'registration_status' => __( 'Registration Status', 'hfo-golf-registration' ),
 		);
 
@@ -99,7 +99,25 @@ class HFO_Golf_Event_Meta_Boxes {
 	 * @return void
 	 */
 	public function render_admin_column( $column, $post_id ) {
-		if ( ! in_array( $column, array( 'event_year', 'event_date', 'registration_status' ), true ) ) {
+		if ( ! in_array( $column, array( 'event_date', 'event_time', 'registration_status' ), true ) ) {
+			return;
+		}
+
+		if ( 'event_time' === $column ) {
+			$start_time = get_post_meta( $post_id, 'event_start_time', true );
+			$end_time   = get_post_meta( $post_id, 'event_end_time', true );
+
+			if ( '' !== $start_time && '' !== $end_time ) {
+				echo esc_html( $start_time . ' - ' . $end_time );
+				return;
+			}
+
+			if ( '' !== $start_time || '' !== $end_time ) {
+				echo esc_html( '' !== $start_time ? $start_time : $end_time );
+				return;
+			}
+
+			echo '&mdash;';
 			return;
 		}
 
@@ -210,7 +228,16 @@ class HFO_Golf_Event_Meta_Boxes {
 			)
 		);
 		$this->render_input_field( 'event_date', esc_html__( 'Event Date', 'hfo-golf-registration' ), $post->ID, 'date' );
+		$this->render_input_field( 'event_start_time', esc_html__( 'Event Start Time', 'hfo-golf-registration' ), $post->ID, 'time' );
+		$this->render_input_field( 'event_end_time', esc_html__( 'Event End Time', 'hfo-golf-registration' ), $post->ID, 'time' );
 		$this->render_input_field( 'event_location', esc_html__( 'Event Location', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_textarea_field(
+			'event_caption',
+			esc_html__( 'Event Caption', 'hfo-golf-registration' ),
+			$post->ID,
+			esc_html__( 'Short public-facing summary used on event templates/cards.', 'hfo-golf-registration' ),
+			2
+		);
 		$this->render_registration_status_field( $post->ID );
 	}
 
@@ -284,7 +311,10 @@ class HFO_Golf_Event_Meta_Boxes {
 
 		$this->save_meta_value( $post_id, 'event_year', 'year' );
 		$this->save_meta_value( $post_id, 'event_date', 'text' );
+		$this->save_meta_value( $post_id, 'event_start_time', 'time' );
+		$this->save_meta_value( $post_id, 'event_end_time', 'time' );
 		$this->save_meta_value( $post_id, 'event_location', 'text' );
+		$this->save_meta_value( $post_id, 'event_caption', 'textarea' );
 		$this->save_meta_value( $post_id, 'registration_status', 'registration_status' );
 
 		foreach ( $this->get_price_fields() as $field ) {
@@ -365,6 +395,9 @@ class HFO_Golf_Event_Meta_Boxes {
 			case 'textarea':
 				return sanitize_textarea_field( $value );
 
+			case 'time':
+				return $this->sanitize_time_value( $value );
+
 			case 'text':
 			default:
 				return sanitize_text_field( $value );
@@ -390,6 +423,22 @@ class HFO_Golf_Event_Meta_Boxes {
 		}
 
 		return implode( ', ', $valid );
+	}
+
+	/**
+	 * Sanitizes a time value in HH:MM format.
+	 *
+	 * @param mixed $value Raw value.
+	 * @return string
+	 */
+	private function sanitize_time_value( $value ) {
+		$time = sanitize_text_field( $value );
+
+		if ( '' === $time ) {
+			return '';
+		}
+
+		return preg_match( '/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time ) ? $time : '';
 	}
 
 	/**
@@ -479,14 +528,15 @@ class HFO_Golf_Event_Meta_Boxes {
 	 * @param string $label       Field label.
 	 * @param int    $post_id     Post ID.
 	 * @param string $description Optional field description.
+	 * @param int    $rows        Number of textarea rows.
 	 * @return void
 	 */
-	private function render_textarea_field( $key, $label, $post_id, $description = '' ) {
+	private function render_textarea_field( $key, $label, $post_id, $description = '', $rows = 4 ) {
 		$value = get_post_meta( $post_id, $key, true );
 		?>
 		<p>
 			<label for="<?php echo esc_attr( $key ); ?>"><strong><?php echo esc_html( $label ); ?></strong></label><br />
-			<textarea id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" class="widefat" rows="4"><?php echo esc_textarea( $value ); ?></textarea>
+			<textarea id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" class="widefat" rows="<?php echo esc_attr( $rows ); ?>"><?php echo esc_textarea( $value ); ?></textarea>
 			<?php if ( '' !== $description ) : ?>
 				<br /><span class="description"><?php echo esc_html( $description ); ?></span>
 			<?php endif; ?>
