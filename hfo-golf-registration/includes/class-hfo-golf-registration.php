@@ -30,6 +30,9 @@ class HFO_Golf_Registration {
 
 		$settings = new HFO_Golf_Registration_Settings();
 		$settings->register_hooks();
+
+		$shortcode = new HFO_Golf_Registration_Shortcode();
+		$shortcode->register_hooks();
 	}
 
 	/**
