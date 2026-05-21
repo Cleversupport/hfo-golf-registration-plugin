@@ -1,0 +1,10 @@
+.hfo-golf-registration-form label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+}
+
+.hfo-golf-registration-form input {
+	max-width: 30rem;
+	width: 100%;
+}
