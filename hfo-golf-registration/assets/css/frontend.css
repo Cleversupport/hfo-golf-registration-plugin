@@ -1,0 +1,25 @@
+.hfo-golf-registration-form-wrap {
+	max-width: 760px;
+	padding: 1rem;
+	border: 1px solid #ddd;
+	background: #fff;
+}
+
+.hfo-golf-registration-form p {
+	margin-bottom: 0.75rem;
+}
+
+.hfo-golf-registration-form label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+}
+
+.hfo-golf-registration-form input,
+.hfo-golf-registration-form textarea,
+.hfo-golf-registration-form button {
+	width: 100%;
+	max-width: 100%;
+	padding: 0.5rem;
+	box-sizing: border-box;
+}
