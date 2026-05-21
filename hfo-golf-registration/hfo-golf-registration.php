@@ -26,6 +26,7 @@ require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-registr
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-registration-settings.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-activator.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-deactivator.php';
+require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-frontend.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration.php';
 
 register_activation_hook( __FILE__, array( 'HFO_Golf_Registration_Activator', 'activate' ) );
