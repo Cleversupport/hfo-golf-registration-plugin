@@ -52,6 +52,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_send_to_checkout' ) );
 		add_action( 'admin_notices', array( $this, 'render_admin_notice' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
+		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_golf_registration_meta_to_order' ), 10, 2 );
+		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
+		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
+		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
 
 	/**
@@ -220,6 +224,128 @@ class HFO_Golf_Registration_Checkout_Handler {
 	}
 
 	/**
+	 * Stores golf registration identifiers on the WooCommerce order during checkout.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @param array    $data  Posted checkout data.
+	 * @return void
+	 */
+	public function add_golf_registration_meta_to_order( $order, $data ) {
+		$golf_order_data = $this->get_golf_order_data_from_cart();
+
+		if ( empty( $golf_order_data ) || ! method_exists( $order, 'update_meta_data' ) ) {
+			return;
+		}
+
+		$order->update_meta_data( 'hfo_golf_registration_id', $golf_order_data['registration_id'] );
+		$order->update_meta_data( 'hfo_golf_event_id', $golf_order_data['event_id'] );
+	}
+
+	/**
+	 * Stores golf registration data on each WooCommerce order line item.
+	 *
+	 * @param WC_Order_Item_Product $item          WooCommerce order item object.
+	 * @param string                $cart_item_key Cart item key.
+	 * @param array                 $values        Cart item values.
+	 * @param WC_Order              $order         WooCommerce order object.
+	 * @return void
+	 */
+	public function add_golf_registration_meta_to_order_item( $item, $cart_item_key, $values, $order ) {
+		$registration_id = isset( $values['hfo_golf_registration_id'] ) ? absint( $values['hfo_golf_registration_id'] ) : 0;
+
+		if ( ! $this->is_valid_registration( $registration_id ) || ! method_exists( $item, 'add_meta_data' ) ) {
+			return;
+		}
+
+		$event_id     = isset( $values['hfo_golf_registration_event_id'] ) ? absint( $values['hfo_golf_registration_event_id'] ) : 0;
+		$item_type    = isset( $values['hfo_golf_registration_item_type'] ) ? sanitize_key( $values['hfo_golf_registration_item_type'] ) : '';
+		$item_label   = isset( $values['hfo_golf_registration_item_label'] ) ? sanitize_text_field( $values['hfo_golf_registration_item_label'] ) : '';
+		$custom_price = isset( $values['hfo_golf_registration_custom_price'] ) ? wc_format_decimal( $values['hfo_golf_registration_custom_price'] ) : '';
+
+		$item->add_meta_data( 'hfo_golf_registration_id', $registration_id, true );
+		$item->add_meta_data( 'hfo_golf_event_id', $event_id, true );
+		$item->add_meta_data( 'hfo_golf_item_type', $item_type, true );
+		$item->add_meta_data( 'hfo_golf_item_label', $item_label, true );
+		$item->add_meta_data( 'hfo_golf_custom_price', $custom_price, true );
+	}
+
+	/**
+	 * Links a newly created WooCommerce order to its Golf Registration.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return void
+	 */
+	public function link_created_order_to_registration( $order ) {
+		if ( ! $order || ! method_exists( $order, 'get_id' ) || ! method_exists( $order, 'get_status' ) ) {
+			return;
+		}
+
+		$registration_id = $this->get_registration_id_from_order( $order );
+
+		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			return;
+		}
+
+		update_post_meta( $registration_id, 'woocommerce_order_id', $order->get_id() );
+		update_post_meta( $registration_id, 'registration_status', 'submitted' );
+
+		if ( in_array( $order->get_status(), array( 'pending', 'on-hold', 'processing' ), true ) ) {
+			update_post_meta( $registration_id, 'payment_status', 'pending' );
+		}
+
+		if ( method_exists( $order, 'add_order_note' ) ) {
+			$order->add_order_note(
+				sprintf(
+					/* translators: %d: golf registration post ID. */
+					__( 'Linked to Golf Registration #%d.', 'hfo-golf-registration' ),
+					$registration_id
+				),
+				false,
+				true
+			);
+		}
+	}
+
+	/**
+	 * Syncs Golf Registration payment and registration statuses from WooCommerce.
+	 *
+	 * @param int      $order_id   WooCommerce order ID.
+	 * @param string   $old_status Previous WooCommerce order status.
+	 * @param string   $new_status New WooCommerce order status.
+	 * @param WC_Order $order      WooCommerce order object.
+	 * @return void
+	 */
+	public function sync_registration_status_from_order( $order_id, $old_status, $new_status, $order ) {
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) {
+			return;
+		}
+
+		$registration_id = $this->get_registration_id_from_order( $order );
+
+		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			return;
+		}
+
+		switch ( $new_status ) {
+			case 'completed':
+			case 'processing':
+				update_post_meta( $registration_id, 'payment_status', 'paid' );
+				update_post_meta( $registration_id, 'registration_status', 'paid' );
+				break;
+
+			case 'failed':
+			case 'cancelled':
+				update_post_meta( $registration_id, 'payment_status', 'failed' );
+				update_post_meta( $registration_id, 'registration_status', 'cancelled' );
+				break;
+
+			case 'refunded':
+				update_post_meta( $registration_id, 'payment_status', 'refunded' );
+				break;
+		}
+	}
+
+	/**
 	 * Renders checkout notices on the registration edit screen.
 	 *
 	 * @return void
@@ -352,6 +478,46 @@ class HFO_Golf_Registration_Checkout_Handler {
 		if ( function_exists( 'wc_load_cart' ) ) {
 			wc_load_cart();
 		}
+	}
+
+	/**
+	 * Gets the first valid golf registration identifiers from the WooCommerce cart.
+	 *
+	 * @return array<string,int>
+	 */
+	private function get_golf_order_data_from_cart() {
+		if ( ! function_exists( 'WC' ) || ! WC()->cart || ! method_exists( WC()->cart, 'get_cart' ) ) {
+			return array();
+		}
+
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			$registration_id = isset( $cart_item['hfo_golf_registration_id'] ) ? absint( $cart_item['hfo_golf_registration_id'] ) : 0;
+
+			if ( ! $this->is_valid_registration( $registration_id ) ) {
+				continue;
+			}
+
+			return array(
+				'registration_id' => $registration_id,
+				'event_id'        => isset( $cart_item['hfo_golf_registration_event_id'] ) ? absint( $cart_item['hfo_golf_registration_event_id'] ) : 0,
+			);
+		}
+
+		return array();
+	}
+
+	/**
+	 * Gets a valid golf registration ID stored on a WooCommerce order.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return int
+	 */
+	private function get_registration_id_from_order( $order ) {
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) {
+			return 0;
+		}
+
+		return absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
 	}
 
 	/**
