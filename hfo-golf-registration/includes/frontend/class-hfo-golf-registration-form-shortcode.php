@@ -64,7 +64,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		$event_id = absint( $atts['event_id'] );
 
-		if ( ! $this->get_valid_open_event( $event_id ) ) {
+		$event = $this->get_valid_open_event( $event_id );
+
+		if ( ! $event ) {
 			return '<p class="hfo-golf-registration-message">' . esc_html__( 'Registration is not currently available for this event.', 'hfo-golf-registration' ) . '</p>';
 		}
 
@@ -73,18 +75,22 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$redirect_to = home_url( '/' );
 		}
 
+		$event_data = $this->get_event_frontend_data( $event_id );
+
 		ob_start();
 		?>
-		<form class="hfo-golf-registration-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-hfo-golf-registration-form>
+		<form class="hfo-golf-registration-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-hfo-golf-registration-form data-event-title="<?php echo esc_attr( $event_data['title'] ); ?>" data-golf-price="<?php echo esc_attr( $event_data['prices']['golf'] ); ?>" data-lunch-price="<?php echo esc_attr( $event_data['prices']['lunch'] ); ?>" data-dinner-price="<?php echo esc_attr( $event_data['prices']['dinner'] ); ?>" data-platinum-sponsor-price="<?php echo esc_attr( $event_data['prices']['platinum'] ); ?>" data-gold-sponsor-price="<?php echo esc_attr( $event_data['prices']['gold'] ); ?>" data-silver-sponsor-price="<?php echo esc_attr( $event_data['prices']['silver'] ); ?>" data-tee-sponsor-price="<?php echo esc_attr( $event_data['prices']['tee'] ); ?>">
 			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
 			<input type="hidden" name="event_id" value="<?php echo esc_attr( $event_id ); ?>" />
 			<input type="hidden" name="related_event" value="<?php echo esc_attr( $event_id ); ?>" />
 			<input type="hidden" name="redirect_to" value="<?php echo esc_url( $redirect_to ); ?>" />
 			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
 
+			<?php $this->render_event_summary( $event_data ); ?>
+
 			<?php $this->render_step_header(); ?>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="registration_type">
 				<h3><?php esc_html_e( 'Step 1: Registration Type', 'hfo-golf-registration' ); ?></h3>
 				<?php
 				$this->render_select_field(
@@ -100,7 +106,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="main_contact" hidden>
 				<h3><?php esc_html_e( 'Step 2: Main Contact', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_text_field( 'main_contact_name', esc_html__( 'Name', 'hfo-golf-registration' ), true ); ?>
 				<?php $this->render_email_field( 'main_contact_email', esc_html__( 'Email', 'hfo-golf-registration' ), true ); ?>
@@ -111,23 +117,35 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_text_field( 'main_contact_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
-				<h3><?php esc_html_e( 'Step 3: Team / Golfers', 'hfo-golf-registration' ); ?></h3>
-				<?php $this->render_participant_fields( 'captain', esc_html__( 'Captain', 'hfo-golf-registration' ) ); ?>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="captain" data-participant-step="captain" hidden>
+				<h3 data-captain-step-title data-team-label="<?php esc_attr_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?>" data-individual-label="<?php esc_attr_e( 'Step 3: Player 1', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?></h3>
+				<?php $this->render_participant_fields( 'captain', esc_html__( 'Captain / Player 1', 'hfo-golf-registration' ) ); ?>
+			</section>
+
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_2" data-participant-step="member_2" hidden>
+				<h3><?php esc_html_e( 'Step 4: Member #2', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_2', esc_html__( 'Member #2', 'hfo-golf-registration' ) ); ?>
+			</section>
+
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_3" data-participant-step="member_3" hidden>
+				<h3><?php esc_html_e( 'Step 5: Member #3', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_3', esc_html__( 'Member #3', 'hfo-golf-registration' ) ); ?>
+			</section>
+
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_4" data-participant-step="member_4" hidden>
+				<h3><?php esc_html_e( 'Step 6: Member #4', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_4', esc_html__( 'Member #4', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
-				<h3><?php esc_html_e( 'Step 4: Additional Guests', 'hfo-golf-registration' ); ?></h3>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="additional_guests" hidden>
+				<h3><?php esc_html_e( 'Step 7: Additional Guests', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_number_field( 'additional_lunch_count', esc_html__( 'Additional Lunch Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_number_field( 'additional_dinner_count', esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_textarea_field( 'additional_guests_details', esc_html__( 'Additional Guests Details', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
-				<h3><?php esc_html_e( 'Step 5: Sponsorship', 'hfo-golf-registration' ); ?></h3>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="sponsorship" hidden>
+				<h3><?php esc_html_e( 'Step 8: Sponsorship', 'hfo-golf-registration' ); ?></h3>
 				<?php
 				$this->render_select_field(
 					'sponsorship_level',
@@ -152,17 +170,19 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_text_field( 'sponsor_zip', esc_html__( 'Sponsor ZIP', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
-				<h3><?php esc_html_e( 'Step 6: Review & Checkout', 'hfo-golf-registration' ); ?></h3>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="review" hidden>
+				<h3><?php esc_html_e( 'Step 9: Review & Checkout', 'hfo-golf-registration' ); ?></h3>
 				<p class="hfo-golf-registration-help"><?php esc_html_e( 'Totals are calculated securely after you continue to checkout.', 'hfo-golf-registration' ); ?></p>
-				<dl class="hfo-golf-registration-review">
-					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Calculated on submit', 'hfo-golf-registration' ); ?></dd>
-					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Calculated on submit', 'hfo-golf-registration' ); ?></dd>
-					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Calculated on submit', 'hfo-golf-registration' ); ?></dd>
-					<dt><?php esc_html_e( 'Sponsor level', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Selected above', 'hfo-golf-registration' ); ?></dd>
-					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Calculated on submit', 'hfo-golf-registration' ); ?></dd>
-					<dt><?php esc_html_e( 'Discount Amount', 'hfo-golf-registration' ); ?></dt><dd>$0.00</dd>
-					<dt><?php esc_html_e( 'Grand Total', 'hfo-golf-registration' ); ?></dt><dd><?php esc_html_e( 'Calculated on submit', 'hfo-golf-registration' ); ?></dd>
+				<dl class="hfo-golf-registration-review" data-hfo-golf-registration-review>
+					<dt><?php esc_html_e( 'Event', 'hfo-golf-registration' ); ?></dt><dd data-review-event-title><?php echo esc_html( $event_data['title'] ); ?></dd>
+					<dt><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></dt><dd data-review-registration-type>—</dd>
+					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-review-golf-qty>0</dd>
+					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-review-lunch-qty>0</dd>
+					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-review-dinner-qty>0</dd>
+					<dt><?php esc_html_e( 'Sponsor level', 'hfo-golf-registration' ); ?></dt><dd data-review-sponsor-level><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
+					<dt><?php esc_html_e( 'Estimated Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-review-subtotal>$0.00</dd>
+					<dt><?php esc_html_e( 'Discount Amount', 'hfo-golf-registration' ); ?></dt><dd data-review-discount>$0.00</dd>
+					<dt><?php esc_html_e( 'Estimated Grand Total', 'hfo-golf-registration' ); ?></dt><dd data-review-grand-total>$0.00</dd>
 				</dl>
 				<button class="hfo-golf-registration-submit" type="submit"><?php esc_html_e( 'Continue to Checkout', 'hfo-golf-registration' ); ?></button>
 			</section>
@@ -323,8 +343,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function calculate_quantities_and_totals( $event_id, $meta ) {
-		$golf_qty = 0;
-		foreach ( array( 'captain', 'member_2', 'member_3', 'member_4' ) as $participant ) {
+		$participant_keys = $this->get_visible_participant_keys_for_registration_type( $meta['registration_type'] );
+		$golf_qty         = 0;
+		foreach ( $participant_keys as $participant ) {
 			if ( 'golf' === $meta[ $participant . '_participation_type' ] ) {
 				$golf_qty++;
 			}
@@ -394,6 +415,47 @@ class HFO_Golf_Registration_Form_Shortcode {
 	}
 
 	/**
+	 * Gets the participant keys that should count for a registration type.
+	 *
+	 * @param string $registration_type Registration type value.
+	 * @return array<int,string>
+	 */
+	private function get_visible_participant_keys_for_registration_type( $registration_type ) {
+		if ( 'team' === $registration_type ) {
+			return array( 'captain', 'member_2', 'member_3', 'member_4' );
+		}
+
+		if ( 'individual' === $registration_type ) {
+			return array( 'captain' );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Gets event details and prices used by the frontend preview.
+	 *
+	 * @param int $event_id Event post ID.
+	 * @return array{title:string,date:string,location:string,prices:array<string,string>}
+	 */
+	private function get_event_frontend_data( $event_id ) {
+		return array(
+			'title'    => get_the_title( $event_id ),
+			'date'     => (string) get_post_meta( $event_id, 'event_date', true ),
+			'location' => (string) get_post_meta( $event_id, 'event_location', true ),
+			'prices'   => array(
+				'golf'     => number_format( $this->get_event_price( $event_id, 'golf_price' ), 2, '.', '' ),
+				'lunch'    => number_format( $this->get_event_price( $event_id, 'lunch_price' ), 2, '.', '' ),
+				'dinner'   => number_format( $this->get_event_price( $event_id, 'dinner_price' ), 2, '.', '' ),
+				'platinum' => number_format( $this->get_event_price( $event_id, 'platinum_sponsor_price' ), 2, '.', '' ),
+				'gold'     => number_format( $this->get_event_price( $event_id, 'gold_sponsor_price' ), 2, '.', '' ),
+				'silver'   => number_format( $this->get_event_price( $event_id, 'silver_sponsor_price' ), 2, '.', '' ),
+				'tee'      => number_format( $this->get_event_price( $event_id, 'tee_sponsor_price' ), 2, '.', '' ),
+			),
+		);
+	}
+
+	/**
 	 * Sanitizes a posted choice against allowed values.
 	 *
 	 * @param string        $key     Posted key.
@@ -460,13 +522,36 @@ class HFO_Golf_Registration_Form_Shortcode {
 	private function render_step_header() {
 		?>
 		<ol class="hfo-golf-registration-steps" data-hfo-golf-registration-steps>
-			<li class="is-active"><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Main Contact', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Team / Golfers', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
+			<li class="is-active" data-step-label-key="registration_type"><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="main_contact"><?php esc_html_e( 'Main Contact', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="captain" data-captain-step-label data-team-label="<?php esc_attr_e( 'Captain / Player 1', 'hfo-golf-registration' ); ?>" data-individual-label="<?php esc_attr_e( 'Player 1', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Captain / Player 1', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="member_2"><?php esc_html_e( 'Member #2', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="member_3"><?php esc_html_e( 'Member #3', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="member_4"><?php esc_html_e( 'Member #4', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="additional_guests"><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="sponsorship"><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
+			<li data-step-label-key="review"><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
 		</ol>
+		<?php
+	}
+
+	/**
+	 * Renders the selected event summary above the steps.
+	 *
+	 * @param array{title:string,date:string,location:string,prices:array<string,string>} $event_data Event display data.
+	 * @return void
+	 */
+	private function render_event_summary( $event_data ) {
+		?>
+		<div class="hfo-golf-registration-event" data-hfo-golf-registration-event>
+			<h2 class="hfo-golf-registration-event__title"><?php echo esc_html( $event_data['title'] ); ?></h2>
+			<dl class="hfo-golf-registration-event__details">
+				<dt><?php esc_html_e( 'Date', 'hfo-golf-registration' ); ?></dt>
+				<dd><?php echo '' !== $event_data['date'] ? esc_html( $event_data['date'] ) : esc_html__( 'To be announced', 'hfo-golf-registration' ); ?></dd>
+				<dt><?php esc_html_e( 'Location', 'hfo-golf-registration' ); ?></dt>
+				<dd><?php echo '' !== $event_data['location'] ? esc_html( $event_data['location'] ) : esc_html__( 'To be announced', 'hfo-golf-registration' ); ?></dd>
+			</dl>
+		</div>
 		<?php
 	}
 
