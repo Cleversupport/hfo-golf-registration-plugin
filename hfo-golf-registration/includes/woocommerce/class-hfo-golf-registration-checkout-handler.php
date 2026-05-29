@@ -55,6 +55,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_golf_registration_meta_to_order' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
+		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'hide_golf_registration_formatted_order_item_meta' ), 10, 2 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
@@ -249,15 +250,60 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @return array
 	 */
 	public function hide_golf_registration_order_item_meta( $hidden_meta_keys ) {
-		$golf_registration_meta_keys = array(
+		return array_values(
+			array_unique(
+				array_merge(
+					$hidden_meta_keys,
+					$this->get_hidden_golf_registration_order_item_meta_keys()
+				)
+			)
+		);
+	}
+
+	/**
+	 * Removes internal golf registration metadata from WooCommerce's formatted order item meta output.
+	 *
+	 * WooCommerce uses this formatted data on the Order Received page and in order emails,
+	 * so filtering it keeps the internal meta stored for registration/order syncing while
+	 * preventing it from being rendered visually.
+	 *
+	 * @param array         $formatted_meta Formatted WooCommerce order item meta data.
+	 * @param WC_Order_Item $item           WooCommerce order item object.
+	 * @return array
+	 */
+	public function hide_golf_registration_formatted_order_item_meta( $formatted_meta, $item ) {
+		$hidden_meta_keys = $this->get_hidden_golf_registration_order_item_meta_keys();
+
+		foreach ( $formatted_meta as $meta_id => $meta ) {
+			$meta_key = '';
+
+			if ( is_object( $meta ) && isset( $meta->key ) ) {
+				$meta_key = (string) $meta->key;
+			} elseif ( is_array( $meta ) && isset( $meta['key'] ) ) {
+				$meta_key = (string) $meta['key'];
+			}
+
+			if ( in_array( $meta_key, $hidden_meta_keys, true ) ) {
+				unset( $formatted_meta[ $meta_id ] );
+			}
+		}
+
+		return $formatted_meta;
+	}
+
+	/**
+	 * Gets internal golf registration order item meta keys that should not be rendered.
+	 *
+	 * @return array<int,string>
+	 */
+	private function get_hidden_golf_registration_order_item_meta_keys() {
+		return array(
 			'hfo_golf_registration_id',
 			'hfo_golf_event_id',
 			'hfo_golf_item_type',
 			'hfo_golf_item_label',
 			'hfo_golf_custom_price',
 		);
-
-		return array_values( array_unique( array_merge( $hidden_meta_keys, $golf_registration_meta_keys ) ) );
 	}
 
 	/**
