@@ -81,19 +81,30 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return;
 		}
 
-		$disabled = current_user_can( 'edit_post', $post->ID ) ? '' : ' disabled="disabled"';
+		$checkout_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'action'          => self::ACTION,
+					'registration_id' => $post->ID,
+				),
+				admin_url( 'admin-post.php' )
+			),
+			self::NONCE_ACTION,
+			self::NONCE_NAME
+		);
 		?>
 		<p><?php esc_html_e( 'Send this registration to WooCommerce checkout.', 'hfo-golf-registration' ); ?></p>
-		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
-			<input type="hidden" name="registration_id" value="<?php echo esc_attr( $post->ID ); ?>" />
-			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
-			<p>
-				<button type="submit" class="button button-primary button-large"<?php echo $disabled; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Static disabled attribute generated above. ?>>
+		<p>
+			<?php if ( current_user_can( 'edit_post', $post->ID ) ) : ?>
+				<a class="button button-primary button-large" href="<?php echo esc_url( $checkout_url ); ?>">
 					<?php esc_html_e( 'Send to Checkout', 'hfo-golf-registration' ); ?>
-				</button>
-			</p>
-		</form>
+				</a>
+			<?php else : ?>
+				<span class="button button-primary button-large disabled" aria-disabled="true">
+					<?php esc_html_e( 'Send to Checkout', 'hfo-golf-registration' ); ?>
+				</span>
+			<?php endif; ?>
+		</p>
 		<?php
 	}
 
@@ -103,9 +114,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @return void
 	 */
 	public function handle_send_to_checkout() {
-		$registration_id = isset( $_POST['registration_id'] ) ? absint( wp_unslash( $_POST['registration_id'] ) ) : 0;
+		$registration_id = isset( $_REQUEST['registration_id'] ) ? absint( wp_unslash( $_REQUEST['registration_id'] ) ) : 0;
+		$nonce          = isset( $_REQUEST[ self::NONCE_NAME ] ) ? sanitize_text_field( wp_unslash( $_REQUEST[ self::NONCE_NAME ] ) ) : '';
 
-		if ( ! isset( $_POST[ self::NONCE_NAME ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::NONCE_NAME ] ) ), self::NONCE_ACTION ) ) {
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, self::NONCE_ACTION ) ) {
 			$this->redirect_to_registration( $registration_id, __( 'Invalid checkout request. Please try again.', 'hfo-golf-registration' ), 'error' );
 		}
 
