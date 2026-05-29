@@ -70,8 +70,8 @@ class HFO_Golf_Registration_Post_Type {
 			'hierarchical'       => false,
 			'menu_position'      => 21,
 			'menu_icon'          => 'dashicons-clipboard',
-			'show_in_rest'       => true,
-			'supports'           => array( 'title', 'editor', 'custom-fields' ),
+			'show_in_rest'       => false,
+			'supports'           => array( 'title', 'custom-fields' ),
 		);
 
 		register_post_type( $post_type, $args );
