@@ -127,7 +127,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 			</section>
 
 			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step hidden>
-				<h3><?php esc_html_e( 'Step 5: Sponsorship', 'hfo-golf-registration' ); ?></h3>
+				<h3 data-hfo-golf-registration-sponsorship-title data-required-title="<?php echo esc_attr__( 'Step 5: Sponsorship', 'hfo-golf-registration' ); ?>" data-optional-title="<?php echo esc_attr__( 'Step 5: Optional Sponsorship', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Step 5: Optional Sponsorship', 'hfo-golf-registration' ); ?></h3>
+				<p class="hfo-golf-registration-help" data-hfo-golf-registration-sponsorship-help data-required-text="<?php echo esc_attr__( 'Select the sponsorship level you would like to purchase.', 'hfo-golf-registration' ); ?>" data-optional-text="<?php echo esc_attr__( 'Optional: select a sponsorship level if you would like to add sponsorship to this registration.', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Optional: select a sponsorship level if you would like to add sponsorship to this registration.', 'hfo-golf-registration' ); ?></p>
+				<p class="hfo-golf-registration-error" data-hfo-golf-registration-sponsorship-error hidden></p>
 				<?php
 				$this->render_select_field(
 					'sponsorship_level',
@@ -197,6 +199,11 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		if ( ! is_email( $meta['main_contact_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
+		}
+
+		$validation_error = $this->get_checkout_validation_error( $meta );
+		if ( '' !== $validation_error ) {
+			wp_die( esc_html( $validation_error ) );
 		}
 
 		$registration_id = wp_insert_post(
@@ -313,6 +320,42 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$prefix . '_handicap'           => $this->sanitize_post_text( $prefix . '_handicap' ),
 			$prefix . '_participation_type' => $this->sanitize_choice( $prefix . '_participation_type', array( '', 'golf', 'lunch', 'dinner' ), '' ),
 		);
+	}
+
+	/**
+	 * Gets a checkout validation error for sanitized submission meta.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta with calculated quantities and totals.
+	 * @return string Validation error message, or empty string when valid.
+	 */
+	private function get_checkout_validation_error( $meta ) {
+		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] ) {
+			return __( 'Please select a sponsorship level to continue.', 'hfo-golf-registration' );
+		}
+
+		$checkout_quantity_keys = array(
+			'golf_qty',
+			'lunch_qty',
+			'dinner_qty',
+			'platinum_sponsor_qty',
+			'gold_sponsor_qty',
+			'silver_sponsor_qty',
+			'tee_sponsor_qty',
+		);
+
+		$has_checkout_quantity = false;
+		foreach ( $checkout_quantity_keys as $quantity_key ) {
+			if ( ! empty( $meta[ $quantity_key ] ) && 0 < absint( $meta[ $quantity_key ] ) ) {
+				$has_checkout_quantity = true;
+				break;
+			}
+		}
+
+		if ( ! $has_checkout_quantity || 0.0 >= (float) $meta['grand_total'] ) {
+			return __( 'Please select at least one registration, guest, or sponsorship option before continuing to checkout.', 'hfo-golf-registration' );
+		}
+
+		return '';
 	}
 
 	/**
@@ -464,7 +507,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<li><?php esc_html_e( 'Main Contact', 'hfo-golf-registration' ); ?></li>
 			<li><?php esc_html_e( 'Team / Golfers', 'hfo-golf-registration' ); ?></li>
 			<li><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
-			<li><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
+			<li data-hfo-golf-registration-sponsorship-step-label data-required-label="<?php echo esc_attr__( 'Sponsorship', 'hfo-golf-registration' ); ?>" data-optional-label="<?php echo esc_attr__( 'Optional Sponsorship', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Optional Sponsorship', 'hfo-golf-registration' ); ?></li>
 			<li><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
 		</ol>
 		<?php
