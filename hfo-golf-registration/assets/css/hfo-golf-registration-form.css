@@ -90,3 +90,27 @@
 .hfo-golf-registration-submit {
 	margin-top: 1rem;
 }
+
+.hfo-golf-registration-event-summary {
+	background: #f7fbff;
+	border: 1px solid #cfe3f5;
+	border-radius: 4px;
+	margin: 0 0 1.5rem;
+	padding: 1rem;
+}
+
+.hfo-golf-registration-event-summary h3 {
+	margin-top: 0;
+}
+
+.hfo-golf-registration-event-summary p {
+	margin: 0.35rem 0 0;
+}
+
+.hfo-golf-registration-message {
+	background: #fff3cd;
+	border: 1px solid #ffe69c;
+	border-radius: 4px;
+	margin: 0 0 1rem;
+	padding: 0.75rem 1rem;
+}
