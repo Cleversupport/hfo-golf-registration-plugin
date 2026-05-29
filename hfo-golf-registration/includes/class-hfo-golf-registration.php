@@ -36,6 +36,9 @@ class HFO_Golf_Registration {
 
 		$jetformbuilder = new HFO_Golf_Registration_JetFormBuilder();
 		$jetformbuilder->register_hooks();
+
+		$checkout_handler = new HFO_Golf_Registration_Checkout_Handler();
+		$checkout_handler->register_hooks();
 	}
 
 	/**
