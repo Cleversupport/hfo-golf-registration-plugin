@@ -118,13 +118,27 @@ class HFO_Golf_Registration_Meta_Boxes {
 			return;
 		}
 
-		if ( 'general_registration' === $section_id ) {
-			wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME );
-		}
+		$this->render_save_nonce_field();
 
 		foreach ( $sections[ $section_id ]['fields'] as $key => $field ) {
 			$this->render_field( $key, $field, $post->ID );
 		}
+	}
+
+	/**
+	 * Renders the save nonce in each registration meta box section.
+	 *
+	 * Gutenberg serializes legacy meta boxes independently, so the save nonce must
+	 * not depend on one specific section being present in the submitted payload.
+	 *
+	 * @return void
+	 */
+	private function render_save_nonce_field() {
+		printf(
+			'<input type="hidden" name="%1$s" value="%2$s" />',
+			esc_attr( self::NONCE_NAME ),
+			esc_attr( wp_create_nonce( self::NONCE_ACTION ) )
+		);
 	}
 
 	/**
