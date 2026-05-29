@@ -34,8 +34,9 @@ class HFO_Golf_Registration_Meta_Boxes {
 	 * @var array<string,string>
 	 */
 	private $registration_types = array(
-		'individual' => 'Individual',
-		'team'       => 'Team',
+		'individual'   => 'Individual',
+		'team'         => 'Team',
+		'sponsor_only' => 'Sponsor Only',
 	);
 
 	/**
