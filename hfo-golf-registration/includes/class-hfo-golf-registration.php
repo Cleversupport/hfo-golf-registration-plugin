@@ -31,6 +31,9 @@ class HFO_Golf_Registration {
 		$settings = new HFO_Golf_Registration_Settings();
 		$settings->register_hooks();
 
+		$checkout_handler = new HFO_Golf_Registration_Checkout_Handler();
+		$checkout_handler->register_hooks();
+
 		$frontend = new HFO_Golf_Registration_Frontend();
 		$frontend->register_hooks();
 
