@@ -166,20 +166,57 @@ class HFO_Golf_Registration_Checkout_Handler {
 			$this->redirect_to_registration( $registration_id, __( 'WooCommerce must be active before sending a registration to checkout.', 'hfo-golf-registration' ), 'error' );
 		}
 
+		$cart_result = $this->add_registration_to_cart( $registration_id );
+
+		if ( is_wp_error( $cart_result ) ) {
+			$this->redirect_to_registration( $registration_id, $cart_result->get_error_message(), 'error' );
+		}
+
+		if ( function_exists( 'wc_add_notice' ) ) {
+			wc_add_notice( __( 'Golf registration items were added to checkout.', 'hfo-golf-registration' ), 'success' );
+		}
+
+		wp_safe_redirect( wc_get_checkout_url() );
+		exit;
+	}
+
+	/**
+	 * Adds the registration checkout items to the WooCommerce cart.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @return true|WP_Error
+	 */
+	public function add_registration_to_cart( $registration_id ) {
+		$registration_id = absint( $registration_id );
+
+		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			return new WP_Error( 'hfo_golf_registration_invalid_registration', __( 'Invalid golf registration.', 'hfo-golf-registration' ) );
+		}
+
+		$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
+
+		if ( ! $this->is_valid_event( $event_id ) ) {
+			return new WP_Error( 'hfo_golf_registration_invalid_event', __( 'Please select a valid related event before sending this registration to checkout.', 'hfo-golf-registration' ) );
+		}
+
+		if ( ! $this->is_woocommerce_available() ) {
+			return new WP_Error( 'hfo_golf_registration_woocommerce_unavailable', __( 'WooCommerce must be active before sending a registration to checkout.', 'hfo-golf-registration' ) );
+		}
+
 		$cart_items = $this->build_cart_items( $registration_id, $event_id );
 
 		if ( is_wp_error( $cart_items ) ) {
-			$this->redirect_to_registration( $registration_id, $cart_items->get_error_message(), 'error' );
+			return $cart_items;
 		}
 
 		if ( empty( $cart_items ) ) {
-			$this->redirect_to_registration( $registration_id, __( 'Please add at least one checkout item quantity before sending this registration to checkout.', 'hfo-golf-registration' ), 'error' );
+			return new WP_Error( 'hfo_golf_registration_empty_cart_items', __( 'Please add at least one checkout item quantity before sending this registration to checkout.', 'hfo-golf-registration' ) );
 		}
 
 		$this->ensure_cart_is_loaded();
 
 		if ( ! WC()->cart ) {
-			$this->redirect_to_registration( $registration_id, __( 'WooCommerce cart is unavailable. Please try again.', 'hfo-golf-registration' ), 'error' );
+			return new WP_Error( 'hfo_golf_registration_cart_unavailable', __( 'WooCommerce cart is unavailable. Please try again.', 'hfo-golf-registration' ) );
 		}
 
 		WC()->cart->empty_cart();
@@ -194,20 +231,35 @@ class HFO_Golf_Registration_Checkout_Handler {
 			);
 
 			if ( ! $added ) {
-				$this->redirect_to_registration(
-					$registration_id,
+				return new WP_Error(
+					'hfo_golf_registration_cart_add_failed',
 					sprintf(
 						/* translators: %s: checkout item label. */
 						__( 'Unable to add %s to the WooCommerce cart.', 'hfo-golf-registration' ),
 						$cart_item['label']
-					),
-					'error'
+					)
 				);
 			}
 		}
 
 		if ( method_exists( WC()->cart, 'set_session' ) ) {
 			WC()->cart->set_session();
+		}
+
+		return true;
+	}
+
+	/**
+	 * Adds a registration to the cart and redirects to WooCommerce checkout.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @return void
+	 */
+	public function send_registration_to_checkout( $registration_id ) {
+		$cart_result = $this->add_registration_to_cart( $registration_id );
+
+		if ( is_wp_error( $cart_result ) ) {
+			wp_die( esc_html( $cart_result->get_error_message() ) );
 		}
 
 		if ( function_exists( 'wc_add_notice' ) ) {

@@ -15,7 +15,6 @@ class HFO_Golf_Registration_Frontend {
 
 	public function register_hooks() {
 		add_shortcode( 'hfo_golf_registration', array( $this, 'render_shortcode' ) );
-		add_shortcode( 'hfo_golf_registration_form', array( $this, 'render_shortcode' ) );
 		add_action( 'admin_post_nopriv_hfo_golf_registration_submit', array( $this, 'handle_submission' ) );
 		add_action( 'admin_post_hfo_golf_registration_submit', array( $this, 'handle_submission' ) );
 	}

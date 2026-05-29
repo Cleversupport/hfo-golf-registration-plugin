@@ -1,0 +1,92 @@
+.hfo-golf-registration-form {
+	border: 1px solid #d8d8d8;
+	padding: 1.5rem;
+	max-width: 960px;
+}
+
+.hfo-golf-registration-steps {
+	display: grid;
+	gap: 0.5rem;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	list-style: none;
+	margin: 0 0 1.5rem;
+	padding: 0;
+}
+
+.hfo-golf-registration-steps li {
+	background: #f2f2f2;
+	border-radius: 4px;
+	font-size: 0.875rem;
+	padding: 0.5rem;
+	text-align: center;
+}
+
+.hfo-golf-registration-steps li.is-active {
+	background: #0f4c81;
+	color: #fff;
+}
+
+.hfo-golf-registration-steps li.is-complete {
+	background: #dcebd7;
+}
+
+.hfo-golf-registration-step {
+	margin-bottom: 1rem;
+}
+
+.hfo-golf-registration-fieldset {
+	border: 1px solid #e5e5e5;
+	margin: 0 0 1rem;
+	padding: 1rem;
+}
+
+.hfo-golf-registration-fieldset legend {
+	font-weight: 700;
+	padding: 0 0.35rem;
+}
+
+.hfo-golf-registration-field {
+	margin: 0 0 1rem;
+}
+
+.hfo-golf-registration-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+}
+
+.hfo-golf-registration-field input,
+.hfo-golf-registration-field select,
+.hfo-golf-registration-field textarea {
+	box-sizing: border-box;
+	max-width: 100%;
+	width: 100%;
+}
+
+.hfo-golf-registration-review {
+	display: grid;
+	grid-template-columns: minmax(160px, 1fr) 2fr;
+	margin: 0 0 1rem;
+}
+
+.hfo-golf-registration-review dt,
+.hfo-golf-registration-review dd {
+	border-bottom: 1px solid #eee;
+	margin: 0;
+	padding: 0.5rem 0;
+}
+
+.hfo-golf-registration-review dt {
+	font-weight: 700;
+}
+
+.hfo-golf-registration-navigation {
+	display: flex;
+	gap: 0.75rem;
+	justify-content: space-between;
+	margin-top: 1rem;
+}
+
+.hfo-golf-registration-submit {
+	margin-top: 1rem;
+}
