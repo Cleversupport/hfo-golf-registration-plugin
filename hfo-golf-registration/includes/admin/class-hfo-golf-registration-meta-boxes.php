@@ -29,6 +29,27 @@ class HFO_Golf_Registration_Meta_Boxes {
 	const NONCE_NAME = 'hfo_golf_registration_meta_boxes_nonce';
 
 	/**
+	 * Admin-post action used to send a registration to WooCommerce checkout.
+	 *
+	 * @var string
+	 */
+	const SEND_TO_CHECKOUT_ACTION = 'hfo_golf_registration_send_to_checkout';
+
+	/**
+	 * Nonce action used to send a registration to WooCommerce checkout.
+	 *
+	 * @var string
+	 */
+	const SEND_TO_CHECKOUT_NONCE_ACTION = 'hfo_golf_registration_send_to_checkout_nonce';
+
+	/**
+	 * Query argument used for the send-to-checkout nonce.
+	 *
+	 * @var string
+	 */
+	const SEND_TO_CHECKOUT_NONCE_NAME = 'hfo_golf_registration_send_to_checkout_nonce';
+
+	/**
 	 * Valid registration type values.
 	 *
 	 * @var array<string,string>
@@ -81,7 +102,52 @@ class HFO_Golf_Registration_Meta_Boxes {
 	 */
 	public function register_hooks() {
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
+		add_action( 'add_meta_boxes', array( $this, 'add_checkout_actions_meta_box' ) );
 		add_action( 'save_post_' . HFO_Golf_Registration_Post_Type::POST_TYPE, array( $this, 'save_meta_boxes' ) );
+		add_action( 'admin_post_' . self::SEND_TO_CHECKOUT_ACTION, array( $this, 'handle_send_to_checkout' ) );
+		add_action( 'admin_notices', array( $this, 'render_send_to_checkout_notice' ) );
+		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
+	}
+
+	/**
+	 * Adds the checkout actions meta box to the golf_registration edit screen.
+	 *
+	 * @return void
+	 */
+	public function add_checkout_actions_meta_box() {
+		add_meta_box(
+			'hfo_golf_registration_checkout_actions',
+			esc_html__( 'Checkout Actions', 'hfo-golf-registration' ),
+			array( $this, 'render_checkout_actions_meta_box' ),
+			HFO_Golf_Registration_Post_Type::POST_TYPE,
+			'side',
+			'default'
+		);
+	}
+
+	/**
+	 * Renders the checkout actions meta box.
+	 *
+	 * @param WP_Post $post Current post object.
+	 * @return void
+	 */
+	public function render_checkout_actions_meta_box( $post ) {
+		$url = add_query_arg(
+			array(
+				'action'                                  => self::SEND_TO_CHECKOUT_ACTION,
+				'registration_id'                         => $post->ID,
+				self::SEND_TO_CHECKOUT_NONCE_NAME       => wp_create_nonce( self::SEND_TO_CHECKOUT_NONCE_ACTION ),
+			),
+			admin_url( 'admin-post.php' )
+		);
+		?>
+		<p><?php echo esc_html__( "Add this registration's selected items to the WooCommerce cart and continue to checkout.", 'hfo-golf-registration' ); ?></p>
+		<p>
+			<a class="button button-primary widefat" href="<?php echo esc_url( $url ); ?>">
+				<?php echo esc_html__( 'Send to Checkout', 'hfo-golf-registration' ); ?>
+			</a>
+		</p>
+		<?php
 	}
 
 	/**
@@ -232,6 +298,292 @@ class HFO_Golf_Registration_Meta_Boxes {
 			default:
 				return sanitize_text_field( $value );
 		}
+	}
+
+	/**
+	 * Handles the admin-post request to send a registration to WooCommerce checkout.
+	 *
+	 * @return void
+	 */
+	public function handle_send_to_checkout() {
+		$registration_id = isset( $_GET['registration_id'] ) ? absint( wp_unslash( $_GET['registration_id'] ) ) : 0;
+		$nonce           = isset( $_GET[ self::SEND_TO_CHECKOUT_NONCE_NAME ] ) ? sanitize_text_field( wp_unslash( $_GET[ self::SEND_TO_CHECKOUT_NONCE_NAME ] ) ) : '';
+
+		if ( ! wp_verify_nonce( $nonce, self::SEND_TO_CHECKOUT_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Invalid checkout request.', 'hfo-golf-registration' ) );
+		}
+
+		if ( ! $registration_id || HFO_Golf_Registration_Post_Type::POST_TYPE !== get_post_type( $registration_id ) ) {
+			wp_die( esc_html__( 'Invalid registration.', 'hfo-golf-registration' ) );
+		}
+
+		if ( ! current_user_can( 'edit_post', $registration_id ) ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to send this registration to checkout.', 'hfo-golf-registration' ) );
+		}
+
+		$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
+		if ( ! $this->is_valid_event_id( $event_id ) ) {
+			$this->set_send_to_checkout_notice( 'error', esc_html__( 'Select a valid related event before sending this registration to checkout.', 'hfo-golf-registration' ) );
+			$this->redirect_to_registration_edit_screen( $registration_id );
+		}
+
+		$cart_items            = $this->get_registration_checkout_cart_items( $registration_id, $event_id );
+		$missing_price_labels = $this->get_missing_checkout_price_labels( $cart_items );
+
+		if ( ! empty( $missing_price_labels ) ) {
+			$this->set_send_to_checkout_notice(
+				'error',
+				sprintf(
+					/* translators: %s: comma-separated list of registration item labels. */
+					esc_html__( 'Cannot send this registration to checkout because the related event is missing valid prices for: %s.', 'hfo-golf-registration' ),
+					esc_html( implode( ', ', $missing_price_labels ) )
+				)
+			);
+			$this->redirect_to_registration_edit_screen( $registration_id );
+		}
+
+		if ( empty( $cart_items ) ) {
+			$this->set_send_to_checkout_notice( 'error', esc_html__( 'This registration does not have any checkout items with a quantity greater than zero.', 'hfo-golf-registration' ) );
+			$this->redirect_to_registration_edit_screen( $registration_id );
+		}
+
+		if ( ! $this->prepare_woocommerce_cart() ) {
+			$this->set_send_to_checkout_notice( 'error', esc_html__( 'WooCommerce cart is unavailable. Please make sure WooCommerce is active.', 'hfo-golf-registration' ) );
+			$this->redirect_to_registration_edit_screen( $registration_id );
+		}
+
+		WC()->cart->empty_cart();
+
+		foreach ( $cart_items as $cart_item ) {
+			WC()->cart->add_to_cart(
+				$cart_item['product_id'],
+				$cart_item['quantity'],
+				0,
+				array(),
+				array(
+					'hfo_golf_registration_id'           => $registration_id,
+					'hfo_golf_registration_item_label'   => $cart_item['label'],
+					'hfo_golf_registration_custom_price' => $cart_item['price'],
+				)
+			);
+		}
+
+		wp_safe_redirect( wc_get_checkout_url() );
+		exit;
+	}
+
+	/**
+	 * Applies event-specific prices to registration cart items.
+	 *
+	 * @param WC_Cart $cart WooCommerce cart object.
+	 * @return void
+	 */
+	public function apply_custom_cart_item_prices( $cart ) {
+		if ( is_admin() && ! wp_doing_ajax() ) {
+			return;
+		}
+
+		if ( ! $cart || ! is_a( $cart, 'WC_Cart' ) ) {
+			return;
+		}
+
+		foreach ( $cart->get_cart() as $cart_item ) {
+			if ( ! isset( $cart_item['hfo_golf_registration_custom_price'], $cart_item['data'] ) ) {
+				continue;
+			}
+
+			$price = (float) $cart_item['hfo_golf_registration_custom_price'];
+			if ( $price <= 0 ) {
+				continue;
+			}
+
+			$cart_item['data']->set_price( $price );
+		}
+	}
+
+	/**
+	 * Renders a one-time notice for checkout send attempts.
+	 *
+	 * @return void
+	 */
+	public function render_send_to_checkout_notice() {
+		$notice = get_transient( $this->get_send_to_checkout_notice_transient_key() );
+
+		if ( ! is_array( $notice ) ) {
+			return;
+		}
+
+		delete_transient( $this->get_send_to_checkout_notice_transient_key() );
+
+		$type    = isset( $notice['type'] ) ? sanitize_html_class( $notice['type'] ) : 'error';
+		$message = isset( $notice['message'] ) ? (string) $notice['message'] : '';
+
+		if ( '' === $message ) {
+			return;
+		}
+
+		printf(
+			'<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+			esc_attr( $type ),
+			wp_kses_post( $message )
+		);
+	}
+
+	/**
+	 * Builds checkout cart item data for quantities selected on a registration.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @param int $event_id        Related event post ID.
+	 * @return array<int,array{label:string,quantity:int,price:float,price_raw:string,product_id:int}>
+	 */
+	private function get_registration_checkout_cart_items( $registration_id, $event_id ) {
+		$cart_items = array();
+
+		foreach ( $this->get_checkout_item_definitions() as $definition ) {
+			$quantity = absint( get_post_meta( $registration_id, $definition['quantity_key'], true ) );
+
+			if ( $quantity <= 0 ) {
+				continue;
+			}
+
+			$price_raw = get_post_meta( $event_id, $definition['price_key'], true );
+			$product_id = absint( get_option( $definition['option_name'], 0 ) );
+
+			$cart_items[] = array(
+				'label'      => $definition['label'],
+				'quantity'   => $quantity,
+				'price'      => (float) $price_raw,
+				'price_raw'  => (string) $price_raw,
+				'product_id' => $product_id,
+			);
+		}
+
+		return $cart_items;
+	}
+
+	/**
+	 * Gets labels for checkout items that have quantity but no valid event price.
+	 *
+	 * @param array<int,array{label:string,quantity:int,price:float,price_raw:string,product_id:int}> $cart_items Cart item data.
+	 * @return array<int,string>
+	 */
+	private function get_missing_checkout_price_labels( $cart_items ) {
+		$missing_price_labels = array();
+
+		foreach ( $cart_items as $cart_item ) {
+			if ( '' === trim( $cart_item['price_raw'] ) || $cart_item['price'] <= 0 ) {
+				$missing_price_labels[] = $cart_item['label'];
+			}
+		}
+
+		return $missing_price_labels;
+	}
+
+	/**
+	 * Prepares the WooCommerce cart for admin-post checkout redirects.
+	 *
+	 * @return bool
+	 */
+	private function prepare_woocommerce_cart() {
+		if ( ! function_exists( 'WC' ) ) {
+			return false;
+		}
+
+		if ( null === WC()->cart && function_exists( 'wc_load_cart' ) ) {
+			wc_load_cart();
+		}
+
+		return null !== WC()->cart;
+	}
+
+	/**
+	 * Stores a one-time notice for checkout send attempts.
+	 *
+	 * @param string $type    Notice type.
+	 * @param string $message Notice message.
+	 * @return void
+	 */
+	private function set_send_to_checkout_notice( $type, $message ) {
+		set_transient(
+			$this->get_send_to_checkout_notice_transient_key(),
+			array(
+				'type'    => $type,
+				'message' => $message,
+			),
+			60
+		);
+	}
+
+	/**
+	 * Gets the transient key for checkout send notices.
+	 *
+	 * @return string
+	 */
+	private function get_send_to_checkout_notice_transient_key() {
+		return 'hfo_golf_registration_send_to_checkout_notice_' . get_current_user_id();
+	}
+
+	/**
+	 * Redirects back to a registration edit screen.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @return void
+	 */
+	private function redirect_to_registration_edit_screen( $registration_id ) {
+		wp_safe_redirect( get_edit_post_link( $registration_id, 'raw' ) );
+		exit;
+	}
+
+	/**
+	 * Gets checkout item definitions.
+	 *
+	 * @return array<int,array{label:string,quantity_key:string,price_key:string,option_name:string}>
+	 */
+	private function get_checkout_item_definitions() {
+		return array(
+			array(
+				'label'        => esc_html__( 'Golf', 'hfo-golf-registration' ),
+				'quantity_key' => 'golf_qty',
+				'price_key'    => 'golf_price',
+				'option_name'  => 'hfo_golf_registration_golf_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Lunch', 'hfo-golf-registration' ),
+				'quantity_key' => 'lunch_qty',
+				'price_key'    => 'lunch_price',
+				'option_name'  => 'hfo_golf_registration_lunch_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Dinner', 'hfo-golf-registration' ),
+				'quantity_key' => 'dinner_qty',
+				'price_key'    => 'dinner_price',
+				'option_name'  => 'hfo_golf_registration_dinner_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Platinum Sponsor', 'hfo-golf-registration' ),
+				'quantity_key' => 'platinum_sponsor_qty',
+				'price_key'    => 'platinum_sponsor_price',
+				'option_name'  => 'hfo_golf_registration_platinum_sponsor_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Gold Sponsor', 'hfo-golf-registration' ),
+				'quantity_key' => 'gold_sponsor_qty',
+				'price_key'    => 'gold_sponsor_price',
+				'option_name'  => 'hfo_golf_registration_gold_sponsor_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Silver Sponsor', 'hfo-golf-registration' ),
+				'quantity_key' => 'silver_sponsor_qty',
+				'price_key'    => 'silver_sponsor_price',
+				'option_name'  => 'hfo_golf_registration_silver_sponsor_product_id',
+			),
+			array(
+				'label'        => esc_html__( 'Tee Sponsor', 'hfo-golf-registration' ),
+				'quantity_key' => 'tee_sponsor_qty',
+				'price_key'    => 'tee_sponsor_price',
+				'option_name'  => 'hfo_golf_registration_tee_sponsor_product_id',
+			),
+		);
 	}
 
 	/**
