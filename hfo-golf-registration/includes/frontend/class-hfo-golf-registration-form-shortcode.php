@@ -199,6 +199,18 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
 		}
 
+		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] ) {
+			wp_die( esc_html__( 'Please select a sponsorship level for Sponsor Only registration.', 'hfo-golf-registration' ) );
+		}
+
+		if ( ! $this->has_billable_checkout_items( $meta ) ) {
+			wp_die( esc_html__( 'Please select at least one golfer, guest, or sponsorship before continuing to checkout.', 'hfo-golf-registration' ) );
+		}
+
+		if ( (float) $meta['grand_total'] <= 0 ) {
+			wp_die( esc_html__( 'Unable to continue to checkout with a zero total registration.', 'hfo-golf-registration' ) );
+		}
+
 		$registration_id = wp_insert_post(
 			array(
 				'post_type'   => HFO_Golf_Registration_Post_Type::POST_TYPE,
@@ -323,15 +335,24 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function calculate_quantities_and_totals( $event_id, $meta ) {
-		$golf_qty = 0;
-		foreach ( array( 'captain', 'member_2', 'member_3', 'member_4' ) as $participant ) {
+		$golf_qty   = 0;
+		$lunch_qty  = 0;
+		$dinner_qty = 0;
+
+		foreach ( $this->get_visible_participant_keys_for_registration_type( $meta['registration_type'] ) as $participant ) {
 			if ( 'golf' === $meta[ $participant . '_participation_type' ] ) {
 				$golf_qty++;
+			} elseif ( 'lunch' === $meta[ $participant . '_participation_type' ] ) {
+				$lunch_qty++;
+			} elseif ( 'dinner' === $meta[ $participant . '_participation_type' ] ) {
+				$dinner_qty++;
 			}
 		}
 
-		$lunch_qty  = absint( $meta['additional_lunch_count'] );
-		$dinner_qty = absint( $meta['additional_dinner_count'] );
+		if ( 'sponsor_only' !== $meta['registration_type'] ) {
+			$lunch_qty  += absint( $meta['additional_lunch_count'] );
+			$dinner_qty += absint( $meta['additional_dinner_count'] );
+		}
 
 		$sponsor_quantities = array(
 			'platinum_sponsor_qty' => '0',
@@ -362,6 +383,50 @@ class HFO_Golf_Registration_Form_Shortcode {
 			),
 			$sponsor_quantities
 		);
+	}
+
+	/**
+	 * Gets participant keys visible for a registration type.
+	 *
+	 * @param string $registration_type Registration type.
+	 * @return array<int,string>
+	 */
+	private function get_visible_participant_keys_for_registration_type( $registration_type ) {
+		if ( 'team' === $registration_type ) {
+			return array( 'captain', 'member_2', 'member_3', 'member_4' );
+		}
+
+		if ( 'individual' === $registration_type ) {
+			return array( 'captain' );
+		}
+
+		return array();
+	}
+
+	/**
+	 * Checks whether sanitized submission meta has checkout items with billable quantities.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return bool
+	 */
+	private function has_billable_checkout_items( $meta ) {
+		foreach (
+			array(
+				'golf_qty',
+				'lunch_qty',
+				'dinner_qty',
+				'platinum_sponsor_qty',
+				'gold_sponsor_qty',
+				'silver_sponsor_qty',
+				'tee_sponsor_qty',
+			) as $quantity_key
+		) {
+			if ( ! empty( $meta[ $quantity_key ] ) && absint( $meta[ $quantity_key ] ) > 0 ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
