@@ -43,6 +43,27 @@ class HFO_Golf_Registration_Checkout_Handler {
 	const NOTICE_QUERY_ARG = 'hfo_golf_registration_checkout_notice';
 
 	/**
+	 * Golf Registration meta key used by the admin WooCommerce Order ID field.
+	 *
+	 * @var string
+	 */
+	const REGISTRATION_ORDER_ID_META_KEY = 'woocommerce_order_id';
+
+	/**
+	 * Golf Registration meta key used by the admin Payment Status field.
+	 *
+	 * @var string
+	 */
+	const REGISTRATION_PAYMENT_STATUS_META_KEY = 'payment_status';
+
+	/**
+	 * Golf Registration meta key used by the admin Registration Status field.
+	 *
+	 * @var string
+	 */
+	const REGISTRATION_STATUS_META_KEY = 'registration_status';
+
+	/**
 	 * Registers WordPress and WooCommerce hooks.
 	 *
 	 * @return void
@@ -345,18 +366,31 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return;
 		}
 
-		$registration_id = $this->get_registration_id_from_order( $order );
+		$golf_order_data = $this->get_golf_order_data_from_order( $order );
+
+		if ( empty( $golf_order_data['registration_id'] ) || ! $this->is_valid_registration( $golf_order_data['registration_id'] ) ) {
+			$golf_order_data = $this->get_golf_order_data_from_cart();
+		}
+
+		$registration_id = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
 
 		if ( ! $this->is_valid_registration( $registration_id ) ) {
 			return;
 		}
 
-		update_post_meta( $registration_id, 'woocommerce_order_id', $order->get_id() );
-		update_post_meta( $registration_id, 'registration_status', 'submitted' );
+		if ( method_exists( $order, 'update_meta_data' ) ) {
+			$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
 
-		if ( in_array( $order->get_status(), array( 'pending', 'on-hold', 'processing' ), true ) ) {
-			update_post_meta( $registration_id, 'payment_status', 'pending' );
+			if ( ! empty( $golf_order_data['event_id'] ) ) {
+				$order->update_meta_data( 'hfo_golf_event_id', absint( $golf_order_data['event_id'] ) );
+			}
+
+			if ( method_exists( $order, 'save_meta_data' ) ) {
+				$order->save_meta_data();
+			}
 		}
+
+		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
 
 		if ( method_exists( $order, 'add_order_note' ) ) {
 			$order->add_order_note(
@@ -391,23 +425,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return;
 		}
 
-		switch ( $new_status ) {
-			case 'completed':
-			case 'processing':
-				update_post_meta( $registration_id, 'payment_status', 'paid' );
-				update_post_meta( $registration_id, 'registration_status', 'paid' );
-				break;
-
-			case 'failed':
-			case 'cancelled':
-				update_post_meta( $registration_id, 'payment_status', 'failed' );
-				update_post_meta( $registration_id, 'registration_status', 'cancelled' );
-				break;
-
-			case 'refunded':
-				update_post_meta( $registration_id, 'payment_status', 'refunded' );
-				break;
-		}
+		$this->sync_registration_meta_for_order_status( $registration_id, $order_id, $new_status );
 	}
 
 	/**
@@ -572,17 +590,115 @@ class HFO_Golf_Registration_Checkout_Handler {
 	}
 
 	/**
+	 * Gets golf registration identifiers from WooCommerce order meta or order item meta.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return array<string,int>
+	 */
+	private function get_golf_order_data_from_order( $order ) {
+		$registration_id = 0;
+		$event_id        = 0;
+
+		if ( $order && method_exists( $order, 'get_meta' ) ) {
+			$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+			$event_id        = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
+		}
+
+		if ( $this->is_valid_registration( $registration_id ) ) {
+			return array(
+				'registration_id' => $registration_id,
+				'event_id'        => $event_id,
+			);
+		}
+
+		if ( ! $order || ! method_exists( $order, 'get_items' ) ) {
+			return array();
+		}
+
+		foreach ( $order->get_items() as $item ) {
+			if ( ! is_object( $item ) || ! method_exists( $item, 'get_meta' ) ) {
+				continue;
+			}
+
+			$registration_id = absint( $item->get_meta( 'hfo_golf_registration_id', true ) );
+
+			if ( ! $this->is_valid_registration( $registration_id ) ) {
+				continue;
+			}
+
+			return array(
+				'registration_id' => $registration_id,
+				'event_id'        => absint( $item->get_meta( 'hfo_golf_event_id', true ) ),
+			);
+		}
+
+		return array();
+	}
+
+	/**
 	 * Gets a valid golf registration ID stored on a WooCommerce order.
 	 *
 	 * @param WC_Order $order WooCommerce order object.
 	 * @return int
 	 */
 	private function get_registration_id_from_order( $order ) {
-		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) {
-			return 0;
-		}
+		$golf_order_data = $this->get_golf_order_data_from_order( $order );
 
-		return absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+		return ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+	}
+
+	/**
+	 * Syncs the Golf Registration order link and statuses for a WooCommerce order status.
+	 *
+	 * @param int    $registration_id Registration post ID.
+	 * @param int    $order_id        WooCommerce order ID.
+	 * @param string $order_status    WooCommerce order status.
+	 * @return void
+	 */
+	private function sync_registration_meta_for_order_status( $registration_id, $order_id, $order_status ) {
+		$mapped_statuses = $this->map_order_status_to_registration_statuses( $order_status );
+
+		update_post_meta( $registration_id, self::REGISTRATION_ORDER_ID_META_KEY, absint( $order_id ) );
+		update_post_meta( $registration_id, self::REGISTRATION_PAYMENT_STATUS_META_KEY, $mapped_statuses['payment_status'] );
+		update_post_meta( $registration_id, self::REGISTRATION_STATUS_META_KEY, $mapped_statuses['registration_status'] );
+	}
+
+	/**
+	 * Maps a WooCommerce order status to Golf Registration status meta values.
+	 *
+	 * @param string $order_status WooCommerce order status without the wc- prefix.
+	 * @return array<string,string>
+	 */
+	private function map_order_status_to_registration_statuses( $order_status ) {
+		switch ( $order_status ) {
+			case 'completed':
+			case 'processing':
+				return array(
+					'payment_status'      => 'paid',
+					'registration_status' => 'paid',
+				);
+
+			case 'failed':
+			case 'cancelled':
+				return array(
+					'payment_status'      => 'failed',
+					'registration_status' => 'cancelled',
+				);
+
+			case 'refunded':
+				return array(
+					'payment_status'      => 'refunded',
+					'registration_status' => 'submitted',
+				);
+
+			case 'pending':
+			case 'on-hold':
+			default:
+				return array(
+					'payment_status'      => 'pending',
+					'registration_status' => 'submitted',
+				);
+		}
 	}
 
 	/**
