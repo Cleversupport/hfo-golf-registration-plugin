@@ -54,6 +54,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_golf_registration_meta_to_order' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
+		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
@@ -239,6 +240,24 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 		$order->update_meta_data( 'hfo_golf_registration_id', $golf_order_data['registration_id'] );
 		$order->update_meta_data( 'hfo_golf_event_id', $golf_order_data['event_id'] );
+	}
+
+	/**
+	 * Hides internal golf registration order item metadata from customer-facing views and emails.
+	 *
+	 * @param array $hidden_meta_keys Hidden WooCommerce order item meta keys.
+	 * @return array
+	 */
+	public function hide_golf_registration_order_item_meta( $hidden_meta_keys ) {
+		$golf_registration_meta_keys = array(
+			'hfo_golf_registration_id',
+			'hfo_golf_event_id',
+			'hfo_golf_item_type',
+			'hfo_golf_item_label',
+			'hfo_golf_custom_price',
+		);
+
+		return array_values( array_unique( array_merge( $hidden_meta_keys, $golf_registration_meta_keys ) ) );
 	}
 
 	/**
