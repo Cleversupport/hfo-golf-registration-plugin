@@ -43,6 +43,20 @@ class HFO_Golf_Registration_Settings {
 	const DEFAULT_PRODUCTS_SECTION = 'hfo_golf_registration_default_products';
 
 	/**
+	 * Frontend styling section ID.
+	 *
+	 * @var string
+	 */
+	const FRONTEND_STYLING_SECTION = 'hfo_golf_registration_frontend_styling';
+
+	/**
+	 * Option key for custom frontend CSS.
+	 *
+	 * @var string
+	 */
+	const CUSTOM_FRONTEND_CSS_OPTION = 'hfo_golf_registration_custom_frontend_css';
+
+	/**
 	 * Action name used to create default products.
 	 *
 	 * @var string
@@ -109,6 +123,16 @@ class HFO_Golf_Registration_Settings {
 			);
 		}
 
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::CUSTOM_FRONTEND_CSS_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_custom_frontend_css' ),
+				'default'           => '',
+			)
+		);
+
 		add_settings_section(
 			self::DEFAULT_PRODUCTS_SECTION,
 			esc_html__( 'Default WooCommerce Products', 'hfo-golf-registration' ),
@@ -121,6 +145,21 @@ class HFO_Golf_Registration_Settings {
 			esc_html__( 'WooCommerce Product Mapping', 'hfo-golf-registration' ),
 			array( $this, 'render_product_mapping_section' ),
 			self::PAGE_SLUG
+		);
+
+		add_settings_section(
+			self::FRONTEND_STYLING_SECTION,
+			esc_html__( 'Frontend Styling', 'hfo-golf-registration' ),
+			array( $this, 'render_frontend_styling_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			self::CUSTOM_FRONTEND_CSS_OPTION,
+			esc_html__( 'Custom Frontend CSS', 'hfo-golf-registration' ),
+			array( $this, 'render_custom_frontend_css_field' ),
+			self::PAGE_SLUG,
+			self::FRONTEND_STYLING_SECTION
 		);
 
 		foreach ( $this->get_product_mapping_fields() as $field_key => $field ) {
@@ -206,6 +245,39 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p>%s</p>',
 			esc_html__( 'Select the published WooCommerce products that correspond to each registration item.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the frontend styling section description.
+	 *
+	 * @return void
+	 */
+	public function render_frontend_styling_section() {
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'Edit the CSS used by the golf registration frontend form and event shortcodes. Leave blank to use the plugin default CSS.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the custom frontend CSS textarea field.
+	 *
+	 * @return void
+	 */
+	public function render_custom_frontend_css_field() {
+		$saved_css = (string) get_option( self::CUSTOM_FRONTEND_CSS_OPTION, '' );
+		$css       = '' === trim( $saved_css ) ? $this->get_default_frontend_css() : $saved_css;
+
+		printf(
+			'<textarea id="%1$s" name="%1$s" rows="24" class="large-text code" style="width: 100%%; font-family: Consolas, Monaco, monospace;" spellcheck="false">%2$s</textarea>',
+			esc_attr( self::CUSTOM_FRONTEND_CSS_OPTION ),
+			esc_textarea( $css )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'To restore default styling, clear this field and save settings.', 'hfo-golf-registration' )
 		);
 	}
 
@@ -384,6 +456,43 @@ class HFO_Golf_Registration_Settings {
 		);
 
 		return 0;
+	}
+
+	/**
+	 * Sanitizes custom frontend CSS before saving.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return string
+	 */
+	public function sanitize_custom_frontend_css( $value ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$css = wp_unslash( $value );
+		$css = preg_replace( '#<script[^>]*>.*?</script>#is', '', $css );
+		$css = preg_replace( '#<\?(?:php)?[\s\S]*?\?>#i', '', $css );
+		$css = preg_replace( '#</?style[^>]*>#i', '', $css );
+		$css = wp_strip_all_tags( $css );
+
+		return trim( $css );
+	}
+
+	/**
+	 * Gets the default frontend CSS file contents for the settings textarea.
+	 *
+	 * @return string
+	 */
+	private function get_default_frontend_css() {
+		$css_file = HFO_GOLF_REGISTRATION_PATH . 'assets/css/hfo-golf-registration-form.css';
+
+		if ( ! is_readable( $css_file ) ) {
+			return '';
+		}
+
+		$css = file_get_contents( $css_file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Reading bundled plugin CSS for settings preview.
+
+		return false === $css ? '' : (string) $css;
 	}
 
 	/**
