@@ -231,10 +231,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php if ( '' !== $status ) : ?><li><strong><?php esc_html_e( 'Registration:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( ucwords( str_replace( '_', ' ', $status ) ) ); ?></li><?php endif; ?>
 			</ul>
 			<?php if ( '' !== trim( $why ) ) : ?>
-				<section class="hfo-golf-event-section"><h3><?php esc_html_e( 'Why This Tournament Matters', 'hfo-golf-registration' ); ?></h3><?php echo wpautop( esc_html( $why ) ); ?></section>
+				<section class="hfo-golf-event-section"><h3><?php esc_html_e( 'Why This Tournament Matters', 'hfo-golf-registration' ); ?></h3><?php echo wpautop( wp_kses_post( $why ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></section>
 			<?php endif; ?>
 			<?php if ( '' !== trim( $included ) ) : ?>
-				<section class="hfo-golf-event-section"><h3><?php esc_html_e( 'What’s Included', 'hfo-golf-registration' ); ?></h3><?php echo $this->render_line_list( $included ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></section>
+				<section class="hfo-golf-event-section"><h3><?php esc_html_e( 'What’s Included', 'hfo-golf-registration' ); ?></h3><?php echo wpautop( wp_kses_post( $included ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></section>
 			<?php endif; ?>
 			<?php if ( '' !== $packet_url ) : ?>
 				<p><a class="button hfo-golf-event-sponsor-packet" href="<?php echo esc_url( $packet_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Download Sponsor Packet', 'hfo-golf-registration' ); ?></a></p>
@@ -303,7 +303,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			return '';
 		}
 
-		return '<div class="hfo-golf-event-schedule"><h3>' . esc_html__( 'Event Schedule', 'hfo-golf-registration' ) . '</h3>' . $this->render_line_list( $schedule ) . '</div>';
+		return '<div class="hfo-golf-event-schedule"><h3>' . esc_html__( 'Event Schedule', 'hfo-golf-registration' ) . '</h3>' . wpautop( wp_kses_post( $schedule ) ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 	}
 
 	/**
