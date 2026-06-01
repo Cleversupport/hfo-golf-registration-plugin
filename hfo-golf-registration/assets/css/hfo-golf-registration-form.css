@@ -1,28 +1,30 @@
 .hfo-golf-registration-form {
 	border: 1px solid #d8d8d8;
 	box-sizing: border-box;
-	max-width: 960px;
+	max-width: none;
 	padding: 1rem;
+	width: 100%;
 }
 
 .hfo-golf-registration-steps {
-	display: flex;
-	gap: 0.35rem;
+	display: grid;
+	gap: 0.5rem;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	list-style: none;
 	margin: 0 0 1rem;
-	overflow-x: auto;
-	padding: 0 0 0.25rem;
+	overflow: visible;
+	padding: 0;
 }
 
 .hfo-golf-registration-steps li {
 	background: #f2f2f2;
 	border-radius: 999px;
-	flex: 0 0 auto;
 	font-size: 0.75rem;
 	line-height: 1.2;
 	padding: 0.35rem 0.55rem;
 	text-align: center;
-	white-space: nowrap;
+	white-space: normal;
+	width: 100%;
 }
 
 .hfo-golf-registration-steps li.is-active {
@@ -48,7 +50,6 @@
 	border: 1px solid #e5e5e5;
 	display: grid;
 	gap: 0.65rem;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
 	margin: 0;
 	padding: 0.75rem;
 }
@@ -95,6 +96,25 @@
 	min-height: 5rem;
 }
 
+.hfo-golf-registration-field--checkbox label {
+	align-items: center;
+	display: inline-flex;
+	gap: 0.4rem;
+}
+
+.hfo-golf-registration-field input[type="checkbox"] {
+	margin: 0;
+	max-width: none;
+	min-height: auto;
+	padding: 0;
+	vertical-align: middle;
+	width: auto;
+}
+
+.hfo-golf-registration-field label input[type="checkbox"] {
+	display: inline-block;
+}
+
 .hfo-golf-registration-review {
 	display: grid;
 	font-size: 0.9rem;
@@ -130,7 +150,7 @@
 		padding: 0.75rem;
 	}
 
-	.hfo-golf-registration-fieldset {
+	.hfo-golf-registration-steps {
 		grid-template-columns: 1fr;
 	}
 }
