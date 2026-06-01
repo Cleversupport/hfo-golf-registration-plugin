@@ -148,6 +148,27 @@
 		});
 	}
 
+	function normalizeHiddenParticipantsBeforeSubmit(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var participantsToClear = [];
+
+		if (registrationType === 'individual') {
+			participantsToClear = ['member_2', 'member_3', 'member_4'];
+		} else if (registrationType === 'sponsor_only') {
+			participantsToClear = PARTICIPANT_KEYS;
+		}
+
+		participantsToClear.forEach(function (participantKey) {
+			['golf_selected', 'lunch_selected', 'dinner_selected'].forEach(function (selectionKey) {
+				var field = getField(form, participantKey + '_' + selectionKey);
+
+				if (field) {
+					field.checked = false;
+				}
+			});
+		});
+	}
+
 	function setupForm(form) {
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			calculateReview(form);
@@ -254,6 +275,8 @@
 				if (getRegistrationType() === 'individual') {
 					copyCaptainToMainContact(form);
 				}
+
+				normalizeHiddenParticipantsBeforeSubmit(form);
 			});
 		}
 
@@ -261,6 +284,8 @@
 			if (getRegistrationType() === 'individual') {
 				copyCaptainToMainContact(form);
 			}
+
+			normalizeHiddenParticipantsBeforeSubmit(form);
 		});
 
 		form.addEventListener('change', function (event) {

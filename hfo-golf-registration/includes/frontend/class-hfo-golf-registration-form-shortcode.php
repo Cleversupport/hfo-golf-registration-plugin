@@ -451,6 +451,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$meta = $this->copy_captain_to_main_contact_meta( $meta );
 		}
 
+		$meta = $this->normalize_participant_meta_for_registration_type( $meta );
+
 		$calculated = $this->calculate_quantities_and_totals( $event_id, $meta );
 
 		return array_merge( $meta, $calculated );
@@ -477,6 +479,56 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$prefix . '_dinner_selected'    => $this->sanitize_post_checkbox( $prefix . '_dinner_selected' ),
 			$prefix . '_participation_type' => $this->sanitize_choice( $prefix . '_participation_type', array( '', 'golf', 'lunch', 'dinner' ), '' ),
 		);
+	}
+
+	/**
+	 * Normalizes participant meta for the selected registration type.
+	 *
+	 * Hidden participant fields can still be posted by the browser. This keeps the
+	 * backend authoritative before totals are calculated or registration meta is saved.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return array<string,string>
+	 */
+	private function normalize_participant_meta_for_registration_type( $meta ) {
+		$registration_type = isset( $meta['registration_type'] ) ? $meta['registration_type'] : 'individual';
+
+		if ( 'team' === $registration_type ) {
+			return $meta;
+		}
+
+		$participants_to_clear = array();
+
+		if ( 'individual' === $registration_type ) {
+			$participants_to_clear = array( 'member_2', 'member_3', 'member_4' );
+		} elseif ( 'sponsor_only' === $registration_type ) {
+			$participants_to_clear = array( 'captain', 'member_2', 'member_3', 'member_4' );
+		}
+
+		foreach ( $participants_to_clear as $participant ) {
+			$meta = $this->clear_participant_meta( $meta, $participant );
+		}
+
+		return $meta;
+	}
+
+	/**
+	 * Clears participant contact fields and selected options.
+	 *
+	 * @param array<string,string> $meta        Sanitized submitted meta.
+	 * @param string               $participant Participant meta key prefix.
+	 * @return array<string,string>
+	 */
+	private function clear_participant_meta( $meta, $participant ) {
+		foreach ( array( 'golf_selected', 'lunch_selected', 'dinner_selected' ) as $selection_field ) {
+			$meta[ $participant . '_' . $selection_field ] = '0';
+		}
+
+		foreach ( array( 'name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'handicap', 'participation_type' ) as $contact_field ) {
+			$meta[ $participant . '_' . $contact_field ] = '';
+		}
+
+		return $meta;
 	}
 
 	/**
