@@ -36,6 +36,13 @@ class HFO_Golf_Registration_Form_Shortcode {
 	const NONCE_NAME = 'hfo_golf_registration_form_nonce';
 
 	/**
+	 * Option key for custom frontend CSS.
+	 *
+	 * @var string
+	 */
+	const CUSTOM_FRONTEND_CSS_OPTION = 'hfo_golf_registration_custom_frontend_css';
+
+	/**
 	 * Registers WordPress hooks.
 	 *
 	 * @return void
@@ -378,6 +385,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 			array(),
 			HFO_GOLF_REGISTRATION_VERSION
 		);
+
+		$custom_css = (string) get_option( self::CUSTOM_FRONTEND_CSS_OPTION, '' );
+
+		if ( '' !== trim( $custom_css ) ) {
+			wp_add_inline_style( 'hfo-golf-registration-form', $custom_css );
+		}
 
 		wp_enqueue_script(
 			'hfo-golf-registration-form',
