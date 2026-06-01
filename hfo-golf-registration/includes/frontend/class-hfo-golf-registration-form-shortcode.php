@@ -122,7 +122,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			</section>
 
 			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="captain" hidden>
-				<h3 data-participant-title data-team-label="<?php esc_attr_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?>" data-individual-label="<?php esc_attr_e( 'Step 3: Player 1', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?></h3>
+				<h3 data-participant-title data-team-label="<?php esc_attr_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?>" data-individual-label="<?php esc_attr_e( 'Step 2: Player 1', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Step 3: Captain / Player 1', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'captain', esc_html__( 'Captain / Player 1', 'hfo-golf-registration' ) ); ?>
 			</section>
 
@@ -448,7 +448,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 		}
 
 		if ( 'individual' === $registration_type ) {
-			$meta = $this->copy_main_contact_to_captain_meta( $meta );
+			$meta = $this->copy_captain_to_main_contact_meta( $meta );
 		}
 
 		$calculated = $this->calculate_quantities_and_totals( $event_id, $meta );
@@ -480,29 +480,25 @@ class HFO_Golf_Registration_Form_Shortcode {
 	}
 
 	/**
-	 * Copies main contact fields to captain/player fields for individual registrations.
+	 * Copies captain/player fields to main contact fields for individual registrations.
 	 *
 	 * @param array<string,string> $meta Sanitized submitted meta.
 	 * @return array<string,string>
 	 */
-	private function copy_main_contact_to_captain_meta( $meta ) {
+	private function copy_captain_to_main_contact_meta( $meta ) {
 		$field_map = array(
-			'captain_name'    => 'main_contact_name',
-			'captain_email'   => 'main_contact_email',
-			'captain_phone'   => 'main_contact_phone',
-			'captain_address' => 'main_contact_address',
-			'captain_city'    => 'main_contact_city',
-			'captain_state'   => 'main_contact_state',
-			'captain_zip'     => 'main_contact_zip',
+			'main_contact_name'    => 'captain_name',
+			'main_contact_email'   => 'captain_email',
+			'main_contact_phone'   => 'captain_phone',
+			'main_contact_address' => 'captain_address',
+			'main_contact_city'    => 'captain_city',
+			'main_contact_state'   => 'captain_state',
+			'main_contact_zip'     => 'captain_zip',
 		);
 
-		foreach ( $field_map as $captain_key => $main_contact_key ) {
-			$meta[ $captain_key ] = isset( $meta[ $main_contact_key ] ) ? $meta[ $main_contact_key ] : '';
+		foreach ( $field_map as $main_contact_key => $captain_key ) {
+			$meta[ $main_contact_key ] = isset( $meta[ $captain_key ] ) ? $meta[ $captain_key ] : '';
 		}
-
-		$meta['captain_golf_selected']   = '1';
-		$meta['captain_lunch_selected']  = '0';
-		$meta['captain_dinner_selected'] = '0';
 
 		return $meta;
 	}
@@ -515,7 +511,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function calculate_quantities_and_totals( $event_id, $meta ) {
-		$golf_qty   = 'individual' === $meta['registration_type'] ? 1 : 0;
+		$golf_qty   = 0;
 		$lunch_qty  = 0;
 		$dinner_qty = 0;
 
@@ -588,6 +584,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 	private function get_visible_participant_keys_for_registration_type( $registration_type ) {
 		if ( 'team' === $registration_type ) {
 			return array( 'captain', 'member_2', 'member_3', 'member_4' );
+		}
+
+		if ( 'individual' === $registration_type ) {
+			return array( 'captain' );
 		}
 
 		return array();
