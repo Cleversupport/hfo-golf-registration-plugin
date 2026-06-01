@@ -62,6 +62,98 @@
 		return keys;
 	}
 
+
+	function getStepFieldControls(step) {
+		return Array.prototype.slice.call(step.querySelectorAll('input, select, textarea'));
+	}
+
+	function getFieldStepKey(field) {
+		var step = field.closest('[data-hfo-golf-registration-step]');
+		return step ? step.dataset.stepKey : '';
+	}
+
+	function isFieldApplicableForRegistrationType(field, registrationType) {
+		var stepKey = getFieldStepKey(field);
+		var visibleKeys = getVisibleStepKeys(registrationType);
+
+		return !stepKey || visibleKeys.indexOf(stepKey) !== -1;
+	}
+
+	function rememberOriginalRequiredState(field) {
+		if (typeof field.dataset.hfoGolfOriginalRequired === 'undefined') {
+			field.dataset.hfoGolfOriginalRequired = field.required ? '1' : '0';
+		}
+
+		if (field.hasAttribute('aria-required') && typeof field.dataset.hfoGolfOriginalAriaRequired === 'undefined') {
+			field.dataset.hfoGolfOriginalAriaRequired = field.getAttribute('aria-required') || '';
+		}
+	}
+
+	function setFieldRequired(field, required) {
+		if (required) {
+			field.required = true;
+
+			if (typeof field.dataset.hfoGolfOriginalAriaRequired !== 'undefined') {
+				field.setAttribute('aria-required', field.dataset.hfoGolfOriginalAriaRequired || 'true');
+			} else if (field.getAttribute('aria-required') === 'false') {
+				field.removeAttribute('aria-required');
+			}
+		} else {
+			field.required = false;
+
+			if (typeof field.dataset.hfoGolfOriginalAriaRequired !== 'undefined' || field.hasAttribute('aria-required')) {
+				field.setAttribute('aria-required', 'false');
+			}
+		}
+	}
+
+	function updateRequiredFieldsForVisibleSteps(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+
+		Array.prototype.forEach.call(form.querySelectorAll('[data-hfo-golf-registration-step]'), function (step) {
+			var stepIsVisible = !step.hidden;
+
+			getStepFieldControls(step).forEach(function (field) {
+				rememberOriginalRequiredState(field);
+
+				setFieldRequired(
+					field,
+					stepIsVisible &&
+					field.dataset.hfoGolfOriginalRequired === '1' &&
+					isFieldApplicableForRegistrationType(field, registrationType)
+				);
+			});
+		});
+	}
+
+	function focusFirstInvalidVisibleField(form) {
+		var invalidFields = Array.prototype.slice.call(form.querySelectorAll('input:invalid, select:invalid, textarea:invalid'));
+		var firstInvalidVisibleField = null;
+
+		invalidFields.some(function (field) {
+			var step = field.closest('[data-hfo-golf-registration-step]');
+
+			if (!step || !step.hidden) {
+				firstInvalidVisibleField = field;
+				return true;
+			}
+
+			return false;
+		});
+
+		if (!firstInvalidVisibleField) {
+			return;
+		}
+
+		if (typeof firstInvalidVisibleField.scrollIntoView === 'function') {
+			firstInvalidVisibleField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		}
+
+		if (typeof firstInvalidVisibleField.focus === 'function') {
+			firstInvalidVisibleField.focus({ preventScroll: true });
+		}
+	}
+
 	function updateDynamicLabels(form, registrationType) {
 		var labelType = registrationType === 'individual' ? 'individualLabel' : 'teamLabel';
 
@@ -171,6 +263,7 @@
 
 	function setupForm(form) {
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
+			updateRequiredFieldsForVisibleSteps(form);
 			calculateReview(form);
 			return;
 		}
@@ -249,6 +342,7 @@
 				}
 			}
 
+			updateRequiredFieldsForVisibleSteps(form);
 			calculateReview(form);
 		}
 
@@ -261,6 +355,13 @@
 
 		if (nextButton) {
 			nextButton.addEventListener('click', function () {
+				updateRequiredFieldsForVisibleSteps(form);
+
+				if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+					focusFirstInvalidVisibleField(form);
+					return;
+				}
+
 				var visibleKeys = getVisibleStepKeys(getRegistrationType());
 				showStepByKey(visibleKeys[Math.min(visibleKeys.length - 1, visibleKeys.indexOf(currentStepKey) + 1)]);
 			});
@@ -271,12 +372,18 @@
 		});
 
 		if (submitButton) {
-			submitButton.addEventListener('click', function () {
+			submitButton.addEventListener('click', function (event) {
 				if (getRegistrationType() === 'individual') {
 					copyCaptainToMainContact(form);
 				}
 
 				normalizeHiddenParticipantsBeforeSubmit(form);
+				updateRequiredFieldsForVisibleSteps(form);
+
+				if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+					event.preventDefault();
+					focusFirstInvalidVisibleField(form);
+				}
 			});
 		}
 
@@ -286,11 +393,13 @@
 			}
 
 			normalizeHiddenParticipantsBeforeSubmit(form);
+			updateRequiredFieldsForVisibleSteps(form);
 		});
 
 		form.addEventListener('change', function (event) {
 			if (event.target && event.target.name === 'registration_type') {
 				showStepByKey(currentStepKey);
+				updateRequiredFieldsForVisibleSteps(form);
 			}
 
 			calculateReview(form);

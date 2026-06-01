@@ -332,8 +332,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		$meta = $this->get_sanitized_submission_meta( $event_id );
 
-		if ( ! is_email( $meta['main_contact_email'] ) ) {
+		if ( 'sponsor_only' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
+		}
+
+		if ( 'sponsor_only' === $meta['registration_type'] && '' !== $meta['sponsor_email'] && ! is_email( $meta['sponsor_email'] ) ) {
+			wp_die( esc_html__( 'Please enter a valid sponsor email address.', 'hfo-golf-registration' ) );
 		}
 
 		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] && '1' !== $meta['tee_sponsor_selected'] ) {
@@ -348,6 +352,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Unable to continue to checkout with a zero total registration.', 'hfo-golf-registration' ) );
 		}
 
+		$registration_title_contact = $this->get_registration_title_contact( $meta );
+
 		$registration_id = wp_insert_post(
 			array(
 				'post_type'   => HFO_Golf_Registration_Post_Type::POST_TYPE,
@@ -355,7 +361,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				'post_title'  => sprintf(
 					/* translators: %s: main contact name. */
 					__( 'Registration - %s', 'hfo-golf-registration' ),
-					'' !== $meta['main_contact_name'] ? $meta['main_contact_name'] : $meta['main_contact_email']
+					$registration_title_contact
 				),
 			),
 			true
@@ -371,6 +377,23 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		$checkout_handler = new HFO_Golf_Registration_Checkout_Handler();
 		$checkout_handler->send_registration_to_checkout( $registration_id );
+	}
+
+
+	/**
+	 * Gets the best available contact label for the registration post title.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return string
+	 */
+	private function get_registration_title_contact( $meta ) {
+		foreach ( array( 'main_contact_name', 'main_contact_email', 'sponsor_program_name', 'sponsor_contact_name', 'sponsor_email' ) as $key ) {
+			if ( ! empty( $meta[ $key ] ) ) {
+				return $meta[ $key ];
+			}
+		}
+
+		return __( 'Sponsor Only', 'hfo-golf-registration' );
 	}
 
 	/**
