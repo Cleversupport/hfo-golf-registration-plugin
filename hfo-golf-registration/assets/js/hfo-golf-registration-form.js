@@ -70,7 +70,7 @@
 		});
 	}
 
-	function updateReview(form) {
+	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
 		var lunchQty = 0;
@@ -84,13 +84,15 @@
 		}
 
 		participantKeys.forEach(function (participantKey) {
-			var participationType = getFieldValue(form, participantKey + '_participation_type');
-
-			if (participationType === 'golf') {
+			if (isChecked(form, participantKey + '_golf_selected')) {
 				golfQty += 1;
-			} else if (participationType === 'lunch') {
+			}
+
+			if (isChecked(form, participantKey + '_lunch_selected')) {
 				lunchQty += 1;
-			} else if (participationType === 'dinner') {
+			}
+
+			if (isChecked(form, participantKey + '_dinner_selected')) {
 				dinnerQty += 1;
 			}
 		});
@@ -174,10 +176,10 @@
 			}
 
 			if (nextButton) {
-				nextButton.hidden = visibleIndex === visibleSteps.length - 1;
+				nextButton.hidden = currentStepKey === 'review' || visibleIndex === visibleSteps.length - 1;
 			}
 
-			updateReview(form);
+			calculateReview(form);
 		}
 
 		if (backButton) {
@@ -195,7 +197,7 @@
 		}
 
 		form.addEventListener('input', function () {
-			updateReview(form);
+			calculateReview(form);
 		});
 
 		form.addEventListener('change', function (event) {
@@ -204,7 +206,7 @@
 				return;
 			}
 
-			updateReview(form);
+			calculateReview(form);
 		});
 
 		showStepByKey(currentStepKey);

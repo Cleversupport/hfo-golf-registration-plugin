@@ -57,6 +57,7 @@ class HFO_Golf_Registration_Meta_Boxes {
 	 * @var array<string,string>
 	 */
 	private $participation_types = array(
+		''       => 'None',
 		'golf'   => 'Golf',
 		'lunch'  => 'Lunch',
 		'dinner' => 'Dinner',
@@ -217,6 +218,9 @@ class HFO_Golf_Registration_Meta_Boxes {
 			case 'count':
 				return (string) max( 0, absint( $value ) );
 
+			case 'checkbox':
+				return '1' === (string) $value ? '1' : '0';
+
 			case 'email':
 				return sanitize_email( $value );
 
@@ -234,7 +238,7 @@ class HFO_Golf_Registration_Meta_Boxes {
 
 			case 'participation_type':
 				$participation_type = sanitize_key( $value );
-				return array_key_exists( $participation_type, $this->participation_types ) ? $participation_type : 'golf';
+				return array_key_exists( $participation_type, $this->participation_types ) ? $participation_type : '';
 
 			case 'payment_status':
 				$payment_status = sanitize_key( $value );
@@ -272,7 +276,7 @@ class HFO_Golf_Registration_Meta_Boxes {
 				break;
 
 			case 'participation_type':
-				$this->render_select_field( $key, $field['label'], $post_id, $this->participation_types, 'golf' );
+				$this->render_select_field( $key, $field['label'], $post_id, $this->participation_types, '' );
 				break;
 
 			case 'payment_status':
@@ -307,6 +311,10 @@ class HFO_Golf_Registration_Meta_Boxes {
 				);
 				break;
 
+			case 'checkbox':
+				$this->render_checkbox_field( $key, $field['label'], $post_id );
+				break;
+
 			case 'email':
 				$this->render_input_field( $key, $field['label'], $post_id, 'email' );
 				break;
@@ -333,6 +341,26 @@ class HFO_Golf_Registration_Meta_Boxes {
 		<p>
 			<label for="<?php echo esc_attr( $key ); ?>"><strong><?php echo esc_html( $label ); ?></strong></label><br />
 			<input type="<?php echo esc_attr( $type ); ?>" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( $value ); ?>" class="widefat" />
+		</p>
+		<?php
+	}
+
+	/**
+	 * Renders a checkbox field.
+	 *
+	 * @param string $key     Meta key.
+	 * @param string $label   Field label.
+	 * @param int    $post_id Post ID.
+	 * @return void
+	 */
+	private function render_checkbox_field( $key, $label, $post_id ) {
+		$value = get_post_meta( $post_id, $key, true );
+		?>
+		<p>
+			<label for="<?php echo esc_attr( $key ); ?>">
+				<input type="checkbox" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="1" <?php checked( '1', $value ); ?> />
+				<strong><?php echo esc_html( $label ); ?></strong>
+			</label>
 		</p>
 		<?php
 	}
@@ -733,8 +761,20 @@ class HFO_Golf_Registration_Meta_Boxes {
 				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Handicap', 'hfo-golf-registration' ) ),
 				'type'  => 'text',
 			),
+			$prefix . '_golf_selected'      => array(
+				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Golf Selected', 'hfo-golf-registration' ) ),
+				'type'  => 'checkbox',
+			),
+			$prefix . '_lunch_selected'     => array(
+				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Lunch Selected', 'hfo-golf-registration' ) ),
+				'type'  => 'checkbox',
+			),
+			$prefix . '_dinner_selected'    => array(
+				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Dinner Selected', 'hfo-golf-registration' ) ),
+				'type'  => 'checkbox',
+			),
 			$prefix . '_participation_type' => array(
-				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Participation Type', 'hfo-golf-registration' ) ),
+				'label' => sprintf( '%s %s', $label_prefix, esc_html__( 'Participation Type (Legacy)', 'hfo-golf-registration' ) ),
 				'type'  => 'participation_type',
 			),
 		);

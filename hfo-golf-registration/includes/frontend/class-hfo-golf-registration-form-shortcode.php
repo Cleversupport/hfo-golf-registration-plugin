@@ -468,6 +468,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$prefix . '_state'              => $this->sanitize_post_text( $prefix . '_state' ),
 			$prefix . '_zip'                => $this->sanitize_post_text( $prefix . '_zip' ),
 			$prefix . '_handicap'           => $this->sanitize_post_text( $prefix . '_handicap' ),
+			$prefix . '_golf_selected'      => $this->sanitize_post_checkbox( $prefix . '_golf_selected' ),
+			$prefix . '_lunch_selected'     => $this->sanitize_post_checkbox( $prefix . '_lunch_selected' ),
+			$prefix . '_dinner_selected'    => $this->sanitize_post_checkbox( $prefix . '_dinner_selected' ),
 			$prefix . '_participation_type' => $this->sanitize_choice( $prefix . '_participation_type', array( '', 'golf', 'lunch', 'dinner' ), '' ),
 		);
 	}
@@ -485,11 +488,17 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$dinner_qty = 0;
 
 		foreach ( $this->get_visible_participant_keys_for_registration_type( $meta['registration_type'] ) as $participant ) {
-			if ( 'golf' === $meta[ $participant . '_participation_type' ] ) {
+			$legacy_participation_type = isset( $meta[ $participant . '_participation_type' ] ) ? $meta[ $participant . '_participation_type' ] : '';
+
+			if ( '1' === $meta[ $participant . '_golf_selected' ] || 'golf' === $legacy_participation_type ) {
 				$golf_qty++;
-			} elseif ( 'lunch' === $meta[ $participant . '_participation_type' ] ) {
+			}
+
+			if ( '1' === $meta[ $participant . '_lunch_selected' ] || 'lunch' === $legacy_participation_type ) {
 				$lunch_qty++;
-			} elseif ( 'dinner' === $meta[ $participant . '_participation_type' ] ) {
+			}
+
+			if ( '1' === $meta[ $participant . '_dinner_selected' ] || 'dinner' === $legacy_participation_type ) {
 				$dinner_qty++;
 			}
 		}
@@ -826,18 +835,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<?php $this->render_text_field( $prefix . '_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_handicap', esc_html__( 'Handicap', 'hfo-golf-registration' ) ); ?>
-			<?php
-			$this->render_select_field(
-				$prefix . '_participation_type',
-				esc_html__( 'Participation Type', 'hfo-golf-registration' ),
-				array(
-					''       => esc_html__( 'None', 'hfo-golf-registration' ),
-					'golf'   => esc_html__( 'Golf', 'hfo-golf-registration' ),
-					'lunch'  => esc_html__( 'Lunch', 'hfo-golf-registration' ),
-					'dinner' => esc_html__( 'Dinner', 'hfo-golf-registration' ),
-				)
-			);
-			?>
+			<?php $this->render_checkbox_field( $prefix . '_golf_selected', esc_html__( 'Golf', 'hfo-golf-registration' ), true ); ?>
+			<?php $this->render_checkbox_field( $prefix . '_lunch_selected', esc_html__( 'Lunch', 'hfo-golf-registration' ) ); ?>
+			<?php $this->render_checkbox_field( $prefix . '_dinner_selected', esc_html__( 'Dinner', 'hfo-golf-registration' ) ); ?>
 		</fieldset>
 		<?php
 	}
@@ -883,13 +883,14 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 *
 	 * @param string $name Field name.
 	 * @param string $label Field label.
+	 * @param bool   $checked Whether the checkbox is checked by default.
 	 * @return void
 	 */
-	private function render_checkbox_field( $name, $label ) {
+	private function render_checkbox_field( $name, $label, $checked = false ) {
 		?>
 		<p class="hfo-golf-registration-field hfo-golf-registration-field--checkbox">
 			<label for="<?php echo esc_attr( $name ); ?>">
-				<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="checkbox" value="1" />
+				<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="checkbox" value="1"<?php checked( $checked ); ?> />
 				<?php echo esc_html( $label ); ?>
 			</label>
 		</p>
