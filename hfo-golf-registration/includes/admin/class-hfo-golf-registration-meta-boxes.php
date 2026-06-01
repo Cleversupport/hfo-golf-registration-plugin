@@ -583,6 +583,10 @@ class HFO_Golf_Registration_Meta_Boxes {
 						'label' => esc_html__( 'Sponsorship Level', 'hfo-golf-registration' ),
 						'type'  => 'text',
 					),
+					'tee_sponsor_selected' => array(
+						'label' => esc_html__( 'Tee Sponsor Selected', 'hfo-golf-registration' ),
+						'type'  => 'text',
+					),
 					'sponsorship_amount'  => array(
 						'label' => esc_html__( 'Sponsorship Amount', 'hfo-golf-registration' ),
 						'type'  => 'amount',
