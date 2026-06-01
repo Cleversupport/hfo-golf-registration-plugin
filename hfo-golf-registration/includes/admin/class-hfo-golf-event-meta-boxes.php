@@ -230,7 +230,12 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'event_date', esc_html__( 'Event Date', 'hfo-golf-registration' ), $post->ID, 'date' );
 		$this->render_input_field( 'event_start_time', esc_html__( 'Event Start Time', 'hfo-golf-registration' ), $post->ID, 'time' );
 		$this->render_input_field( 'event_end_time', esc_html__( 'Event End Time', 'hfo-golf-registration' ), $post->ID, 'time' );
-		$this->render_input_field( 'event_location', esc_html__( 'Event Location', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_location', esc_html__( 'Event Location (Legacy)', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_venue', esc_html__( 'Venue', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_address', esc_html__( 'Address', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_city', esc_html__( 'City', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_state', esc_html__( 'State', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'event_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_textarea_field(
 			'event_caption',
 			esc_html__( 'Event Caption', 'hfo-golf-registration' ),
@@ -239,6 +244,29 @@ class HFO_Golf_Event_Meta_Boxes {
 			2
 		);
 		$this->render_registration_status_field( $post->ID );
+		$this->render_input_field( 'sponsor_packet_pdf_url', esc_html__( 'Sponsor Packet PDF URL', 'hfo-golf-registration' ), $post->ID, 'url' );
+		$this->render_input_field( 'event_flyer_image_url', esc_html__( 'Event Flyer Image URL', 'hfo-golf-registration' ), $post->ID, 'url' );
+		$this->render_textarea_field(
+			'why_this_tournament_matters',
+			esc_html__( 'Why This Tournament Matters', 'hfo-golf-registration' ),
+			$post->ID,
+			'',
+			5
+		);
+		$this->render_textarea_field(
+			'whats_included',
+			esc_html__( 'What’s Included', 'hfo-golf-registration' ),
+			$post->ID,
+			esc_html__( 'Enter one included item per line.', 'hfo-golf-registration' ),
+			5
+		);
+		$this->render_textarea_field(
+			'event_schedule',
+			esc_html__( 'Event Schedule', 'hfo-golf-registration' ),
+			$post->ID,
+			esc_html__( 'Enter one schedule item per line, e.g. 8:00 AM | Registration & Check-in.', 'hfo-golf-registration' ),
+			6
+		);
 	}
 
 	/**
@@ -314,8 +342,18 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'event_start_time', 'time' );
 		$this->save_meta_value( $post_id, 'event_end_time', 'time' );
 		$this->save_meta_value( $post_id, 'event_location', 'text' );
+		$this->save_meta_value( $post_id, 'event_venue', 'text' );
+		$this->save_meta_value( $post_id, 'event_address', 'text' );
+		$this->save_meta_value( $post_id, 'event_city', 'text' );
+		$this->save_meta_value( $post_id, 'event_state', 'text' );
+		$this->save_meta_value( $post_id, 'event_zip', 'text' );
 		$this->save_meta_value( $post_id, 'event_caption', 'textarea' );
 		$this->save_meta_value( $post_id, 'registration_status', 'registration_status' );
+		$this->save_meta_value( $post_id, 'sponsor_packet_pdf_url', 'url' );
+		$this->save_meta_value( $post_id, 'event_flyer_image_url', 'url' );
+		$this->save_meta_value( $post_id, 'why_this_tournament_matters', 'textarea' );
+		$this->save_meta_value( $post_id, 'whats_included', 'textarea' );
+		$this->save_meta_value( $post_id, 'event_schedule', 'textarea' );
 
 		foreach ( $this->get_price_fields() as $field ) {
 			$this->save_meta_value( $post_id, $field, 'price' );
@@ -391,6 +429,9 @@ class HFO_Golf_Event_Meta_Boxes {
 
 			case 'emails':
 				return $this->sanitize_email_list( $value );
+
+			case 'url':
+				return esc_url_raw( $value );
 
 			case 'textarea':
 				return sanitize_textarea_field( $value );
