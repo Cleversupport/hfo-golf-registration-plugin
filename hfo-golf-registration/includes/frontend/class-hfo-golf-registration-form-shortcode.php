@@ -191,7 +191,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<div class="hfo-golf-registration-navigation">
 				<button type="button" data-hfo-golf-registration-back><?php esc_html_e( 'Back', 'hfo-golf-registration' ); ?></button>
 				<button type="button" data-hfo-golf-registration-next><?php esc_html_e( 'Next', 'hfo-golf-registration' ); ?></button>
-				<button class="hfo-golf-registration-submit" type="submit" hidden><?php esc_html_e( 'Continue to Checkout', 'hfo-golf-registration' ); ?></button>
+				<button class="hfo-golf-registration-submit" type="submit" hidden><?php esc_html_e( 'Checkout', 'hfo-golf-registration' ); ?></button>
 			</div>
 		</form>
 		<?php
