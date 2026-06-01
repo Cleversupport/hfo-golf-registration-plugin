@@ -246,26 +246,20 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_registration_status_field( $post->ID );
 		$this->render_input_field( 'sponsor_packet_pdf_url', esc_html__( 'Sponsor Packet PDF URL', 'hfo-golf-registration' ), $post->ID, 'url' );
 		$this->render_input_field( 'event_flyer_image_url', esc_html__( 'Event Flyer Image URL', 'hfo-golf-registration' ), $post->ID, 'url' );
-		$this->render_textarea_field(
+		$this->render_wysiwyg_field(
 			'why_this_tournament_matters',
 			esc_html__( 'Why This Tournament Matters', 'hfo-golf-registration' ),
-			$post->ID,
-			'',
-			5
+			$post->ID
 		);
-		$this->render_textarea_field(
+		$this->render_wysiwyg_field(
 			'whats_included',
 			esc_html__( 'What’s Included', 'hfo-golf-registration' ),
-			$post->ID,
-			esc_html__( 'Enter one included item per line.', 'hfo-golf-registration' ),
-			5
+			$post->ID
 		);
-		$this->render_textarea_field(
+		$this->render_wysiwyg_field(
 			'event_schedule',
 			esc_html__( 'Event Schedule', 'hfo-golf-registration' ),
-			$post->ID,
-			esc_html__( 'Enter one schedule item per line, e.g. 8:00 AM | Registration & Check-in.', 'hfo-golf-registration' ),
-			6
+			$post->ID
 		);
 	}
 
@@ -351,9 +345,9 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'registration_status', 'registration_status' );
 		$this->save_meta_value( $post_id, 'sponsor_packet_pdf_url', 'url' );
 		$this->save_meta_value( $post_id, 'event_flyer_image_url', 'url' );
-		$this->save_meta_value( $post_id, 'why_this_tournament_matters', 'textarea' );
-		$this->save_meta_value( $post_id, 'whats_included', 'textarea' );
-		$this->save_meta_value( $post_id, 'event_schedule', 'textarea' );
+		$this->save_meta_value( $post_id, 'why_this_tournament_matters', 'html' );
+		$this->save_meta_value( $post_id, 'whats_included', 'html' );
+		$this->save_meta_value( $post_id, 'event_schedule', 'html' );
 
 		foreach ( $this->get_price_fields() as $field ) {
 			$this->save_meta_value( $post_id, $field, 'price' );
@@ -435,6 +429,9 @@ class HFO_Golf_Event_Meta_Boxes {
 
 			case 'textarea':
 				return sanitize_textarea_field( $value );
+
+			case 'html':
+				return is_scalar( $value ) ? wp_kses_post( (string) $value ) : '';
 
 			case 'time':
 				return $this->sanitize_time_value( $value );
@@ -582,6 +579,37 @@ class HFO_Golf_Event_Meta_Boxes {
 				<br /><span class="description"><?php echo esc_html( $description ); ?></span>
 			<?php endif; ?>
 		</p>
+		<?php
+	}
+
+
+	/**
+	 * Renders a compact WordPress editor field for formatted event content.
+	 *
+	 * @param string $key     Meta key.
+	 * @param string $label   Field label.
+	 * @param int    $post_id Post ID.
+	 * @return void
+	 */
+	private function render_wysiwyg_field( $key, $label, $post_id ) {
+		$value = get_post_meta( $post_id, $key, true );
+		?>
+		<div class="hfo-golf-event-editor-field">
+			<label for="<?php echo esc_attr( $key ); ?>"><strong><?php echo esc_html( $label ); ?></strong></label>
+			<?php
+			wp_editor(
+				$value,
+				$key,
+				array(
+					'textarea_name' => $key,
+					'media_buttons' => false,
+					'textarea_rows' => 8,
+					'teeny'         => true,
+					'quicktags'     => true,
+				)
+			);
+			?>
+		</div>
 		<?php
 	}
 
