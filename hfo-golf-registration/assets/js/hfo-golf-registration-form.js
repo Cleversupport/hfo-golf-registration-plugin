@@ -6,8 +6,7 @@
 		'': 'None',
 		platinum: 'Platinum Sponsor',
 		gold: 'Gold Sponsor',
-		silver: 'Silver Sponsor',
-		tee: 'Tee Sponsor'
+		silver: 'Silver Sponsor'
 	};
 	var REGISTRATION_LABELS = {
 		team: 'Team',
@@ -27,6 +26,11 @@
 	function getNumericFieldValue(form, name) {
 		var value = parseInt(getFieldValue(form, name), 10);
 		return Number.isNaN(value) ? 0 : Math.max(0, value);
+	}
+
+	function isChecked(form, name) {
+		var field = getField(form, name);
+		return !!(field && field.checked);
 	}
 
 	function getPrice(form, key) {
@@ -97,6 +101,7 @@
 		}
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
@@ -105,11 +110,16 @@
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
 		}
 
+		if (teeSponsorSelected) {
+			subtotal += getPrice(form, 'teeSponsorPrice');
+		}
+
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
 		setSummary(form, 'lunch_qty', String(lunchQty));
 		setSummary(form, 'dinner_qty', String(dinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
+		setSummary(form, 'tee_sponsor_selected', teeSponsorSelected ? 'Yes' : 'No');
 		setSummary(form, 'subtotal', money(subtotal));
 		setSummary(form, 'discount_amount', money(0));
 		setSummary(form, 'grand_total', money(subtotal));

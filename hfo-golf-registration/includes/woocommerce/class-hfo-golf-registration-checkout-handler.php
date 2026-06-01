@@ -520,6 +520,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 		foreach ( $this->get_checkout_item_definitions() as $item_type => $definition ) {
 			$quantity = absint( get_post_meta( $registration_id, $definition['quantity_key'], true ) );
 
+			if ( 'tee_sponsor_qty' === $definition['quantity_key'] ) {
+				$quantity = min( 1, $quantity );
+			}
+
 			if ( 0 === $quantity ) {
 				continue;
 			}

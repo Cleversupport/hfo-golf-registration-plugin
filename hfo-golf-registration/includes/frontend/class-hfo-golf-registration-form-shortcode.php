@@ -152,11 +152,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 						'platinum' => esc_html__( 'Platinum Sponsor', 'hfo-golf-registration' ),
 						'gold'     => esc_html__( 'Gold Sponsor', 'hfo-golf-registration' ),
 						'silver'   => esc_html__( 'Silver Sponsor', 'hfo-golf-registration' ),
-						'tee'      => esc_html__( 'Tee Sponsor', 'hfo-golf-registration' ),
 					)
 				);
 				?>
-				<?php $this->render_number_field( 'sponsorship_amount', esc_html__( 'Sponsorship Amount', 'hfo-golf-registration' ), '0.01' ); ?>
+				<?php $this->render_checkbox_field( 'tee_sponsor_selected', esc_html__( 'Add Tee Sponsor', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'sponsor_program_name', esc_html__( 'Sponsor Program Name', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'sponsor_contact_name', esc_html__( 'Sponsor Contact Name', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_email_field( 'sponsor_email', esc_html__( 'Sponsor Email', 'hfo-golf-registration' ) ); ?>
@@ -174,7 +173,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="golf_qty">0</dd>
 					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
 					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
-					<dt><?php esc_html_e( 'Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
+					<dt><?php esc_html_e( 'Main Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
+					<dt><?php esc_html_e( 'Tee Sponsor', 'hfo-golf-registration' ); ?></dt><dd data-summary="tee_sponsor_selected"><?php esc_html_e( 'No', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-summary="subtotal">$0.00</dd>
 					<dt><?php esc_html_e( 'Discount Amount', 'hfo-golf-registration' ); ?></dt><dd data-summary="discount_amount">$0.00</dd>
 					<dt><?php esc_html_e( 'Grand Total', 'hfo-golf-registration' ); ?></dt><dd data-summary="grand_total">$0.00</dd>
@@ -329,8 +329,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
 		}
 
-		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] ) {
-			wp_die( esc_html__( 'Please select a sponsorship level for Sponsor Only registration.', 'hfo-golf-registration' ) );
+		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] && '1' !== $meta['tee_sponsor_selected'] ) {
+			wp_die( esc_html__( 'Please select at least one sponsorship item for Sponsor Only registration.', 'hfo-golf-registration' ) );
 		}
 
 		if ( ! $this->has_billable_checkout_items( $meta ) ) {
@@ -396,7 +396,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 */
 	private function get_sanitized_submission_meta( $event_id ) {
 		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only' ), 'individual' );
-		$sponsorship_level = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', 'tee', '' ), '' );
+		$sponsorship_level    = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
+		$tee_sponsor_selected = $this->sanitize_post_checkbox( 'tee_sponsor_selected' );
 
 		$meta = array(
 			'related_event'             => (string) $event_id,
@@ -414,7 +415,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'additional_dinner_count'   => (string) $this->sanitize_post_count( 'additional_dinner_count' ),
 			'additional_guests_details' => $this->sanitize_post_textarea( 'additional_guests_details' ),
 			'sponsorship_level'         => $sponsorship_level,
-			'sponsorship_amount'        => $this->sanitize_post_amount( 'sponsorship_amount' ),
+			'tee_sponsor_selected'      => $tee_sponsor_selected,
+			'sponsorship_amount'        => '0.00',
 			'sponsor_program_name'      => $this->sanitize_post_text( 'sponsor_program_name' ),
 			'sponsor_contact_name'      => $this->sanitize_post_text( 'sponsor_contact_name' ),
 			'sponsor_email'             => sanitize_email( $this->sanitize_post_text( 'sponsor_email' ) ),
@@ -491,8 +493,16 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'tee_sponsor_qty'      => '0',
 		);
 
-		if ( '' !== $meta['sponsorship_level'] ) {
-			$sponsor_quantities[ $meta['sponsorship_level'] . '_sponsor_qty' ] = '1';
+		if ( 'platinum' === $meta['sponsorship_level'] ) {
+			$sponsor_quantities['platinum_sponsor_qty'] = '1';
+		} elseif ( 'gold' === $meta['sponsorship_level'] ) {
+			$sponsor_quantities['gold_sponsor_qty'] = '1';
+		} elseif ( 'silver' === $meta['sponsorship_level'] ) {
+			$sponsor_quantities['silver_sponsor_qty'] = '1';
+		}
+
+		if ( '1' === $meta['tee_sponsor_selected'] ) {
+			$sponsor_quantities['tee_sponsor_qty'] = '1';
 		}
 
 		$subtotal = ( $golf_qty * $this->get_event_price( $event_id, 'golf_price' ) )
@@ -739,6 +749,18 @@ class HFO_Golf_Registration_Form_Shortcode {
 	}
 
 	/**
+	 * Sanitizes a posted checkbox field to a stored 1/0 string.
+	 *
+	 * @param string $key Posted key.
+	 * @return string
+	 */
+	private function sanitize_post_checkbox( $key ) {
+		$value = isset( $_POST[ $key ] ) ? sanitize_key( wp_unslash( $_POST[ $key ] ) ) : '';
+
+		return in_array( $value, array( '1', 'yes', 'on', 'true' ), true ) ? '1' : '0';
+	}
+
+	/**
 	 * Sanitizes a posted amount field.
 	 *
 	 * @param string $key Posted key.
@@ -841,6 +863,24 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 */
 	private function render_number_field( $name, $label, $step = '1' ) {
 		$this->render_input_field( $name, $label, 'number', false, $step );
+	}
+
+	/**
+	 * Renders a checkbox field.
+	 *
+	 * @param string $name Field name.
+	 * @param string $label Field label.
+	 * @return void
+	 */
+	private function render_checkbox_field( $name, $label ) {
+		?>
+		<p class="hfo-golf-registration-field">
+			<label for="<?php echo esc_attr( $name ); ?>">
+				<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="checkbox" value="1" />
+				<?php echo esc_html( $label ); ?>
+			</label>
+		</p>
+		<?php
 	}
 
 	/**
