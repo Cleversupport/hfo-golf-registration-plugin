@@ -73,6 +73,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_send_to_checkout' ) );
 		add_action( 'admin_notices', array( $this, 'render_admin_notice' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
+		add_filter( 'woocommerce_coupon_is_valid', array( $this, 'validate_golf30_coupon' ), 10, 2 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'add_golf_event_to_cart_item_data' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_golf_registration_meta_to_order' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
@@ -297,6 +298,56 @@ class HFO_Golf_Registration_Checkout_Handler {
 				$cart_item['data']->set_price( $price );
 			}
 		}
+	}
+
+	/**
+	 * Validates the GOLF30 coupon against the current WooCommerce cart.
+	 *
+	 * @param bool      $is_valid Whether WooCommerce considers the coupon valid.
+	 * @param WC_Coupon $coupon   WooCommerce coupon object.
+	 * @return bool
+	 * @throws Exception When GOLF30 is applied without a Platinum Sponsor cart item.
+	 */
+	public function validate_golf30_coupon( $is_valid, $coupon ) {
+		if ( ! $coupon || ! method_exists( $coupon, 'get_code' ) ) {
+			return $is_valid;
+		}
+
+		if ( 'golf30' !== strtolower( (string) $coupon->get_code() ) ) {
+			return $is_valid;
+		}
+
+		if ( ! $is_valid ) {
+			return $is_valid;
+		}
+
+		if ( $this->cart_contains_platinum_sponsor() ) {
+			return $is_valid;
+		}
+
+		throw new Exception( __( 'This coupon is only available when a Platinum Sponsor package is in your cart.', 'hfo-golf-registration' ) );
+	}
+
+	/**
+	 * Checks whether the current WooCommerce cart contains a Platinum Sponsor item.
+	 *
+	 * @return bool
+	 */
+	public function cart_contains_platinum_sponsor() {
+		if ( ! function_exists( 'WC' ) || ! WC()->cart || ! method_exists( WC()->cart, 'get_cart' ) ) {
+			return false;
+		}
+
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			$registration_item_type = isset( $cart_item['hfo_golf_registration_item_type'] ) ? sanitize_key( $cart_item['hfo_golf_registration_item_type'] ) : '';
+			$item_type              = isset( $cart_item['hfo_golf_item_type'] ) ? sanitize_key( $cart_item['hfo_golf_item_type'] ) : '';
+
+			if ( 'platinum_sponsor' === $registration_item_type || 'platinum_sponsor' === $item_type ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
