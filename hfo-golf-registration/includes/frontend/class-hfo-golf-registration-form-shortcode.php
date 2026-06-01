@@ -156,7 +156,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				);
 				?>
 				<?php $this->render_checkbox_field( 'tee_sponsor_selected', esc_html__( 'Add Tee Sponsor', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_program_name', esc_html__( 'Sponsor Program Name', 'hfo-golf-registration' ) ); ?>
+				<?php $this->render_text_field( 'sponsor_program_name', esc_html__( 'Sponsor Name', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'sponsor_contact_name', esc_html__( 'Sponsor Contact Name', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_email_field( 'sponsor_email', esc_html__( 'Sponsor Email', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'sponsor_phone', esc_html__( 'Sponsor Phone', 'hfo-golf-registration' ) ); ?>
@@ -874,7 +874,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 */
 	private function render_checkbox_field( $name, $label ) {
 		?>
-		<p class="hfo-golf-registration-field">
+		<p class="hfo-golf-registration-field hfo-golf-registration-field--checkbox">
 			<label for="<?php echo esc_attr( $name ); ?>">
 				<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="checkbox" value="1" />
 				<?php echo esc_html( $label ); ?>
