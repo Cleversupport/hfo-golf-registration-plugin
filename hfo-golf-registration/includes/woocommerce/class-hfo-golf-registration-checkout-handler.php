@@ -73,6 +73,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_send_to_checkout' ) );
 		add_action( 'admin_notices', array( $this, 'render_admin_notice' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
+		add_filter( 'woocommerce_get_item_data', array( $this, 'add_golf_event_to_cart_item_data' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order', array( $this, 'add_golf_registration_meta_to_order' ), 10, 2 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
@@ -156,7 +157,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 			$this->redirect_to_registration( $registration_id, __( 'You do not have permission to send this registration to checkout.', 'hfo-golf-registration' ), 'error' );
 		}
 
-		$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
+		$event_id = $this->get_registration_event_id( $registration_id );
 
 		if ( ! $this->is_valid_event( $event_id ) ) {
 			$this->redirect_to_registration( $registration_id, __( 'Please select a valid related event before sending this registration to checkout.', 'hfo-golf-registration' ), 'error' );
@@ -193,7 +194,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return new WP_Error( 'hfo_golf_registration_invalid_registration', __( 'Invalid golf registration.', 'hfo-golf-registration' ) );
 		}
 
-		$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
+		$event_id = $this->get_registration_event_id( $registration_id );
 
 		if ( ! $this->is_valid_event( $event_id ) ) {
 			return new WP_Error( 'hfo_golf_registration_invalid_event', __( 'Please select a valid related event before sending this registration to checkout.', 'hfo-golf-registration' ) );
@@ -299,6 +300,30 @@ class HFO_Golf_Registration_Checkout_Handler {
 	}
 
 	/**
+	 * Adds the related Golf Event title to WooCommerce cart and checkout item data.
+	 *
+	 * @param array $item_data WooCommerce display item data.
+	 * @param array $cart_item WooCommerce cart item values.
+	 * @return array
+	 */
+	public function add_golf_event_to_cart_item_data( $item_data, $cart_item ) {
+		if ( empty( $cart_item['hfo_golf_registration_id'] ) ) {
+			return $item_data;
+		}
+
+		$registration_id = absint( $cart_item['hfo_golf_registration_id'] );
+		$event_id        = $this->get_event_id_from_cart_item( $cart_item, $registration_id );
+		$event_title     = $this->get_event_title_from_cart_item( $cart_item, $event_id );
+
+		$item_data[] = array(
+			'key'   => __( 'Event', 'hfo-golf-registration' ),
+			'value' => $event_title,
+		);
+
+		return $item_data;
+	}
+
+	/**
 	 * Stores golf registration identifiers on the WooCommerce order during checkout.
 	 *
 	 * @param WC_Order $order WooCommerce order object.
@@ -372,10 +397,17 @@ class HFO_Golf_Registration_Checkout_Handler {
 	private function get_hidden_golf_registration_order_item_meta_keys() {
 		return array(
 			'hfo_golf_registration_id',
+			'hfo_golf_registration_event_id',
 			'hfo_golf_event_id',
+			'hfo_golf_event_title',
 			'hfo_golf_item_type',
+			'hfo_golf_registration_item_type',
 			'hfo_golf_item_label',
+			'hfo_golf_registration_item_label',
 			'hfo_golf_custom_price',
+			'hfo_golf_registration_custom_price',
+			'_hfo_golf_registration_id',
+			'_hfo_golf_event_id',
 		);
 	}
 
@@ -395,16 +427,20 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return;
 		}
 
-		$event_id     = isset( $values['hfo_golf_registration_event_id'] ) ? absint( $values['hfo_golf_registration_event_id'] ) : 0;
+		$event_id     = $this->get_event_id_from_cart_item( $values, $registration_id );
+		$event_title  = $this->get_event_title_from_cart_item( $values, $event_id );
 		$item_type    = isset( $values['hfo_golf_registration_item_type'] ) ? sanitize_key( $values['hfo_golf_registration_item_type'] ) : '';
 		$item_label   = isset( $values['hfo_golf_registration_item_label'] ) ? sanitize_text_field( $values['hfo_golf_registration_item_label'] ) : '';
 		$custom_price = isset( $values['hfo_golf_registration_custom_price'] ) ? wc_format_decimal( $values['hfo_golf_registration_custom_price'] ) : '';
 
+		$item->add_meta_data( __( 'Event', 'hfo-golf-registration' ), $event_title, true );
 		$item->add_meta_data( 'hfo_golf_registration_id', $registration_id, true );
 		$item->add_meta_data( 'hfo_golf_event_id', $event_id, true );
 		$item->add_meta_data( 'hfo_golf_item_type', $item_type, true );
 		$item->add_meta_data( 'hfo_golf_item_label', $item_label, true );
 		$item->add_meta_data( 'hfo_golf_custom_price', $custom_price, true );
+		$item->add_meta_data( '_hfo_golf_registration_id', $registration_id, true );
+		$item->add_meta_data( '_hfo_golf_event_id', $event_id, true );
 	}
 
 	/**
@@ -516,6 +552,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		$items            = array();
 		$missing_prices   = array();
 		$missing_products = array();
+		$event_title      = $this->get_event_title( $event_id );
 
 		foreach ( $this->get_checkout_item_definitions() as $item_type => $definition ) {
 			$quantity = absint( get_post_meta( $registration_id, $definition['quantity_key'], true ) );
@@ -550,7 +587,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 				'data'       => array(
 					'hfo_golf_registration_id'           => $registration_id,
 					'hfo_golf_registration_event_id'     => $event_id,
+					'hfo_golf_event_id'                  => $event_id,
+					'hfo_golf_event_title'               => $event_title,
 					'hfo_golf_registration_item_type'    => $item_type,
+					'hfo_golf_item_type'                 => $item_type,
 					'hfo_golf_registration_item_label'   => $definition['label'],
 					'hfo_golf_registration_custom_price' => number_format( $price, 2, '.', '' ),
 				),
@@ -580,6 +620,94 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		return $items;
+	}
+
+	/**
+	 * Gets the related Golf Event ID for a registration, with legacy and requested fallbacks.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @return int
+	 */
+	private function get_registration_event_id( $registration_id ) {
+		$registration_id = absint( $registration_id );
+		$event_id        = absint( get_post_meta( $registration_id, 'related_event', true ) );
+
+		if ( $event_id ) {
+			return $event_id;
+		}
+
+		return absint( get_post_meta( $registration_id, 'hfo_golf_event_id', true ) );
+	}
+
+	/**
+	 * Gets a safe Golf Event title for display.
+	 *
+	 * @param int    $event_id       Event post ID.
+	 * @param string $provided_title Optional pre-stored event title.
+	 * @return string
+	 */
+	private function get_event_title( $event_id, $provided_title = '' ) {
+		$provided_title = sanitize_text_field( $provided_title );
+
+		if ( '' !== $provided_title ) {
+			return $provided_title;
+		}
+
+		$event_id = absint( $event_id );
+
+		if ( $event_id ) {
+			$event_title = sanitize_text_field( get_the_title( $event_id ) );
+
+			if ( '' !== $event_title ) {
+				return $event_title;
+			}
+
+			return sprintf(
+				/* translators: %d: golf event post ID. */
+				__( 'Golf Event #%d', 'hfo-golf-registration' ),
+				$event_id
+			);
+		}
+
+		return __( 'Golf Event', 'hfo-golf-registration' );
+	}
+
+	/**
+	 * Gets the Golf Event ID carried by a WooCommerce cart item.
+	 *
+	 * @param array $cart_item       WooCommerce cart item values.
+	 * @param int   $registration_id Registration post ID for fallback lookup.
+	 * @return int
+	 */
+	private function get_event_id_from_cart_item( $cart_item, $registration_id = 0 ) {
+		$event_id = 0;
+
+		if ( isset( $cart_item['hfo_golf_event_id'] ) ) {
+			$event_id = absint( $cart_item['hfo_golf_event_id'] );
+		}
+
+		if ( ! $event_id && isset( $cart_item['hfo_golf_registration_event_id'] ) ) {
+			$event_id = absint( $cart_item['hfo_golf_registration_event_id'] );
+		}
+
+		if ( ! $event_id && $registration_id ) {
+			$event_id = $this->get_registration_event_id( $registration_id );
+		}
+
+		return $event_id;
+	}
+
+	/**
+	 * Gets the Golf Event display title carried by a WooCommerce cart item.
+	 *
+	 * @param array $cart_item WooCommerce cart item values.
+	 * @param int   $event_id  Event post ID for fallback lookup.
+	 * @return string
+	 */
+	private function get_event_title_from_cart_item( $cart_item, $event_id = 0 ) {
+		$event_title = isset( $cart_item['hfo_golf_event_title'] ) ? $cart_item['hfo_golf_event_title'] : '';
+
+		return $this->get_event_title( $event_id, $event_title );
 	}
 
 	/**
@@ -638,7 +766,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 			return array(
 				'registration_id' => $registration_id,
-				'event_id'        => isset( $cart_item['hfo_golf_registration_event_id'] ) ? absint( $cart_item['hfo_golf_registration_event_id'] ) : 0,
+				'event_id'        => $this->get_event_id_from_cart_item( $cart_item, $registration_id ),
 			);
 		}
 
