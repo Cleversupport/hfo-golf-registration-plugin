@@ -55,7 +55,7 @@
 		if (registrationType === 'team') {
 			keys = keys.concat(PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['additional_guests']);
 		}
 
 		keys.push('sponsorship', 'review');
@@ -80,7 +80,7 @@
 		if (registrationType === 'team') {
 			participantKeys = PARTICIPANT_KEYS;
 		} else if (registrationType === 'individual') {
-			participantKeys = ['captain'];
+			golfQty = 1;
 		}
 
 		participantKeys.forEach(function (participantKey) {
@@ -125,6 +125,39 @@
 		setSummary(form, 'subtotal', money(subtotal));
 		setSummary(form, 'discount_amount', money(0));
 		setSummary(form, 'grand_total', money(subtotal));
+	}
+
+	function copyMainContactToCaptain(form) {
+		var fieldMap = {
+			captain_name: 'main_contact_name',
+			captain_email: 'main_contact_email',
+			captain_phone: 'main_contact_phone',
+			captain_address: 'main_contact_address',
+			captain_city: 'main_contact_city',
+			captain_state: 'main_contact_state',
+			captain_zip: 'main_contact_zip'
+		};
+
+		Object.keys(fieldMap).forEach(function (captainFieldName) {
+			var captainField = getField(form, captainFieldName);
+			var mainContactField = getField(form, fieldMap[captainFieldName]);
+
+			if (captainField && mainContactField) {
+				captainField.value = mainContactField.value;
+			}
+		});
+
+		[
+			['captain_golf_selected', true],
+			['captain_lunch_selected', false],
+			['captain_dinner_selected', false]
+		].forEach(function (fieldState) {
+			var field = getField(form, fieldState[0]);
+
+			if (field) {
+				field.checked = fieldState[1];
+			}
+		});
 	}
 
 	function setupForm(form) {
@@ -215,6 +248,12 @@
 
 		form.addEventListener('input', function () {
 			calculateReview(form);
+		});
+
+		form.addEventListener('submit', function () {
+			if (getRegistrationType() === 'individual') {
+				copyMainContactToCaptain(form);
+			}
 		});
 
 		form.addEventListener('change', function (event) {
