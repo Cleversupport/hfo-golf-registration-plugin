@@ -6,6 +6,10 @@
 	width: 100%;
 }
 
+.hfo-golf-registration-form [hidden] {
+	display: none !important;
+}
+
 .hfo-golf-registration-steps {
 	display: grid;
 	gap: 0.5rem;
