@@ -138,15 +138,22 @@
 }
 
 .hfo-golf-registration-navigation {
+	align-items: center;
 	display: flex;
-	gap: 0.5rem;
+	flex-wrap: wrap;
+	gap: 1rem;
 	justify-content: space-between;
 	margin-top: 0.75rem;
 }
 
+.hfo-golf-registration-navigation [data-hfo-golf-registration-next],
 .hfo-golf-registration-submit {
-	margin-top: 0.5rem;
-	width: 100%;
+	margin-left: auto;
+}
+
+.hfo-golf-registration-submit {
+	font-weight: 700;
+	min-width: min(100%, 14rem);
 }
 
 @media (max-width: 480px) {
