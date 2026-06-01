@@ -50,12 +50,12 @@
 	}
 
 	function getVisibleStepKeys(registrationType) {
-		var keys = ['registration_type', 'main_contact'];
+		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests']);
 		}
 
 		keys.push('sponsorship', 'review');
@@ -80,7 +80,7 @@
 		if (registrationType === 'team') {
 			participantKeys = PARTICIPANT_KEYS;
 		} else if (registrationType === 'individual') {
-			golfQty = 1;
+			participantKeys = ['captain'];
 		}
 
 		participantKeys.forEach(function (participantKey) {
@@ -127,35 +127,23 @@
 		setSummary(form, 'grand_total', money(subtotal));
 	}
 
-	function copyMainContactToCaptain(form) {
+	function copyCaptainToMainContact(form) {
 		var fieldMap = {
-			captain_name: 'main_contact_name',
-			captain_email: 'main_contact_email',
-			captain_phone: 'main_contact_phone',
-			captain_address: 'main_contact_address',
-			captain_city: 'main_contact_city',
-			captain_state: 'main_contact_state',
-			captain_zip: 'main_contact_zip'
+			main_contact_name: 'captain_name',
+			main_contact_email: 'captain_email',
+			main_contact_phone: 'captain_phone',
+			main_contact_address: 'captain_address',
+			main_contact_city: 'captain_city',
+			main_contact_state: 'captain_state',
+			main_contact_zip: 'captain_zip'
 		};
 
-		Object.keys(fieldMap).forEach(function (captainFieldName) {
-			var captainField = getField(form, captainFieldName);
-			var mainContactField = getField(form, fieldMap[captainFieldName]);
+		Object.keys(fieldMap).forEach(function (mainContactFieldName) {
+			var mainContactField = getField(form, mainContactFieldName);
+			var captainField = getField(form, fieldMap[mainContactFieldName]);
 
-			if (captainField && mainContactField) {
-				captainField.value = mainContactField.value;
-			}
-		});
-
-		[
-			['captain_golf_selected', true],
-			['captain_lunch_selected', false],
-			['captain_dinner_selected', false]
-		].forEach(function (fieldState) {
-			var field = getField(form, fieldState[0]);
-
-			if (field) {
-				field.checked = fieldState[1];
+			if (mainContactField && captainField) {
+				mainContactField.value = captainField.value;
 			}
 		});
 	}
@@ -172,6 +160,7 @@
 		var stepLabels = Array.prototype.slice.call(form.querySelectorAll('[data-hfo-golf-registration-steps] li'));
 		var backButton = form.querySelector('[data-hfo-golf-registration-back]');
 		var nextButton = form.querySelector('[data-hfo-golf-registration-next]');
+		var submitButton = form.querySelector('.hfo-golf-registration-submit');
 		var currentStepKey = 'registration_type';
 
 		function getRegistrationType() {
@@ -250,9 +239,17 @@
 			calculateReview(form);
 		});
 
+		if (submitButton) {
+			submitButton.addEventListener('click', function () {
+				if (getRegistrationType() === 'individual') {
+					copyCaptainToMainContact(form);
+				}
+			});
+		}
+
 		form.addEventListener('submit', function () {
 			if (getRegistrationType() === 'individual') {
-				copyMainContactToCaptain(form);
+				copyCaptainToMainContact(form);
 			}
 		});
 
