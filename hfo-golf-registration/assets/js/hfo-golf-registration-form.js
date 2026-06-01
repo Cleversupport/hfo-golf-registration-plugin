@@ -185,7 +185,15 @@
 			}
 
 			if (nextButton) {
-				nextButton.hidden = currentStepKey === 'review' || visibleIndex === visibleSteps.length - 1;
+				if (currentStepKey === 'review' || visibleIndex === visibleSteps.length - 1) {
+					nextButton.hidden = true;
+					nextButton.setAttribute('aria-hidden', 'true');
+					nextButton.style.display = 'none';
+				} else {
+					nextButton.hidden = false;
+					nextButton.removeAttribute('aria-hidden');
+					nextButton.style.display = '';
+				}
 			}
 
 			calculateReview(form);
