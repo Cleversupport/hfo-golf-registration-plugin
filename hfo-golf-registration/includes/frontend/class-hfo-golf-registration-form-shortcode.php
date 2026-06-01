@@ -186,12 +186,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 					<dt><?php esc_html_e( 'Discount Amount', 'hfo-golf-registration' ); ?></dt><dd data-summary="discount_amount">$0.00</dd>
 					<dt><?php esc_html_e( 'Grand Total', 'hfo-golf-registration' ); ?></dt><dd data-summary="grand_total">$0.00</dd>
 				</dl>
-				<button class="hfo-golf-registration-submit" type="submit"><?php esc_html_e( 'Continue to Checkout', 'hfo-golf-registration' ); ?></button>
 			</section>
 
 			<div class="hfo-golf-registration-navigation">
 				<button type="button" data-hfo-golf-registration-back><?php esc_html_e( 'Back', 'hfo-golf-registration' ); ?></button>
 				<button type="button" data-hfo-golf-registration-next><?php esc_html_e( 'Next', 'hfo-golf-registration' ); ?></button>
+				<button class="hfo-golf-registration-submit" type="submit" hidden><?php esc_html_e( 'Continue to Checkout', 'hfo-golf-registration' ); ?></button>
 			</div>
 		</form>
 		<?php

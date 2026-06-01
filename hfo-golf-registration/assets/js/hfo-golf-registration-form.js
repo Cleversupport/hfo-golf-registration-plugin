@@ -218,6 +218,16 @@
 				}
 			}
 
+			if (submitButton) {
+				if (currentStepKey === 'review') {
+					submitButton.hidden = false;
+					submitButton.removeAttribute('aria-hidden');
+				} else {
+					submitButton.hidden = true;
+					submitButton.setAttribute('aria-hidden', 'true');
+				}
+			}
+
 			calculateReview(form);
 		}
 
