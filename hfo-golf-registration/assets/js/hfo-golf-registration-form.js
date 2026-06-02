@@ -72,6 +72,18 @@
 		return step ? step.dataset.stepKey : '';
 	}
 
+	function isControlVisible(field) {
+		if (field.disabled || field.type === 'hidden') {
+			return false;
+		}
+
+		if (field.closest('[hidden]')) {
+			return false;
+		}
+
+		return !!(field.offsetWidth || field.offsetHeight || field.getClientRects().length);
+	}
+
 	function isFieldApplicableForRegistrationType(field, registrationType) {
 		var stepKey = getFieldStepKey(field);
 		var visibleKeys = getVisibleStepKeys(registrationType);
@@ -120,7 +132,8 @@
 					field,
 					stepIsVisible &&
 					field.dataset.hfoGolfOriginalRequired === '1' &&
-					isFieldApplicableForRegistrationType(field, registrationType)
+					isFieldApplicableForRegistrationType(field, registrationType) &&
+					isControlVisible(field)
 				);
 			});
 		});
@@ -133,7 +146,7 @@
 		invalidFields.some(function (field) {
 			var step = field.closest('[data-hfo-golf-registration-step]');
 
-			if (!step || !step.hidden) {
+			if ((!step || !step.hidden) && isControlVisible(field)) {
 				firstInvalidVisibleField = field;
 				return true;
 			}
@@ -151,6 +164,45 @@
 
 		if (typeof firstInvalidVisibleField.focus === 'function') {
 			firstInvalidVisibleField.focus({ preventScroll: true });
+		}
+	}
+
+	function validateStep(step) {
+		var controls = getStepFieldControls(step).filter(isControlVisible);
+		var invalidField = null;
+
+		controls.some(function (field) {
+			if (typeof field.checkValidity === 'function' && !field.checkValidity()) {
+				invalidField = field;
+				return true;
+			}
+
+			return false;
+		});
+
+		if (!invalidField) {
+			return true;
+		}
+
+		if (typeof invalidField.reportValidity === 'function') {
+			invalidField.reportValidity();
+		}
+
+		if (typeof invalidField.focus === 'function') {
+			invalidField.focus();
+		}
+
+		return false;
+	}
+
+	function updateSponsorFieldVisibility(form) {
+		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var showSponsorFields = sponsorLevel !== '' || teeSponsorSelected;
+		var sponsorFields = form.querySelector('[data-hfo-golf-sponsor-fields]');
+
+		if (sponsorFields) {
+			sponsorFields.hidden = !showSponsorFields;
 		}
 	}
 
@@ -263,6 +315,7 @@
 
 	function setupForm(form) {
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
+			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleSteps(form);
 			calculateReview(form);
 			return;
@@ -289,6 +342,7 @@
 		}
 
 		function showStepByKey(stepKey) {
+			updateSponsorFieldVisibility(form);
 			calculateReview(form);
 
 			var registrationType = getRegistrationType();
@@ -342,6 +396,7 @@
 				}
 			}
 
+			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleSteps(form);
 			calculateReview(form);
 		}
@@ -355,9 +410,12 @@
 
 		if (nextButton) {
 			nextButton.addEventListener('click', function () {
+				var currentStep = form.querySelector('[data-hfo-golf-registration-step][data-step-key="' + currentStepKey + '"]');
+
+				updateSponsorFieldVisibility(form);
 				updateRequiredFieldsForVisibleSteps(form);
 
-				if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+				if (currentStep && !validateStep(currentStep)) {
 					focusFirstInvalidVisibleField(form);
 					return;
 				}
@@ -368,6 +426,8 @@
 		}
 
 		form.addEventListener('input', function () {
+			updateSponsorFieldVisibility(form);
+			updateRequiredFieldsForVisibleSteps(form);
 			calculateReview(form);
 		});
 
@@ -378,6 +438,7 @@
 				}
 
 				normalizeHiddenParticipantsBeforeSubmit(form);
+				updateSponsorFieldVisibility(form);
 				updateRequiredFieldsForVisibleSteps(form);
 
 				if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
@@ -393,10 +454,16 @@
 			}
 
 			normalizeHiddenParticipantsBeforeSubmit(form);
+			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleSteps(form);
 		});
 
 		form.addEventListener('change', function (event) {
+			if (event.target && (event.target.name === 'sponsorship_level' || event.target.name === 'tee_sponsor_selected')) {
+				updateSponsorFieldVisibility(form);
+				updateRequiredFieldsForVisibleSteps(form);
+			}
+
 			if (event.target && event.target.name === 'registration_type') {
 				showStepByKey(currentStepKey);
 				updateRequiredFieldsForVisibleSteps(form);
