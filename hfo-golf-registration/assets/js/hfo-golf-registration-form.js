@@ -13,6 +13,11 @@
 		individual: 'Individual',
 		sponsor_only: 'Sponsor Only'
 	};
+	var OPTIONAL_FIELD_NAMES = [
+		'additional_lunch_count',
+		'additional_dinner_count',
+		'additional_guests_details'
+	];
 
 	function getField(form, name) {
 		return form.querySelector('[name="' + name + '"]');
@@ -83,6 +88,10 @@
 		return field.type === 'checkbox' || field.type === 'radio';
 	}
 
+	function isOptionalField(field) {
+		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
+	}
+
 	function shouldSkipGenericRequired(field, form) {
 		if (field.name === 'sponsorship_level') {
 			return getRegistrationSponsorRequirementField(form) === field;
@@ -117,7 +126,7 @@
 
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
-			if (!isControlVisible(field) || isCheckboxOrRadio(field) || shouldSkipGenericRequired(field, form)) {
+			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
 				setFieldRequired(field, false);
 				return;
 			}
