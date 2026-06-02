@@ -67,108 +67,79 @@
 		return Array.prototype.slice.call(step.querySelectorAll('input, select, textarea'));
 	}
 
-	function getFieldStepKey(field) {
-		var step = field.closest('[data-hfo-golf-registration-step]');
-		return step ? step.dataset.stepKey : '';
-	}
-
-	function isControlVisible(field) {
-		if (field.disabled || field.type === 'hidden') {
+	function isControlVisible(control) {
+		if (control.disabled || control.type === 'hidden') {
 			return false;
 		}
 
-		if (field.closest('[hidden]')) {
+		if (control.closest('[hidden]')) {
 			return false;
 		}
 
-		return !!(field.offsetWidth || field.offsetHeight || field.getClientRects().length);
+		return control.getClientRects().length > 0;
 	}
 
-	function isFieldApplicableForRegistrationType(field, registrationType) {
-		var stepKey = getFieldStepKey(field);
-		var visibleKeys = getVisibleStepKeys(registrationType);
-
-		return !stepKey || visibleKeys.indexOf(stepKey) !== -1;
+	function isCheckboxOrRadio(field) {
+		return field.type === 'checkbox' || field.type === 'radio';
 	}
 
-	function rememberOriginalRequiredState(field) {
-		if (typeof field.dataset.hfoGolfOriginalRequired === 'undefined') {
-			field.dataset.hfoGolfOriginalRequired = field.required ? '1' : '0';
+	function shouldSkipGenericRequired(field, form) {
+		if (field.name === 'sponsorship_level') {
+			return getRegistrationSponsorRequirementField(form) === field;
 		}
 
-		if (field.hasAttribute('aria-required') && typeof field.dataset.hfoGolfOriginalAriaRequired === 'undefined') {
-			field.dataset.hfoGolfOriginalAriaRequired = field.getAttribute('aria-required') || '';
-		}
+		return false;
 	}
 
-	function setFieldRequired(field, required) {
-		if (required) {
-			field.required = true;
-
-			if (typeof field.dataset.hfoGolfOriginalAriaRequired !== 'undefined') {
-				field.setAttribute('aria-required', field.dataset.hfoGolfOriginalAriaRequired || 'true');
-			} else if (field.getAttribute('aria-required') === 'false') {
-				field.removeAttribute('aria-required');
-			}
-		} else {
-			field.required = false;
-
-			if (typeof field.dataset.hfoGolfOriginalAriaRequired !== 'undefined' || field.hasAttribute('aria-required')) {
-				field.setAttribute('aria-required', 'false');
-			}
-		}
+	function getRegistrationSponsorRequirementField(form) {
+		return getField(form, 'sponsorship_level');
 	}
 
-	function updateRequiredFieldsForVisibleSteps(form) {
-		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+	function updateSponsorOnlyCustomValidity(form) {
+		var sponsorshipLevel = getRegistrationSponsorRequirementField(form);
 
-		Array.prototype.forEach.call(form.querySelectorAll('[data-hfo-golf-registration-step]'), function (step) {
-			var stepIsVisible = !step.hidden;
-
-			getStepFieldControls(step).forEach(function (field) {
-				rememberOriginalRequiredState(field);
-
-				setFieldRequired(
-					field,
-					stepIsVisible &&
-					field.dataset.hfoGolfOriginalRequired === '1' &&
-					isFieldApplicableForRegistrationType(field, registrationType) &&
-					isControlVisible(field)
-				);
-			});
-		});
-	}
-
-	function focusFirstInvalidVisibleField(form) {
-		var invalidFields = Array.prototype.slice.call(form.querySelectorAll('input:invalid, select:invalid, textarea:invalid'));
-		var firstInvalidVisibleField = null;
-
-		invalidFields.some(function (field) {
-			var step = field.closest('[data-hfo-golf-registration-step]');
-
-			if ((!step || !step.hidden) && isControlVisible(field)) {
-				firstInvalidVisibleField = field;
-				return true;
-			}
-
-			return false;
-		});
-
-		if (!firstInvalidVisibleField) {
+		if (!sponsorshipLevel || typeof sponsorshipLevel.setCustomValidity !== 'function') {
 			return;
 		}
 
-		if (typeof firstInvalidVisibleField.scrollIntoView === 'function') {
-			firstInvalidVisibleField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		if (isControlVisible(sponsorshipLevel) && getFieldValue(form, 'registration_type') === 'sponsor_only' && getFieldValue(form, 'sponsorship_level') === '' && !isChecked(form, 'tee_sponsor_selected')) {
+			sponsorshipLevel.setCustomValidity('Please select a Sponsorship Level or add a Tee Sponsor.');
+			return;
 		}
 
-		if (typeof firstInvalidVisibleField.focus === 'function') {
-			firstInvalidVisibleField.focus({ preventScroll: true });
-		}
+		sponsorshipLevel.setCustomValidity('');
 	}
 
-	function validateStep(step) {
-		var controls = getStepFieldControls(step).filter(isControlVisible);
+	function setFieldRequired(field, required) {
+		field.required = required;
+		field.setAttribute('aria-required', required ? 'true' : 'false');
+	}
+
+	function updateRequiredFieldsForVisibleControls(form) {
+		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
+			if (!isControlVisible(field) || isCheckboxOrRadio(field) || shouldSkipGenericRequired(field, form)) {
+				setFieldRequired(field, false);
+				return;
+			}
+
+			setFieldRequired(field, true);
+		});
+
+		updateSponsorOnlyCustomValidity(form);
+	}
+
+	function validateCurrentStep(form, currentStepKey) {
+		var currentStep = form.querySelector('[data-hfo-golf-registration-step][data-step-key="' + currentStepKey + '"]');
+
+		updateRequiredFieldsForVisibleControls(form);
+
+		if (!currentStep || currentStep.hidden) {
+			return true;
+		}
+
+		var controls = getStepFieldControls(currentStep).filter(function (field) {
+			return isControlVisible(field) && !isCheckboxOrRadio(field);
+		});
 		var invalidField = null;
 
 		controls.some(function (field) {
@@ -316,7 +287,7 @@
 	function setupForm(form) {
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			updateSponsorFieldVisibility(form);
-			updateRequiredFieldsForVisibleSteps(form);
+			updateRequiredFieldsForVisibleControls(form);
 			calculateReview(form);
 			return;
 		}
@@ -397,7 +368,7 @@
 			}
 
 			updateSponsorFieldVisibility(form);
-			updateRequiredFieldsForVisibleSteps(form);
+			updateRequiredFieldsForVisibleControls(form);
 			calculateReview(form);
 		}
 
@@ -410,13 +381,10 @@
 
 		if (nextButton) {
 			nextButton.addEventListener('click', function () {
-				var currentStep = form.querySelector('[data-hfo-golf-registration-step][data-step-key="' + currentStepKey + '"]');
-
 				updateSponsorFieldVisibility(form);
-				updateRequiredFieldsForVisibleSteps(form);
+				updateRequiredFieldsForVisibleControls(form);
 
-				if (currentStep && !validateStep(currentStep)) {
-					focusFirstInvalidVisibleField(form);
+				if (!validateCurrentStep(form, currentStepKey)) {
 					return;
 				}
 
@@ -427,7 +395,7 @@
 
 		form.addEventListener('input', function () {
 			updateSponsorFieldVisibility(form);
-			updateRequiredFieldsForVisibleSteps(form);
+			updateRequiredFieldsForVisibleControls(form);
 			calculateReview(form);
 		});
 
@@ -439,11 +407,10 @@
 
 				normalizeHiddenParticipantsBeforeSubmit(form);
 				updateSponsorFieldVisibility(form);
-				updateRequiredFieldsForVisibleSteps(form);
+				updateRequiredFieldsForVisibleControls(form);
 
-				if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+				if (!validateCurrentStep(form, currentStepKey)) {
 					event.preventDefault();
-					focusFirstInvalidVisibleField(form);
 				}
 			});
 		}
@@ -455,18 +422,18 @@
 
 			normalizeHiddenParticipantsBeforeSubmit(form);
 			updateSponsorFieldVisibility(form);
-			updateRequiredFieldsForVisibleSteps(form);
+			updateRequiredFieldsForVisibleControls(form);
 		});
 
 		form.addEventListener('change', function (event) {
 			if (event.target && (event.target.name === 'sponsorship_level' || event.target.name === 'tee_sponsor_selected')) {
 				updateSponsorFieldVisibility(form);
-				updateRequiredFieldsForVisibleSteps(form);
+				updateRequiredFieldsForVisibleControls(form);
 			}
 
 			if (event.target && event.target.name === 'registration_type') {
 				showStepByKey(currentStepKey);
-				updateRequiredFieldsForVisibleSteps(form);
+				updateRequiredFieldsForVisibleControls(form);
 			}
 
 			calculateReview(form);
