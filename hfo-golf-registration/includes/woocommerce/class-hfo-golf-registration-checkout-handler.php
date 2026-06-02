@@ -894,6 +894,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		$mapped_statuses = $this->map_order_status_to_registration_statuses( $order_status );
 
 		update_post_meta( $registration_id, self::REGISTRATION_ORDER_ID_META_KEY, absint( $order_id ) );
+		HFO_Golf_Registration_Post_Type::append_order_id_to_title( $registration_id, $order_id );
 		update_post_meta( $registration_id, self::REGISTRATION_PAYMENT_STATUS_META_KEY, $mapped_statuses['payment_status'] );
 		update_post_meta( $registration_id, self::REGISTRATION_STATUS_META_KEY, $mapped_statuses['registration_status'] );
 	}

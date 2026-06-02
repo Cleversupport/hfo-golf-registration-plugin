@@ -76,4 +76,40 @@ class HFO_Golf_Registration_Post_Type {
 
 		register_post_type( $post_type, $args );
 	}
+
+	/**
+	 * Appends the WooCommerce order ID to a registration title when available.
+	 *
+	 * @param int $registration_id Golf registration post ID.
+	 * @param int $order_id        WooCommerce order ID.
+	 * @return void
+	 */
+	public static function append_order_id_to_title( $registration_id, $order_id ) {
+		$registration_id = absint( $registration_id );
+		$order_id        = absint( $order_id );
+
+		if ( ! $registration_id || ! $order_id ) {
+			return;
+		}
+
+		$post = get_post( $registration_id );
+
+		if ( ! $post || self::POST_TYPE !== $post->post_type ) {
+			return;
+		}
+
+		$current_title = (string) $post->post_title;
+		$order_suffix  = ' - ' . $order_id;
+
+		if ( substr( $current_title, -strlen( $order_suffix ) ) === $order_suffix ) {
+			return;
+		}
+
+		wp_update_post(
+			array(
+				'ID'         => $registration_id,
+				'post_title' => $current_title . $order_suffix,
+			)
+		);
+	}
 }

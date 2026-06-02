@@ -163,14 +163,17 @@ class HFO_Golf_Registration_Form_Shortcode {
 				);
 				?>
 				<?php $this->render_checkbox_field( 'tee_sponsor_selected', esc_html__( 'Add Tee Sponsor', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_program_name', esc_html__( 'Sponsor Name', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_contact_name', esc_html__( 'Sponsor Contact Name', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_email_field( 'sponsor_email', esc_html__( 'Sponsor Email', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_phone', esc_html__( 'Sponsor Phone', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_address', esc_html__( 'Sponsor Address', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_city', esc_html__( 'Sponsor City', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_state', esc_html__( 'Sponsor State', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'sponsor_zip', esc_html__( 'Sponsor ZIP', 'hfo-golf-registration' ) ); ?>
+				<div data-hfo-golf-sponsor-fields hidden>
+					<?php $this->render_text_field( 'sponsor_program_name', esc_html__( 'Sponsor Name', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_contact_name', esc_html__( 'Sponsor Contact Name', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_email_field( 'sponsor_email', esc_html__( 'Sponsor Email', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_phone', esc_html__( 'Sponsor Phone', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_address', esc_html__( 'Sponsor Address', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_city', esc_html__( 'Sponsor City', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_state', esc_html__( 'Sponsor State', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_text_field( 'sponsor_zip', esc_html__( 'Sponsor ZIP', 'hfo-golf-registration' ) ); ?>
+				</div>
+
 			</section>
 
 			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="review" hidden>
@@ -183,7 +186,6 @@ class HFO_Golf_Registration_Form_Shortcode {
 					<dt><?php esc_html_e( 'Main Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Tee Sponsor', 'hfo-golf-registration' ); ?></dt><dd data-summary="tee_sponsor_selected"><?php esc_html_e( 'No', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-summary="subtotal">$0.00</dd>
-					<dt><?php esc_html_e( 'Discount Amount', 'hfo-golf-registration' ); ?></dt><dd data-summary="discount_amount">$0.00</dd>
 					<dt><?php esc_html_e( 'Grand Total', 'hfo-golf-registration' ); ?></dt><dd data-summary="grand_total">$0.00</dd>
 				</dl>
 			</section>

@@ -157,6 +157,11 @@ class HFO_Golf_Registration_Meta_Boxes {
 		foreach ( $this->get_fields() as $key => $field ) {
 			$this->save_meta_value( $post_id, $key, $field['type'] );
 		}
+
+		HFO_Golf_Registration_Post_Type::append_order_id_to_title(
+			$post_id,
+			get_post_meta( $post_id, 'woocommerce_order_id', true )
+		);
 	}
 
 	/**
