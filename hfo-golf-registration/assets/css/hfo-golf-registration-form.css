@@ -3,6 +3,7 @@
 	box-sizing: border-box;
 	max-width: none;
 	padding: 1rem;
+	scroll-margin-top: 120px;
 	width: 100%;
 }
 
