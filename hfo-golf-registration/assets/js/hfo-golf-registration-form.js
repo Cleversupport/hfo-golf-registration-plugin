@@ -67,6 +67,13 @@
 		return keys;
 	}
 
+	function scrollToFormTop(form) {
+		var formWrapper = form.closest('.hfo-golf-registration-form') || form.closest('[data-hfo-golf-registration-form]') || form;
+
+		if (formWrapper && typeof formWrapper.scrollIntoView === 'function') {
+			formWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	}
 
 	function getStepFieldControls(step) {
 		return Array.prototype.slice.call(step.querySelectorAll('input, select, textarea'));
@@ -322,6 +329,8 @@
 		}
 
 		function showStepByKey(stepKey) {
+			var previousStepKey = currentStepKey;
+
 			updateSponsorFieldVisibility(form);
 			calculateReview(form);
 
@@ -379,12 +388,17 @@
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
 			calculateReview(form);
+
+			return previousStepKey !== currentStepKey;
 		}
 
 		if (backButton) {
 			backButton.addEventListener('click', function () {
 				var visibleKeys = getVisibleStepKeys(getRegistrationType());
-				showStepByKey(visibleKeys[Math.max(0, visibleKeys.indexOf(currentStepKey) - 1)]);
+
+				if (showStepByKey(visibleKeys[Math.max(0, visibleKeys.indexOf(currentStepKey) - 1)])) {
+					scrollToFormTop(form);
+				}
 			});
 		}
 
@@ -398,7 +412,10 @@
 				}
 
 				var visibleKeys = getVisibleStepKeys(getRegistrationType());
-				showStepByKey(visibleKeys[Math.min(visibleKeys.length - 1, visibleKeys.indexOf(currentStepKey) + 1)]);
+
+				if (showStepByKey(visibleKeys[Math.min(visibleKeys.length - 1, visibleKeys.indexOf(currentStepKey) + 1)])) {
+					scrollToFormTop(form);
+				}
 			});
 		}
 
@@ -441,7 +458,10 @@
 			}
 
 			if (event.target && event.target.name === 'registration_type') {
-				showStepByKey(currentStepKey);
+				if (showStepByKey(currentStepKey)) {
+					scrollToFormTop(form);
+				}
+
 				updateRequiredFieldsForVisibleControls(form);
 			}
 
