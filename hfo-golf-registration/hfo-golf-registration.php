@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: HFO Golf Registration
- * Plugin URI:  https://example.com/hfo-golf-registration
+ * Plugin URI:  https://github.com/Cleversupport/hfo-golf-registration-plugin
  * Description: Base plugin structure for HFO golf events and registrations.
  * Version:     0.1.16
  * Author:      HFO
