@@ -50,11 +50,25 @@ class HFO_Golf_Registration_Settings {
 	const FRONTEND_STYLING_SECTION = 'hfo_golf_registration_frontend_styling';
 
 	/**
+	 * GitHub updater section ID.
+	 *
+	 * @var string
+	 */
+	const GITHUB_UPDATES_SECTION = 'hfo_golf_registration_github_updates';
+
+	/**
 	 * Option key for custom frontend CSS.
 	 *
 	 * @var string
 	 */
 	const CUSTOM_FRONTEND_CSS_OPTION = 'hfo_golf_registration_custom_frontend_css';
+
+	/**
+	 * Option key for the optional GitHub personal access token.
+	 *
+	 * @var string
+	 */
+	const GITHUB_TOKEN_OPTION = 'hfo_golf_registration_github_token';
 
 	/**
 	 * Action name used to create default products.
@@ -133,6 +147,16 @@ class HFO_Golf_Registration_Settings {
 			)
 		);
 
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::GITHUB_TOKEN_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_github_token' ),
+				'default'           => '',
+			)
+		);
+
 		add_settings_section(
 			self::DEFAULT_PRODUCTS_SECTION,
 			esc_html__( 'Default WooCommerce Products', 'hfo-golf-registration' ),
@@ -154,12 +178,27 @@ class HFO_Golf_Registration_Settings {
 			self::PAGE_SLUG
 		);
 
+		add_settings_section(
+			self::GITHUB_UPDATES_SECTION,
+			esc_html__( 'GitHub Updates', 'hfo-golf-registration' ),
+			array( $this, 'render_github_updates_section' ),
+			self::PAGE_SLUG
+		);
+
 		add_settings_field(
 			self::CUSTOM_FRONTEND_CSS_OPTION,
 			esc_html__( 'Custom Frontend CSS', 'hfo-golf-registration' ),
 			array( $this, 'render_custom_frontend_css_field' ),
 			self::PAGE_SLUG,
 			self::FRONTEND_STYLING_SECTION
+		);
+
+		add_settings_field(
+			self::GITHUB_TOKEN_OPTION,
+			esc_html__( 'GitHub Personal Access Token', 'hfo-golf-registration' ),
+			array( $this, 'render_github_token_field' ),
+			self::PAGE_SLUG,
+			self::GITHUB_UPDATES_SECTION
 		);
 
 		foreach ( $this->get_product_mapping_fields() as $field_key => $field ) {
@@ -261,6 +300,18 @@ class HFO_Golf_Registration_Settings {
 	}
 
 	/**
+	 * Renders the GitHub updates section description.
+	 *
+	 * @return void
+	 */
+	public function render_github_updates_section() {
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'WordPress checks GitHub Releases for plugin updates. A token is optional for public repositories and required if the GitHub repository is private.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
 	 * Renders the custom frontend CSS textarea field.
 	 *
 	 * @return void
@@ -278,6 +329,26 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p class="description">%s</p>',
 			esc_html__( 'To restore default styling, clear this field and save settings.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the optional GitHub personal access token field.
+	 *
+	 * @return void
+	 */
+	public function render_github_token_field() {
+		$has_token = '' !== (string) get_option( self::GITHUB_TOKEN_OPTION, '' );
+
+		printf(
+			'<input id="%1$s" name="%1$s" type="password" class="regular-text" value="" autocomplete="new-password" placeholder="%2$s" />',
+			esc_attr( self::GITHUB_TOKEN_OPTION ),
+			esc_attr( $has_token ? __( 'Token saved; leave blank to keep it', 'hfo-golf-registration' ) : __( 'Optional for public repositories', 'hfo-golf-registration' ) )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'Used only for GitHub API and release download requests. The saved token is never displayed back in this field.', 'hfo-golf-registration' )
 		);
 	}
 
@@ -476,6 +547,28 @@ class HFO_Golf_Registration_Settings {
 		$css = wp_strip_all_tags( $css );
 
 		return trim( $css );
+	}
+
+	/**
+	 * Sanitizes the optional GitHub personal access token before saving.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return string
+	 */
+	public function sanitize_github_token( $value ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$token = trim( sanitize_text_field( wp_unslash( $value ) ) );
+
+		if ( '' === $token ) {
+			$existing_token = get_option( self::GITHUB_TOKEN_OPTION, '' );
+
+			return is_string( $existing_token ) ? $existing_token : '';
+		}
+
+		return $token;
 	}
 
 	/**

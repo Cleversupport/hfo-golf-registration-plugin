@@ -31,6 +31,9 @@ class HFO_Golf_Registration {
 		$settings = new HFO_Golf_Registration_Settings();
 		$settings->register_hooks();
 
+		$github_updater = new HFO_Golf_Registration_GitHub_Updater();
+		$github_updater->register_hooks();
+
 		$checkout_handler = new HFO_Golf_Registration_Checkout_Handler();
 		$checkout_handler->register_hooks();
 
