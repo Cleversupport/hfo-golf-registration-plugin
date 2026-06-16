@@ -131,6 +131,18 @@
 		field.setAttribute('aria-required', required ? 'true' : 'false');
 	}
 
+	function rememberInitialRequiredFields(form) {
+		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
+			if (typeof field.dataset.hfoGolfRegistrationInitialRequired === 'undefined') {
+				field.dataset.hfoGolfRegistrationInitialRequired = field.required ? '1' : '0';
+			}
+		});
+	}
+
+	function wasInitiallyRequired(field) {
+		return field.dataset.hfoGolfRegistrationInitialRequired === '1';
+	}
+
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
 			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
@@ -138,7 +150,7 @@
 				return;
 			}
 
-			setFieldRequired(field, true);
+			setFieldRequired(field, wasInitiallyRequired(field));
 		});
 
 		updateSponsorOnlyCustomValidity(form);
@@ -301,6 +313,8 @@
 	}
 
 	function setupForm(form) {
+		rememberInitialRequiredFields(form);
+
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
