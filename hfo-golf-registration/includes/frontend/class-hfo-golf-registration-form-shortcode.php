@@ -598,20 +598,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 			if ( '1' === $meta[ $participant . '_golf_selected' ] || 'golf' === $legacy_participation_type ) {
 				$golf_qty++;
 			}
-
-			if ( '1' === $meta[ $participant . '_lunch_selected' ] || 'lunch' === $legacy_participation_type ) {
-				$lunch_qty++;
-			}
-
-			if ( '1' === $meta[ $participant . '_dinner_selected' ] || 'dinner' === $legacy_participation_type ) {
-				$dinner_qty++;
-			}
 		}
 
-		if ( 'sponsor_only' !== $meta['registration_type'] ) {
-			$lunch_qty  += absint( $meta['additional_lunch_count'] );
-			$dinner_qty += absint( $meta['additional_dinner_count'] );
-		}
+		$lunch_qty  += absint( $meta['additional_lunch_count'] );
+		$dinner_qty += absint( $meta['additional_dinner_count'] );
 
 		$sponsor_quantities = array(
 			'platinum_sponsor_qty' => '0',
