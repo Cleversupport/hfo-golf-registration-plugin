@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -60,10 +61,14 @@
 		if (registrationType === 'team') {
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['sponsorship', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -111,7 +116,7 @@
 		return getField(form, 'sponsorship_level');
 	}
 
-	function updateSponsorOnlyCustomValidity(form) {
+	function updateRegistrationCustomValidity(form) {
 		var sponsorshipLevel = getRegistrationSponsorRequirementField(form);
 
 		if (!sponsorshipLevel || typeof sponsorshipLevel.setCustomValidity !== 'function') {
@@ -124,6 +129,18 @@
 		}
 
 		sponsorshipLevel.setCustomValidity('');
+
+		var additionalLunchCount = getField(form, 'additional_lunch_count');
+		var additionalDinnerCount = getField(form, 'additional_dinner_count');
+		var requiresAdditionalGuest = getFieldValue(form, 'registration_type') === 'additional_guests';
+		var hasAdditionalGuest = getNumericFieldValue(form, 'additional_lunch_count') > 0 || getNumericFieldValue(form, 'additional_dinner_count') > 0;
+		var additionalGuestMessage = requiresAdditionalGuest && !hasAdditionalGuest ? 'Please enter at least one additional lunch or dinner guest.' : '';
+
+		[additionalLunchCount, additionalDinnerCount].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity(additionalGuestMessage);
+			}
+		});
 	}
 
 	function setFieldRequired(field, required) {
@@ -141,7 +158,7 @@
 			setFieldRequired(field, true);
 		});
 
-		updateSponsorOnlyCustomValidity(form);
+		updateRegistrationCustomValidity(form);
 	}
 
 	function validateCurrentStep(form, currentStepKey) {
@@ -228,10 +245,8 @@
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
+		dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
@@ -285,7 +300,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
