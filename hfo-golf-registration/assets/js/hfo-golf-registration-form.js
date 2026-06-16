@@ -234,6 +234,7 @@
 
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var canBillSponsorship = registrationType !== 'additional_guests';
 		var golfQty = 0;
 		var playerLunchQty = 0;
 		var playerDinnerQty = 0;
@@ -265,11 +266,11 @@
 			(additionalLunchQty * getPrice(form, 'lunchPrice')) +
 			(additionalDinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
+		if (canBillSponsorship && sponsorLevel) {
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
 		}
 
-		if (teeSponsorSelected) {
+		if (canBillSponsorship && teeSponsorSelected) {
 			subtotal += getPrice(form, 'teeSponsorPrice');
 		}
 
@@ -279,8 +280,8 @@
 		setSummary(form, 'player_dinner_qty', String(playerDinnerQty));
 		setSummary(form, 'additional_lunch_qty', String(additionalLunchQty));
 		setSummary(form, 'additional_dinner_qty', String(additionalDinnerQty));
-		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
-		setSummary(form, 'tee_sponsor_selected', teeSponsorSelected ? 'Yes' : 'No');
+		setSummary(form, 'sponsorship_level', canBillSponsorship ? (SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']) : SPONSOR_LABELS['']);
+		setSummary(form, 'tee_sponsor_selected', canBillSponsorship && teeSponsorSelected ? 'Yes' : 'No');
 		setSummary(form, 'subtotal', money(subtotal));
 		setSummary(form, 'discount_amount', money(0));
 		setSummary(form, 'grand_total', money(subtotal));
