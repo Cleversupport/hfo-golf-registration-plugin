@@ -141,7 +141,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_participant_fields( 'member_4', esc_html__( 'Member #4', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="additional_guests" data-player-only hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="additional_guests" hidden>
 				<h3><?php esc_html_e( 'Step 7: Additional Guests', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_number_field( 'additional_lunch_count', esc_html__( 'Additional Lunch Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_number_field( 'additional_dinner_count', esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ) ); ?>
@@ -181,8 +181,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<dl class="hfo-golf-registration-review" aria-live="polite">
 					<dt><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></dt><dd data-summary="registration_type">&mdash;</dd>
 					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="golf_qty">0</dd>
-					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
-					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
+					<dt><?php esc_html_e( 'Player Lunch Attendance', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_lunch_qty">0</dd>
+					<dt><?php esc_html_e( 'Player Dinner Attendance', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_dinner_qty">0</dd>
+					<dt><?php esc_html_e( 'Additional Guest Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
+					<dt><?php esc_html_e( 'Additional Guest Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
 					<dt><?php esc_html_e( 'Main Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Tee Sponsor', 'hfo-golf-registration' ); ?></dt><dd data-summary="tee_sponsor_selected"><?php esc_html_e( 'No', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-summary="subtotal">$0.00</dd>
@@ -588,9 +590,11 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function calculate_quantities_and_totals( $event_id, $meta ) {
-		$golf_qty   = 0;
-		$lunch_qty  = 0;
-		$dinner_qty = 0;
+		$golf_qty          = 0;
+		$player_lunch_qty  = 0;
+		$player_dinner_qty = 0;
+		$lunch_qty         = 0;
+		$dinner_qty        = 0;
 
 		foreach ( $this->get_visible_participant_keys_for_registration_type( $meta['registration_type'] ) as $participant ) {
 			$legacy_participation_type = isset( $meta[ $participant . '_participation_type' ] ) ? $meta[ $participant . '_participation_type' ] : '';
@@ -600,18 +604,16 @@ class HFO_Golf_Registration_Form_Shortcode {
 			}
 
 			if ( '1' === $meta[ $participant . '_lunch_selected' ] || 'lunch' === $legacy_participation_type ) {
-				$lunch_qty++;
+				$player_lunch_qty++;
 			}
 
 			if ( '1' === $meta[ $participant . '_dinner_selected' ] || 'dinner' === $legacy_participation_type ) {
-				$dinner_qty++;
+				$player_dinner_qty++;
 			}
 		}
 
-		if ( 'sponsor_only' !== $meta['registration_type'] ) {
-			$lunch_qty  += absint( $meta['additional_lunch_count'] );
-			$dinner_qty += absint( $meta['additional_dinner_count'] );
-		}
+		$lunch_qty  = absint( $meta['additional_lunch_count'] );
+		$dinner_qty = absint( $meta['additional_dinner_count'] );
 
 		$sponsor_quantities = array(
 			'platinum_sponsor_qty' => '0',
@@ -642,11 +644,13 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		return array_merge(
 			array(
-				'golf_qty'    => (string) $golf_qty,
-				'lunch_qty'   => (string) $lunch_qty,
-				'dinner_qty'  => (string) $dinner_qty,
-				'subtotal'    => number_format( (float) $subtotal, 2, '.', '' ),
-				'grand_total' => number_format( (float) $subtotal, 2, '.', '' ),
+				'golf_qty'          => (string) $golf_qty,
+				'player_lunch_qty'  => (string) $player_lunch_qty,
+				'player_dinner_qty' => (string) $player_dinner_qty,
+				'lunch_qty'         => (string) $lunch_qty,
+				'dinner_qty'        => (string) $dinner_qty,
+				'subtotal'          => number_format( (float) $subtotal, 2, '.', '' ),
+				'grand_total'       => number_format( (float) $subtotal, 2, '.', '' ),
 			),
 			$sponsor_quantities
 		);
@@ -914,7 +918,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<li data-step-key="member_2" data-team-only><?php esc_html_e( 'Member #2', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="member_3" data-team-only><?php esc_html_e( 'Member #3', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="member_4" data-team-only><?php esc_html_e( 'Member #4', 'hfo-golf-registration' ); ?></li>
-			<li data-step-key="additional_guests" data-player-only><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
+			<li data-step-key="additional_guests"><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="sponsorship"><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="review"><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
 		</ol>
