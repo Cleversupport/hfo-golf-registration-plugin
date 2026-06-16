@@ -181,8 +181,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<dl class="hfo-golf-registration-review" aria-live="polite">
 					<dt><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></dt><dd data-summary="registration_type">&mdash;</dd>
 					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="golf_qty">0</dd>
-					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
-					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
+					<dt><?php esc_html_e( 'Player Lunch Attendance', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_lunch_attendance">0</dd>
+					<dt><?php esc_html_e( 'Player Dinner Attendance', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_dinner_attendance">0</dd>
+					<dt><?php esc_html_e( 'Additional Lunch Guests', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
+					<dt><?php esc_html_e( 'Additional Dinner Guests', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
 					<dt><?php esc_html_e( 'Main Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Tee Sponsor', 'hfo-golf-registration' ); ?></dt><dd data-summary="tee_sponsor_selected"><?php esc_html_e( 'No', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-summary="subtotal">$0.00</dd>
@@ -589,8 +591,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 */
 	private function calculate_quantities_and_totals( $event_id, $meta ) {
 		$golf_qty   = 0;
-		$lunch_qty  = 0;
-		$dinner_qty = 0;
+		$lunch_qty  = absint( $meta['additional_lunch_count'] );
+		$dinner_qty = absint( $meta['additional_dinner_count'] );
 
 		foreach ( $this->get_visible_participant_keys_for_registration_type( $meta['registration_type'] ) as $participant ) {
 			$legacy_participation_type = isset( $meta[ $participant . '_participation_type' ] ) ? $meta[ $participant . '_participation_type' ] : '';
@@ -598,19 +600,6 @@ class HFO_Golf_Registration_Form_Shortcode {
 			if ( '1' === $meta[ $participant . '_golf_selected' ] || 'golf' === $legacy_participation_type ) {
 				$golf_qty++;
 			}
-
-			if ( '1' === $meta[ $participant . '_lunch_selected' ] || 'lunch' === $legacy_participation_type ) {
-				$lunch_qty++;
-			}
-
-			if ( '1' === $meta[ $participant . '_dinner_selected' ] || 'dinner' === $legacy_participation_type ) {
-				$dinner_qty++;
-			}
-		}
-
-		if ( 'sponsor_only' !== $meta['registration_type'] ) {
-			$lunch_qty  += absint( $meta['additional_lunch_count'] );
-			$dinner_qty += absint( $meta['additional_dinner_count'] );
 		}
 
 		$sponsor_quantities = array(

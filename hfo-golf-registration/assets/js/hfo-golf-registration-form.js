@@ -61,6 +61,8 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'sponsor_only') {
+			keys.push('additional_guests');
 		}
 
 		keys.push('sponsorship', 'review');
@@ -204,8 +206,10 @@
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
-		var lunchQty = 0;
-		var dinnerQty = 0;
+		var playerLunchAttendance = 0;
+		var playerDinnerAttendance = 0;
+		var lunchQty = getNumericFieldValue(form, 'additional_lunch_count');
+		var dinnerQty = getNumericFieldValue(form, 'additional_dinner_count');
 		var participantKeys = [];
 
 		if (registrationType === 'team') {
@@ -220,18 +224,13 @@
 			}
 
 			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
+				playerLunchAttendance += 1;
 			}
 
 			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
+				playerDinnerAttendance += 1;
 			}
 		});
-
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
@@ -249,6 +248,8 @@
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
+		setSummary(form, 'player_lunch_attendance', String(playerLunchAttendance));
+		setSummary(form, 'player_dinner_attendance', String(playerDinnerAttendance));
 		setSummary(form, 'lunch_qty', String(lunchQty));
 		setSummary(form, 'dinner_qty', String(dinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
