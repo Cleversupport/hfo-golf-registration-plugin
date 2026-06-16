@@ -101,9 +101,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 					'registration_type',
 					esc_html__( 'Registration Type', 'hfo-golf-registration' ),
 					array(
-						'team'         => esc_html__( 'Team', 'hfo-golf-registration' ),
-						'individual'   => esc_html__( 'Individual', 'hfo-golf-registration' ),
-						'sponsor_only' => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'team'              => esc_html__( 'Team', 'hfo-golf-registration' ),
+						'individual'        => esc_html__( 'Individual', 'hfo-golf-registration' ),
+						'sponsor_only'      => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'additional_guests' => esc_html__( 'Additional Guests', 'hfo-golf-registration' ),
 					),
 					true
 				);
@@ -141,7 +142,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_participant_fields( 'member_4', esc_html__( 'Member #4', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="additional_guests" data-player-only hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="additional_guests" hidden>
 				<h3><?php esc_html_e( 'Step 7: Additional Guests', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_number_field( 'additional_lunch_count', esc_html__( 'Additional Lunch Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_number_field( 'additional_dinner_count', esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ) ); ?>
@@ -334,12 +335,16 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		$meta = $this->get_sanitized_submission_meta( $event_id );
 
-		if ( 'sponsor_only' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
+		if ( 'individual' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
 		}
 
 		if ( 'sponsor_only' === $meta['registration_type'] && '' !== $meta['sponsor_email'] && ! is_email( $meta['sponsor_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid sponsor email address.', 'hfo-golf-registration' ) );
+		}
+
+		if ( 'additional_guests' === $meta['registration_type'] && 0 === ( absint( $meta['additional_lunch_count'] ) + absint( $meta['additional_dinner_count'] ) ) ) {
+			wp_die( esc_html__( 'Please add at least one additional lunch or dinner guest.', 'hfo-golf-registration' ) );
 		}
 
 		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] && '1' !== $meta['tee_sponsor_selected'] ) {
@@ -433,7 +438,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function get_sanitized_submission_meta( $event_id ) {
-		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only' ), 'individual' );
+		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only', 'additional_guests' ), 'individual' );
 		$sponsorship_level    = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
 		$tee_sponsor_selected = $this->sanitize_post_checkbox( 'tee_sponsor_selected' );
 
@@ -526,8 +531,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		if ( 'individual' === $registration_type ) {
 			$participants_to_clear = array( 'member_2', 'member_3', 'member_4' );
-		} elseif ( 'sponsor_only' === $registration_type ) {
+		} elseif ( 'sponsor_only' === $registration_type || 'additional_guests' === $registration_type ) {
 			$participants_to_clear = array( 'captain', 'member_2', 'member_3', 'member_4' );
+		}
+
+		if ( 'additional_guests' === $registration_type || ( '' === $meta['sponsorship_level'] && '1' !== $meta['tee_sponsor_selected'] ) ) {
+			$meta = $this->clear_sponsor_meta( $meta );
 		}
 
 		foreach ( $participants_to_clear as $participant ) {
@@ -551,6 +560,23 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		foreach ( array( 'name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'handicap', 'participation_type' ) as $contact_field ) {
 			$meta[ $participant . '_' . $contact_field ] = '';
+		}
+
+		return $meta;
+	}
+
+	/**
+	 * Clears sponsor fields when the selected registration type cannot include sponsorships.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return array<string,string>
+	 */
+	private function clear_sponsor_meta( $meta ) {
+		$meta['sponsorship_level']    = '';
+		$meta['tee_sponsor_selected'] = '0';
+
+		foreach ( array( 'sponsor_program_name', 'sponsor_contact_name', 'sponsor_email', 'sponsor_phone', 'sponsor_address', 'sponsor_city', 'sponsor_state', 'sponsor_zip' ) as $field ) {
+			$meta[ $field ] = '';
 		}
 
 		return $meta;
@@ -608,10 +634,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			}
 		}
 
-		if ( 'sponsor_only' !== $meta['registration_type'] ) {
-			$lunch_qty  += absint( $meta['additional_lunch_count'] );
-			$dinner_qty += absint( $meta['additional_dinner_count'] );
-		}
+		$lunch_qty  += absint( $meta['additional_lunch_count'] );
+		$dinner_qty += absint( $meta['additional_dinner_count'] );
 
 		$sponsor_quantities = array(
 			'platinum_sponsor_qty' => '0',
@@ -914,7 +938,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<li data-step-key="member_2" data-team-only><?php esc_html_e( 'Member #2', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="member_3" data-team-only><?php esc_html_e( 'Member #3', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="member_4" data-team-only><?php esc_html_e( 'Member #4', 'hfo-golf-registration' ); ?></li>
-			<li data-step-key="additional_guests" data-player-only><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
+			<li data-step-key="additional_guests"><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="sponsorship"><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="review"><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
 		</ol>

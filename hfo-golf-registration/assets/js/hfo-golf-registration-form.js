@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -58,12 +59,16 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['main_contact', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -142,6 +147,51 @@
 		});
 
 		updateSponsorOnlyCustomValidity(form);
+		updateAdditionalGuestsCustomValidity(form);
+	}
+
+	function updateAdditionalGuestsCustomValidity(form) {
+		var lunchField = getField(form, 'additional_lunch_count');
+		var dinnerField = getField(form, 'additional_dinner_count');
+
+		if (getFieldValue(form, 'registration_type') !== 'additional_guests') {
+			[lunchField, dinnerField].forEach(function (field) {
+				if (field && typeof field.setCustomValidity === 'function') {
+					field.setCustomValidity('');
+				}
+			});
+
+			return true;
+		}
+
+		var guestCount = getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count');
+		var message = 'Please add at least one additional lunch or dinner guest.';
+
+		[lunchField, dinnerField].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity(guestCount > 0 ? '' : message);
+			}
+		});
+
+		return guestCount > 0;
+	}
+
+	function validateAdditionalGuestsStep(form) {
+		if (updateAdditionalGuestsCustomValidity(form)) {
+			return true;
+		}
+
+		var lunchField = getField(form, 'additional_lunch_count');
+
+		if (lunchField && typeof lunchField.reportValidity === 'function') {
+			lunchField.reportValidity();
+		}
+
+		if (lunchField && typeof lunchField.focus === 'function') {
+			lunchField.focus();
+		}
+
+		return false;
 	}
 
 	function validateCurrentStep(form, currentStepKey) {
@@ -151,6 +201,10 @@
 
 		if (!currentStep || currentStep.hidden) {
 			return true;
+		}
+
+		if (currentStepKey === 'additional_guests' && !validateAdditionalGuestsStep(form)) {
+			return false;
 		}
 
 		var controls = getStepFieldControls(currentStep).filter(function (field) {
@@ -183,8 +237,9 @@
 	}
 
 	function updateSponsorFieldVisibility(form) {
-		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
-		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var sponsorLevel = registrationType === 'additional_guests' ? '' : getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = registrationType === 'additional_guests' ? false : isChecked(form, 'tee_sponsor_selected');
 		var showSponsorFields = sponsorLevel !== '' || teeSponsorSelected;
 		var sponsorFields = form.querySelector('[data-hfo-golf-sponsor-fields]');
 
@@ -228,13 +283,11 @@
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
+		dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 
-		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
-		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var sponsorLevel = registrationType === 'additional_guests' ? '' : getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = registrationType === 'additional_guests' ? false : isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
@@ -285,7 +338,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
@@ -298,6 +351,31 @@
 				}
 			});
 		});
+	}
+
+	function normalizeSponsorFieldsBeforeSubmit(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var shouldClearSponsorFields = registrationType === 'additional_guests' || (sponsorLevel === '' && !teeSponsorSelected);
+
+		if (!shouldClearSponsorFields) {
+			return;
+		}
+
+		['sponsorship_level', 'sponsor_program_name', 'sponsor_contact_name', 'sponsor_email', 'sponsor_phone', 'sponsor_address', 'sponsor_city', 'sponsor_state', 'sponsor_zip'].forEach(function (fieldName) {
+			var field = getField(form, fieldName);
+
+			if (field) {
+				field.value = '';
+			}
+		});
+
+		var teeSponsorField = getField(form, 'tee_sponsor_selected');
+
+		if (teeSponsorField) {
+			teeSponsorField.checked = false;
+		}
 	}
 
 	function setupForm(form) {
@@ -432,6 +510,7 @@
 				}
 
 				normalizeHiddenParticipantsBeforeSubmit(form);
+				normalizeSponsorFieldsBeforeSubmit(form);
 				updateSponsorFieldVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
 
@@ -447,6 +526,7 @@
 			}
 
 			normalizeHiddenParticipantsBeforeSubmit(form);
+			normalizeSponsorFieldsBeforeSubmit(form);
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
 		});
