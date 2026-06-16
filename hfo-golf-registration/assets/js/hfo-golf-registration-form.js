@@ -11,6 +11,7 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
+		additional_guests: 'Additional Guests',
 		sponsor_only: 'Sponsor Only'
 	};
 	var OPTIONAL_FIELD_NAMES = [
@@ -61,9 +62,15 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		if (registrationType !== 'additional_guests') {
+			keys.push('sponsorship');
+		}
+
+		keys.push('review');
 		return keys;
 	}
 
@@ -131,6 +138,36 @@
 		field.setAttribute('aria-required', required ? 'true' : 'false');
 	}
 
+	function updateAdditionalGuestsCustomValidity(form) {
+		var registrationType = getFieldValue(form, 'registration_type');
+		var lunchCount = getField(form, 'additional_lunch_count');
+		var dinnerCount = getField(form, 'additional_dinner_count');
+		var guestsDetails = getField(form, 'additional_guests_details');
+		var countMessage = 'Please enter at least one additional lunch or dinner guest.';
+		var shouldValidate = registrationType === 'additional_guests';
+		var hasAdditionalGuestCount = getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count') > 0;
+
+		if (guestsDetails) {
+			setFieldRequired(guestsDetails, shouldValidate);
+		}
+
+		[lunchCount, dinnerCount].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity('');
+			}
+		});
+
+		if (!shouldValidate || hasAdditionalGuestCount) {
+			return;
+		}
+
+		if (lunchCount && typeof lunchCount.setCustomValidity === 'function') {
+			lunchCount.setCustomValidity(countMessage);
+		} else if (dinnerCount && typeof dinnerCount.setCustomValidity === 'function') {
+			dinnerCount.setCustomValidity(countMessage);
+		}
+	}
+
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
 			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
@@ -142,6 +179,7 @@
 		});
 
 		updateSponsorOnlyCustomValidity(form);
+		updateAdditionalGuestsCustomValidity(form);
 	}
 
 	function validateCurrentStep(form, currentStepKey) {
@@ -285,7 +323,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
