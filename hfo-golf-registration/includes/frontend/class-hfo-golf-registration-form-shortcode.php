@@ -101,9 +101,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 					'registration_type',
 					esc_html__( 'Registration Type', 'hfo-golf-registration' ),
 					array(
-						'team'         => esc_html__( 'Team', 'hfo-golf-registration' ),
-						'individual'   => esc_html__( 'Individual', 'hfo-golf-registration' ),
-						'sponsor_only' => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'team'              => esc_html__( 'Team', 'hfo-golf-registration' ),
+						'individual'        => esc_html__( 'Individual', 'hfo-golf-registration' ),
+						'sponsor_only'      => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'additional_guests' => esc_html__( 'Additional Guests', 'hfo-golf-registration' ),
 					),
 					true
 				);
@@ -433,7 +434,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function get_sanitized_submission_meta( $event_id ) {
-		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only' ), 'individual' );
+		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only', 'additional_guests' ), 'individual' );
 		$sponsorship_level    = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
 		$tee_sponsor_selected = $this->sanitize_post_checkbox( 'tee_sponsor_selected' );
 
@@ -477,6 +478,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 		}
 
 		$meta = $this->normalize_participant_meta_for_registration_type( $meta );
+		$meta = $this->normalize_sponsor_meta_for_registration_type( $meta );
 
 		$calculated = $this->calculate_quantities_and_totals( $event_id, $meta );
 
@@ -526,7 +528,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		if ( 'individual' === $registration_type ) {
 			$participants_to_clear = array( 'member_2', 'member_3', 'member_4' );
-		} elseif ( 'sponsor_only' === $registration_type ) {
+		} elseif ( 'sponsor_only' === $registration_type || 'additional_guests' === $registration_type ) {
 			$participants_to_clear = array( 'captain', 'member_2', 'member_3', 'member_4' );
 		}
 
@@ -580,6 +582,29 @@ class HFO_Golf_Registration_Form_Shortcode {
 		return $meta;
 	}
 
+
+	/**
+	 * Normalizes sponsor meta for the selected registration type.
+	 *
+	 * Sponsor fields are only billable and saved for Sponsor Only registrations.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return array<string,string>
+	 */
+	private function normalize_sponsor_meta_for_registration_type( $meta ) {
+		if ( 'sponsor_only' === $meta['registration_type'] ) {
+			return $meta;
+		}
+
+		foreach ( array( 'sponsorship_level', 'sponsor_program_name', 'sponsor_contact_name', 'sponsor_email', 'sponsor_phone', 'sponsor_address', 'sponsor_city', 'sponsor_state', 'sponsor_zip' ) as $sponsor_field ) {
+			$meta[ $sponsor_field ] = '';
+		}
+
+		$meta['tee_sponsor_selected'] = '0';
+
+		return $meta;
+	}
+
 	/**
 	 * Calculates basic checkout quantities and totals from submitted meta.
 	 *
@@ -620,16 +645,18 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'tee_sponsor_qty'      => '0',
 		);
 
-		if ( 'platinum' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['platinum_sponsor_qty'] = '1';
-		} elseif ( 'gold' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['gold_sponsor_qty'] = '1';
-		} elseif ( 'silver' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['silver_sponsor_qty'] = '1';
-		}
+		if ( 'sponsor_only' === $meta['registration_type'] ) {
+			if ( 'platinum' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['platinum_sponsor_qty'] = '1';
+			} elseif ( 'gold' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['gold_sponsor_qty'] = '1';
+			} elseif ( 'silver' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['silver_sponsor_qty'] = '1';
+			}
 
-		if ( '1' === $meta['tee_sponsor_selected'] ) {
-			$sponsor_quantities['tee_sponsor_qty'] = '1';
+			if ( '1' === $meta['tee_sponsor_selected'] ) {
+				$sponsor_quantities['tee_sponsor_qty'] = '1';
+			}
 		}
 
 		$subtotal = ( $golf_qty * $this->get_event_price( $event_id, 'golf_price' ) )

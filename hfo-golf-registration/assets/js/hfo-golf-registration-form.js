@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -61,9 +62,13 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
+		} else if (registrationType === 'sponsor_only') {
+			keys.push('sponsorship');
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -239,12 +244,14 @@
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
-			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
-		}
+		if (registrationType === 'sponsor_only') {
+			if (sponsorLevel) {
+				subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
+			}
 
-		if (teeSponsorSelected) {
-			subtotal += getPrice(form, 'teeSponsorPrice');
+			if (teeSponsorSelected) {
+				subtotal += getPrice(form, 'teeSponsorPrice');
+			}
 		}
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
@@ -285,7 +292,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
