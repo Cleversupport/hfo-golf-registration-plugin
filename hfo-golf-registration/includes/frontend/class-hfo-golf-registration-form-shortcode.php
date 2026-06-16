@@ -620,16 +620,18 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'tee_sponsor_qty'      => '0',
 		);
 
-		if ( 'platinum' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['platinum_sponsor_qty'] = '1';
-		} elseif ( 'gold' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['gold_sponsor_qty'] = '1';
-		} elseif ( 'silver' === $meta['sponsorship_level'] ) {
-			$sponsor_quantities['silver_sponsor_qty'] = '1';
-		}
+		if ( 'sponsor_only' === $meta['registration_type'] ) {
+			if ( 'platinum' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['platinum_sponsor_qty'] = '1';
+			} elseif ( 'gold' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['gold_sponsor_qty'] = '1';
+			} elseif ( 'silver' === $meta['sponsorship_level'] ) {
+				$sponsor_quantities['silver_sponsor_qty'] = '1';
+			}
 
-		if ( '1' === $meta['tee_sponsor_selected'] ) {
-			$sponsor_quantities['tee_sponsor_qty'] = '1';
+			if ( '1' === $meta['tee_sponsor_selected'] ) {
+				$sponsor_quantities['tee_sponsor_qty'] = '1';
+			}
 		}
 
 		$subtotal = ( $golf_qty * $this->get_event_price( $event_id, 'golf_price' ) )

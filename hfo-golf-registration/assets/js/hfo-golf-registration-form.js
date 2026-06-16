@@ -239,12 +239,14 @@
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
-			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
-		}
+		if (registrationType === 'sponsor_only') {
+			if (sponsorLevel) {
+				subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
+			}
 
-		if (teeSponsorSelected) {
-			subtotal += getPrice(form, 'teeSponsorPrice');
+			if (teeSponsorSelected) {
+				subtotal += getPrice(form, 'teeSponsorPrice');
+			}
 		}
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
