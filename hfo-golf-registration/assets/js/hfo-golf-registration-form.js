@@ -11,6 +11,7 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
+		additional_guests: 'Additional Guests',
 		sponsor_only: 'Sponsor Only'
 	};
 	var OPTIONAL_FIELD_NAMES = [
@@ -61,6 +62,8 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
 		keys.push('sponsorship', 'review');
@@ -126,6 +129,34 @@
 		sponsorshipLevel.setCustomValidity('');
 	}
 
+	function updateAdditionalGuestsCustomValidity(form) {
+		var registrationType = getFieldValue(form, 'registration_type');
+		var detailsField = getField(form, 'additional_guests_details');
+		var lunchCountField = getField(form, 'additional_lunch_count');
+		var dinnerCountField = getField(form, 'additional_dinner_count');
+		var lunchCount = getNumericFieldValue(form, 'additional_lunch_count');
+		var dinnerCount = getNumericFieldValue(form, 'additional_dinner_count');
+		var countMessage = 'Please enter at least one additional lunch or dinner guest.';
+
+		[detailsField, lunchCountField, dinnerCountField].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity('');
+			}
+		});
+
+		if (registrationType !== 'additional_guests') {
+			return;
+		}
+
+		if (detailsField && typeof detailsField.setCustomValidity === 'function' && detailsField.value.trim() === '') {
+			detailsField.setCustomValidity('Please fill out this field.');
+		}
+
+		if (lunchCount + dinnerCount <= 0 && lunchCountField && typeof lunchCountField.setCustomValidity === 'function') {
+			lunchCountField.setCustomValidity(countMessage);
+		}
+	}
+
 	function setFieldRequired(field, required) {
 		field.required = required;
 		field.setAttribute('aria-required', required ? 'true' : 'false');
@@ -142,6 +173,7 @@
 		});
 
 		updateSponsorOnlyCustomValidity(form);
+		updateAdditionalGuestsCustomValidity(form);
 	}
 
 	function validateCurrentStep(form, currentStepKey) {
@@ -285,7 +317,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 

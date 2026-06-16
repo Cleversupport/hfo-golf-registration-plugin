@@ -101,9 +101,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 					'registration_type',
 					esc_html__( 'Registration Type', 'hfo-golf-registration' ),
 					array(
-						'team'         => esc_html__( 'Team', 'hfo-golf-registration' ),
-						'individual'   => esc_html__( 'Individual', 'hfo-golf-registration' ),
-						'sponsor_only' => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'team'              => esc_html__( 'Team', 'hfo-golf-registration' ),
+						'individual'        => esc_html__( 'Individual', 'hfo-golf-registration' ),
+						'additional_guests' => esc_html__( 'Additional Guests', 'hfo-golf-registration' ),
+						'sponsor_only'      => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
 					),
 					true
 				);
@@ -334,7 +335,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		$meta = $this->get_sanitized_submission_meta( $event_id );
 
-		if ( 'sponsor_only' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
+		if ( 'additional_guests' === $meta['registration_type'] ) {
+			$this->validate_additional_guests_submission( $meta );
+		} elseif ( 'sponsor_only' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
 		}
 
@@ -381,6 +384,31 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$checkout_handler->send_registration_to_checkout( $registration_id );
 	}
 
+	/**
+	 * Validates additional guests-only registrations.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return void
+	 */
+	private function validate_additional_guests_submission( $meta ) {
+		foreach ( array( 'main_contact_name', 'main_contact_email', 'main_contact_phone', 'main_contact_address', 'main_contact_city', 'main_contact_state', 'main_contact_zip' ) as $field_key ) {
+			if ( '' === $meta[ $field_key ] ) {
+				wp_die( esc_html__( 'Please complete all main contact fields.', 'hfo-golf-registration' ) );
+			}
+		}
+
+		if ( ! is_email( $meta['main_contact_email'] ) ) {
+			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
+		}
+
+		if ( '' === $meta['additional_guests_details'] ) {
+			wp_die( esc_html__( 'Please enter additional guests details.', 'hfo-golf-registration' ) );
+		}
+
+		if ( absint( $meta['additional_lunch_count'] ) + absint( $meta['additional_dinner_count'] ) <= 0 ) {
+			wp_die( esc_html__( 'Please enter at least one additional lunch or dinner guest.', 'hfo-golf-registration' ) );
+		}
+	}
 
 	/**
 	 * Gets the best available contact label for the registration post title.
@@ -433,7 +461,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function get_sanitized_submission_meta( $event_id ) {
-		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only' ), 'individual' );
+		$registration_type    = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'additional_guests', 'sponsor_only' ), 'individual' );
 		$sponsorship_level    = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
 		$tee_sponsor_selected = $this->sanitize_post_checkbox( 'tee_sponsor_selected' );
 
@@ -526,7 +554,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		if ( 'individual' === $registration_type ) {
 			$participants_to_clear = array( 'member_2', 'member_3', 'member_4' );
-		} elseif ( 'sponsor_only' === $registration_type ) {
+		} elseif ( 'sponsor_only' === $registration_type || 'additional_guests' === $registration_type ) {
 			$participants_to_clear = array( 'captain', 'member_2', 'member_3', 'member_4' );
 		}
 
