@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -35,7 +36,16 @@
 
 	function isChecked(form, name) {
 		var field = getField(form, name);
-		return !!(field && field.checked);
+
+		if (!field) {
+			return false;
+		}
+
+		if (field.type === 'hidden') {
+			return field.value === '1';
+		}
+
+		return !!field.checked;
 	}
 
 	function getPrice(form, key) {
@@ -58,12 +68,16 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['sponsorship', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -204,8 +218,10 @@
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
-		var lunchQty = 0;
-		var dinnerQty = 0;
+		var lunchQty = getNumericFieldValue(form, 'additional_lunch_count');
+		var dinnerQty = getNumericFieldValue(form, 'additional_dinner_count');
+		var playerLunchAttendance = 0;
+		var playerDinnerAttendance = 0;
 		var participantKeys = [];
 
 		if (registrationType === 'team') {
@@ -220,18 +236,13 @@
 			}
 
 			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
+				playerLunchAttendance += 1;
 			}
 
 			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
+				playerDinnerAttendance += 1;
 			}
 		});
-
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
@@ -239,16 +250,20 @@
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
-			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
-		}
+		if (registrationType !== 'additional_guests') {
+			if (sponsorLevel) {
+				subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
+			}
 
-		if (teeSponsorSelected) {
-			subtotal += getPrice(form, 'teeSponsorPrice');
+			if (teeSponsorSelected) {
+				subtotal += getPrice(form, 'teeSponsorPrice');
+			}
 		}
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
+		setSummary(form, 'player_lunch_attendance', String(playerLunchAttendance));
+		setSummary(form, 'player_dinner_attendance', String(playerDinnerAttendance));
 		setSummary(form, 'lunch_qty', String(lunchQty));
 		setSummary(form, 'dinner_qty', String(dinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
@@ -285,7 +300,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
@@ -294,7 +309,11 @@
 				var field = getField(form, participantKey + '_' + selectionKey);
 
 				if (field) {
-					field.checked = false;
+					if (field.type === 'hidden') {
+						field.value = '0';
+					} else {
+						field.checked = false;
+					}
 				}
 			});
 		});

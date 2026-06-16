@@ -666,12 +666,20 @@ class HFO_Golf_Registration_Meta_Boxes {
 						'label' => esc_html__( 'Golf Quantity', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
-					'lunch_qty'            => array(
-						'label' => esc_html__( 'Lunch Quantity', 'hfo-golf-registration' ),
+					'player_lunch_attendance'  => array(
+						'label' => esc_html__( 'Player Lunch Attendance', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
-					'dinner_qty'           => array(
-						'label' => esc_html__( 'Dinner Quantity', 'hfo-golf-registration' ),
+					'player_dinner_attendance' => array(
+						'label' => esc_html__( 'Player Dinner Attendance', 'hfo-golf-registration' ),
+						'type'  => 'count',
+					),
+					'lunch_qty'                => array(
+						'label' => esc_html__( 'Additional Lunch Guests', 'hfo-golf-registration' ),
+						'type'  => 'count',
+					),
+					'dinner_qty'               => array(
+						'label' => esc_html__( 'Additional Dinner Guests', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
 					'platinum_sponsor_qty' => array(
