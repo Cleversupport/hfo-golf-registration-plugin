@@ -11,9 +11,10 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
-	var OPTIONAL_FIELD_NAMES = [
+	var ADDITIONAL_GUEST_FIELD_NAMES = [
 		'additional_lunch_count',
 		'additional_dinner_count',
 		'additional_guests_details'
@@ -58,12 +59,16 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['sponsorship', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -95,8 +100,16 @@
 		return field.type === 'checkbox' || field.type === 'radio';
 	}
 
-	function isOptionalField(field) {
-		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
+	function isOptionalField(field, form) {
+		if (field.name && field.name.indexOf('_handicap') !== -1) {
+			return true;
+		}
+
+		if (ADDITIONAL_GUEST_FIELD_NAMES.indexOf(field.name) !== -1) {
+			return getFieldValue(form, 'registration_type') !== 'additional_guests';
+		}
+
+		return false;
 	}
 
 	function shouldSkipGenericRequired(field, form) {
@@ -133,7 +146,7 @@
 
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
-			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
+			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field, form) || shouldSkipGenericRequired(field, form)) {
 				setFieldRequired(field, false);
 				return;
 			}
@@ -167,6 +180,14 @@
 			return false;
 		});
 
+		if (!invalidField && currentStepKey === 'additional_guests' && getFieldValue(form, 'registration_type') === 'additional_guests' && getNumericFieldValue(form, 'additional_lunch_count') === 0 && getNumericFieldValue(form, 'additional_dinner_count') === 0) {
+			invalidField = getField(form, 'additional_lunch_count') || getField(form, 'additional_dinner_count');
+
+			if (invalidField && typeof invalidField.setCustomValidity === 'function') {
+				invalidField.setCustomValidity('Please add at least one lunch or dinner guest.');
+			}
+		}
+
 		if (!invalidField) {
 			return true;
 		}
@@ -177,6 +198,10 @@
 
 		if (typeof invalidField.focus === 'function') {
 			invalidField.focus();
+		}
+
+		if (typeof invalidField.setCustomValidity === 'function') {
+			invalidField.setCustomValidity('');
 		}
 
 		return false;
@@ -204,8 +229,10 @@
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
-		var lunchQty = 0;
-		var dinnerQty = 0;
+		var playerLunchAttendance = 0;
+		var playerDinnerAttendance = 0;
+		var lunchQty = getNumericFieldValue(form, 'additional_lunch_count');
+		var dinnerQty = getNumericFieldValue(form, 'additional_dinner_count');
 		var participantKeys = [];
 
 		if (registrationType === 'team') {
@@ -215,29 +242,27 @@
 		}
 
 		participantKeys.forEach(function (participantKey) {
-			if (isChecked(form, participantKey + '_golf_selected')) {
-				golfQty += 1;
-			}
+			golfQty += 1;
 
 			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
+				playerLunchAttendance += 1;
 			}
 
 			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
+				playerDinnerAttendance += 1;
 			}
 		});
-
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
+
+		if (registrationType === 'additional_guests') {
+			sponsorLevel = '';
+			teeSponsorSelected = false;
+		}
 
 		if (sponsorLevel) {
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
@@ -249,6 +274,8 @@
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
+		setSummary(form, 'player_lunch_attendance', String(playerLunchAttendance));
+		setSummary(form, 'player_dinner_attendance', String(playerDinnerAttendance));
 		setSummary(form, 'lunch_qty', String(lunchQty));
 		setSummary(form, 'dinner_qty', String(dinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
@@ -285,7 +312,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
