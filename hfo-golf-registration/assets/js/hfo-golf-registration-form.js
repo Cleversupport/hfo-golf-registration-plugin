@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -61,9 +62,15 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		if (registrationType !== 'additional_guests') {
+			keys.push('sponsorship');
+		}
+
+		keys.push('review');
 		return keys;
 	}
 
@@ -183,8 +190,15 @@
 	}
 
 	function updateSponsorFieldVisibility(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+
+		if (registrationType === 'additional_guests') {
+			sponsorLevel = '';
+			teeSponsorSelected = false;
+		}
+
 		var showSponsorFields = sponsorLevel !== '' || teeSponsorSelected;
 		var sponsorFields = form.querySelector('[data-hfo-golf-sponsor-fields]');
 
@@ -235,6 +249,12 @@
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+
+		if (registrationType === 'additional_guests') {
+			sponsorLevel = '';
+			teeSponsorSelected = false;
+		}
+
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
