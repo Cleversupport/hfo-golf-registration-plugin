@@ -96,7 +96,7 @@
 	}
 
 	function isOptionalField(field) {
-		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
+		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1 || (field.name && field.name.indexOf('_handicap') !== -1);
 	}
 
 	function shouldSkipGenericRequired(field, form) {
@@ -204,40 +204,38 @@
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
-		var lunchQty = 0;
-		var dinnerQty = 0;
+		var playerLunchQty = 0;
+		var playerDinnerQty = 0;
+		var additionalLunchQty = 0;
+		var additionalDinnerQty = 0;
 		var participantKeys = [];
 
 		if (registrationType === 'team') {
 			participantKeys = PARTICIPANT_KEYS;
+			golfQty = 4;
 		} else if (registrationType === 'individual') {
 			participantKeys = ['captain'];
+			golfQty = 1;
 		}
 
 		participantKeys.forEach(function (participantKey) {
-			if (isChecked(form, participantKey + '_golf_selected')) {
-				golfQty += 1;
-			}
-
 			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
+				playerLunchQty += 1;
 			}
 
 			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
+				playerDinnerQty += 1;
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		additionalLunchQty = getNumericFieldValue(form, 'additional_lunch_count');
+		additionalDinnerQty = getNumericFieldValue(form, 'additional_dinner_count');
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
-			(lunchQty * getPrice(form, 'lunchPrice')) +
-			(dinnerQty * getPrice(form, 'dinnerPrice'));
+			(additionalLunchQty * getPrice(form, 'lunchPrice')) +
+			(additionalDinnerQty * getPrice(form, 'dinnerPrice'));
 
 		if (sponsorLevel) {
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
@@ -249,8 +247,8 @@
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
-		setSummary(form, 'lunch_qty', String(lunchQty));
-		setSummary(form, 'dinner_qty', String(dinnerQty));
+		setSummary(form, 'lunch_qty', String(playerLunchQty));
+		setSummary(form, 'dinner_qty', String(playerDinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
 		setSummary(form, 'tee_sponsor_selected', teeSponsorSelected ? 'Yes' : 'No');
 		setSummary(form, 'subtotal', money(subtotal));
