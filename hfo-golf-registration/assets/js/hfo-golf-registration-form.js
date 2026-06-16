@@ -95,7 +95,11 @@
 		return field.type === 'checkbox' || field.type === 'radio';
 	}
 
-	function isOptionalField(field) {
+	function isOptionalField(field, form) {
+		if (field.name === 'additional_guests_details' && getFieldValue(form, 'registration_type') === 'additional_guests') {
+			return false;
+		}
+
 		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
 	}
 
@@ -109,6 +113,22 @@
 
 	function getRegistrationSponsorRequirementField(form) {
 		return getField(form, 'sponsorship_level');
+	}
+
+	function updateAdditionalGuestsCustomValidity(form) {
+		var lunchCount = getField(form, 'additional_lunch_count');
+		var dinnerCount = getField(form, 'additional_dinner_count');
+		var message = '';
+
+		if (getFieldValue(form, 'registration_type') === 'additional_guests' && getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count') <= 0) {
+			message = 'Please add at least one lunch or dinner guest.';
+		}
+
+		[lunchCount, dinnerCount].forEach(function (field, index) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity(index === 0 ? message : '');
+			}
+		});
 	}
 
 	function updateSponsorOnlyCustomValidity(form) {
@@ -133,7 +153,7 @@
 
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
-			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
+			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field, form) || shouldSkipGenericRequired(field, form)) {
 				setFieldRequired(field, false);
 				return;
 			}
@@ -141,6 +161,7 @@
 			setFieldRequired(field, true);
 		});
 
+		updateAdditionalGuestsCustomValidity(form);
 		updateSponsorOnlyCustomValidity(form);
 	}
 
@@ -235,6 +256,12 @@
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+
+		if (registrationType === 'additional_guests') {
+			sponsorLevel = '';
+			teeSponsorSelected = false;
+		}
+
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
