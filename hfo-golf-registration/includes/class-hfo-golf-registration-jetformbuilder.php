@@ -61,6 +61,9 @@ class HFO_Golf_Registration_JetFormBuilder {
 			'tee_sponsor_qty'      => 'tee_sponsor_price',
 		);
 
+		$sponsorship_level    = $this->sanitize_choice( $request, 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
+		$tee_sponsor_selected = $this->sanitize_checkbox( $request, 'tee_sponsor_selected' );
+
 		$subtotal = 0.0;
 		$meta     = array(
 			'related_event'             => (string) $event_id,
@@ -93,11 +96,28 @@ class HFO_Golf_Registration_JetFormBuilder {
 			'additional_guests_details' => $this->sanitize_textarea( $request, 'additional_guests_details' ),
 			'additional_lunch_count'    => (string) $this->sanitize_qty( $request, 'additional_lunch_count' ),
 			'additional_dinner_count'   => (string) $this->sanitize_qty( $request, 'additional_dinner_count' ),
+			'sponsorship_level'         => $sponsorship_level,
+			'tee_sponsor_selected'      => $tee_sponsor_selected,
 			'discount_code_used'        => $this->sanitize_text( $request, 'discount_code_used' ),
 		);
 
 		foreach ( $quantity_to_price as $qty_key => $price_key ) {
-			$qty             = $this->sanitize_qty( $request, $qty_key );
+			if ( 'lunch_qty' === $qty_key ) {
+				$qty = absint( $meta['additional_lunch_count'] );
+			} elseif ( 'dinner_qty' === $qty_key ) {
+				$qty = absint( $meta['additional_dinner_count'] );
+			} elseif ( 'platinum_sponsor_qty' === $qty_key ) {
+				$qty = 'platinum' === $meta['sponsorship_level'] ? 1 : 0;
+			} elseif ( 'gold_sponsor_qty' === $qty_key ) {
+				$qty = 'gold' === $meta['sponsorship_level'] ? 1 : 0;
+			} elseif ( 'silver_sponsor_qty' === $qty_key ) {
+				$qty = 'silver' === $meta['sponsorship_level'] ? 1 : 0;
+			} elseif ( 'tee_sponsor_qty' === $qty_key ) {
+				$qty = '1' === $meta['tee_sponsor_selected'] ? 1 : 0;
+			} else {
+				$qty = $this->sanitize_qty( $request, $qty_key );
+			}
+
 			$meta[ $qty_key ] = (string) $qty;
 			$price           = (float) get_post_meta( $event_id, $price_key, true );
 			$subtotal       += (float) $qty * $price;
@@ -130,6 +150,16 @@ class HFO_Golf_Registration_JetFormBuilder {
 
 		$this->send_confirmation_email( $main_contact_email, $event_id );
 		$this->send_admin_notification( $event_id, $registration_id, $main_contact_name, $main_contact_email );
+	}
+
+	private function sanitize_choice( $request, $key, $allowed, $default ) {
+		$value = isset( $request[ $key ] ) ? sanitize_key( (string) $request[ $key ] ) : $default;
+
+		return in_array( $value, $allowed, true ) ? $value : $default;
+	}
+
+	private function sanitize_checkbox( $request, $key ) {
+		return isset( $request[ $key ] ) && '1' === (string) $request[ $key ] ? '1' : '0';
 	}
 
 	private function get_valid_open_event( $event_id ) {

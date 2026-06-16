@@ -135,6 +135,9 @@ class HFO_Golf_Registration_Frontend {
 			'tee_sponsor_qty'      => 'tee_sponsor_price',
 		);
 
+		$sponsorship_level    = $this->sanitize_post_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
+		$tee_sponsor_selected = isset( $_POST['tee_sponsor_selected'] ) && '1' === (string) wp_unslash( $_POST['tee_sponsor_selected'] ) ? '1' : '0';
+
 		$subtotal = 0.0;
 		$meta     = array(
 			'related_event'             => (string) $event_id,
@@ -167,15 +170,32 @@ class HFO_Golf_Registration_Frontend {
 			'member_4_handicap'         => $this->sanitize_post_text( 'member_4_handicap' ),
 			'discount_code_used'        => $this->sanitize_post_text( 'discount_code_used' ),
 			'additional_guests_details' => sanitize_textarea_field( $this->sanitize_post_textarea( 'additional_guests_details' ) ),
-			'additional_lunch_count'    => '0',
-			'additional_dinner_count'   => '0',
+			'additional_lunch_count'    => (string) max( 0, absint( $this->sanitize_post_text( 'additional_lunch_count' ) ) ),
+			'additional_dinner_count'   => (string) max( 0, absint( $this->sanitize_post_text( 'additional_dinner_count' ) ) ),
+			'sponsorship_level'         => $sponsorship_level,
+			'tee_sponsor_selected'      => $tee_sponsor_selected,
 		);
 
 		foreach ( $quantity_to_price as $qty_key => $price_key ) {
-			$qty          = (string) max( 0, absint( $this->sanitize_post_text( $qty_key ) ) );
-			$price        = (float) get_post_meta( $event_id, $price_key, true );
+			if ( 'lunch_qty' === $qty_key ) {
+				$qty = (string) max( 0, absint( $meta['additional_lunch_count'] ) );
+			} elseif ( 'dinner_qty' === $qty_key ) {
+				$qty = (string) max( 0, absint( $meta['additional_dinner_count'] ) );
+			} elseif ( 'platinum_sponsor_qty' === $qty_key ) {
+				$qty = 'platinum' === $meta['sponsorship_level'] ? '1' : '0';
+			} elseif ( 'gold_sponsor_qty' === $qty_key ) {
+				$qty = 'gold' === $meta['sponsorship_level'] ? '1' : '0';
+			} elseif ( 'silver_sponsor_qty' === $qty_key ) {
+				$qty = 'silver' === $meta['sponsorship_level'] ? '1' : '0';
+			} elseif ( 'tee_sponsor_qty' === $qty_key ) {
+				$qty = '1' === $meta['tee_sponsor_selected'] ? '1' : '0';
+			} else {
+				$qty = (string) max( 0, absint( $this->sanitize_post_text( $qty_key ) ) );
+			}
+
+			$price           = (float) get_post_meta( $event_id, $price_key, true );
 			$meta[ $qty_key ] = $qty;
-			$subtotal    += ( (float) $qty ) * $price;
+			$subtotal       += ( (float) $qty ) * $price;
 		}
 
 		$discount_rate = $this->get_discount_rate( $event_id, $meta['discount_code_used'] );
@@ -209,6 +229,12 @@ class HFO_Golf_Registration_Frontend {
 		$redirect_to = $this->get_redirect_url();
 		wp_safe_redirect( add_query_arg( 'hfo_registration_success', '1', $redirect_to ) );
 		exit;
+	}
+
+	private function sanitize_post_choice( $key, $allowed, $default ) {
+		$value = isset( $_POST[ $key ] ) ? sanitize_key( (string) wp_unslash( $_POST[ $key ] ) ) : $default;
+
+		return in_array( $value, $allowed, true ) ? $value : $default;
 	}
 
 	private function get_valid_event( $event_id ) {

@@ -218,14 +218,6 @@
 			if (isChecked(form, participantKey + '_golf_selected')) {
 				golfQty += 1;
 			}
-
-			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
-			}
-
-			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
-			}
 		});
 
 		if (registrationType !== 'sponsor_only') {
