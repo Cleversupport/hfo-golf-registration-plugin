@@ -34,9 +34,10 @@ class HFO_Golf_Registration_Meta_Boxes {
 	 * @var array<string,string>
 	 */
 	private $registration_types = array(
-		'individual'   => 'Individual',
-		'team'         => 'Team',
-		'sponsor_only' => 'Sponsor Only',
+		'individual'        => 'Individual',
+		'team'              => 'Team',
+		'sponsor_only'      => 'Sponsor Only',
+		'additional_guests' => 'Additional Guests',
 	);
 
 	/**
@@ -666,12 +667,20 @@ class HFO_Golf_Registration_Meta_Boxes {
 						'label' => esc_html__( 'Golf Quantity', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
+					'player_lunch_qty'    => array(
+						'label' => esc_html__( 'Player Lunch Attendance', 'hfo-golf-registration' ),
+						'type'  => 'count',
+					),
+					'player_dinner_qty'   => array(
+						'label' => esc_html__( 'Player Dinner Attendance', 'hfo-golf-registration' ),
+						'type'  => 'count',
+					),
 					'lunch_qty'            => array(
-						'label' => esc_html__( 'Lunch Quantity', 'hfo-golf-registration' ),
+						'label' => esc_html__( 'Billable Guest Lunch Quantity', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
 					'dinner_qty'           => array(
-						'label' => esc_html__( 'Dinner Quantity', 'hfo-golf-registration' ),
+						'label' => esc_html__( 'Billable Guest Dinner Quantity', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
 					'platinum_sponsor_qty' => array(
