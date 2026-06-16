@@ -58,13 +58,14 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
-		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			return keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship', 'review']);
 		}
 
-		keys.push('sponsorship', 'review');
-		return keys;
+		if (registrationType === 'individual') {
+			return keys.concat(['captain', 'additional_guests', 'sponsorship', 'review']);
+		}
+
+		return keys.concat(['sponsorship', 'additional_guests', 'review']);
 	}
 
 	function scrollToFormTop(form) {
@@ -228,10 +229,8 @@
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
+		dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
