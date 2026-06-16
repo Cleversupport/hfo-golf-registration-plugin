@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -61,9 +62,17 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		if (registrationType !== 'additional_guests') {
+			keys.push('sponsorship');
+		}
+
+		keys.push('review');
 		return keys;
 	}
 
@@ -228,13 +237,11 @@
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
+		dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 
-		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
-		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var sponsorLevel = registrationType === 'additional_guests' ? '' : getFieldValue(form, 'sponsorship_level');
+		var teeSponsorSelected = registrationType === 'additional_guests' ? false : isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
@@ -285,7 +292,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
