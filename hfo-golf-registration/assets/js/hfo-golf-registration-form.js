@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -58,12 +59,16 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['sponsorship', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -96,7 +101,7 @@
 	}
 
 	function isOptionalField(field) {
-		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
+		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1 || field.name.indexOf('_handicap') !== -1;
 	}
 
 	function shouldSkipGenericRequired(field, form) {
@@ -204,53 +209,53 @@
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
 		var golfQty = 0;
-		var lunchQty = 0;
-		var dinnerQty = 0;
+		var playerLunchQty = 0;
+		var playerDinnerQty = 0;
+		var additionalLunchQty = getNumericFieldValue(form, 'additional_lunch_count');
+		var additionalDinnerQty = getNumericFieldValue(form, 'additional_dinner_count');
 		var participantKeys = [];
 
 		if (registrationType === 'team') {
+			golfQty = 4;
 			participantKeys = PARTICIPANT_KEYS;
 		} else if (registrationType === 'individual') {
+			golfQty = 1;
 			participantKeys = ['captain'];
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
+			golfQty = 0;
 		}
 
 		participantKeys.forEach(function (participantKey) {
-			if (isChecked(form, participantKey + '_golf_selected')) {
-				golfQty += 1;
-			}
-
 			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
+				playerLunchQty += 1;
 			}
 
 			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
+				playerDinnerQty += 1;
 			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
-
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var canBillSponsor = registrationType !== 'additional_guests';
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
-			(lunchQty * getPrice(form, 'lunchPrice')) +
-			(dinnerQty * getPrice(form, 'dinnerPrice'));
+			(additionalLunchQty * getPrice(form, 'lunchPrice')) +
+			(additionalDinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
+		if (canBillSponsor && sponsorLevel) {
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
 		}
 
-		if (teeSponsorSelected) {
+		if (canBillSponsor && teeSponsorSelected) {
 			subtotal += getPrice(form, 'teeSponsorPrice');
 		}
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
 		setSummary(form, 'golf_qty', String(golfQty));
-		setSummary(form, 'lunch_qty', String(lunchQty));
-		setSummary(form, 'dinner_qty', String(dinnerQty));
+		setSummary(form, 'player_lunch_qty', String(playerLunchQty));
+		setSummary(form, 'player_dinner_qty', String(playerDinnerQty));
+		setSummary(form, 'additional_lunch_qty', String(additionalLunchQty));
+		setSummary(form, 'additional_dinner_qty', String(additionalDinnerQty));
 		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
 		setSummary(form, 'tee_sponsor_selected', teeSponsorSelected ? 'Yes' : 'No');
 		setSummary(form, 'subtotal', money(subtotal));
@@ -285,7 +290,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 

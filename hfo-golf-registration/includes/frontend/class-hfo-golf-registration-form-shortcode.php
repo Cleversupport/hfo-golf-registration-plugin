@@ -103,7 +103,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 					array(
 						'team'         => esc_html__( 'Team', 'hfo-golf-registration' ),
 						'individual'   => esc_html__( 'Individual', 'hfo-golf-registration' ),
-						'sponsor_only' => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'sponsor_only'     => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
+						'additional_guests' => esc_html__( 'Additional Guests', 'hfo-golf-registration' ),
 					),
 					true
 				);
@@ -181,8 +182,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<dl class="hfo-golf-registration-review" aria-live="polite">
 					<dt><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></dt><dd data-summary="registration_type">&mdash;</dd>
 					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="golf_qty">0</dd>
-					<dt><?php esc_html_e( 'Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="lunch_qty">0</dd>
-					<dt><?php esc_html_e( 'Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="dinner_qty">0</dd>
+					<dt><?php esc_html_e( 'Player Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_lunch_qty">0</dd>
+					<dt><?php esc_html_e( 'Player Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_dinner_qty">0</dd>
+					<dt><?php esc_html_e( 'Additional Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="additional_lunch_qty">0</dd>
+					<dt><?php esc_html_e( 'Additional Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="additional_dinner_qty">0</dd>
 					<dt><?php esc_html_e( 'Main Sponsor Level', 'hfo-golf-registration' ); ?></dt><dd data-summary="sponsorship_level"><?php esc_html_e( 'None', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Tee Sponsor', 'hfo-golf-registration' ); ?></dt><dd data-summary="tee_sponsor_selected"><?php esc_html_e( 'No', 'hfo-golf-registration' ); ?></dd>
 					<dt><?php esc_html_e( 'Subtotal', 'hfo-golf-registration' ); ?></dt><dd data-summary="subtotal">$0.00</dd>
@@ -433,7 +436,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @return array<string,string>
 	 */
 	private function get_sanitized_submission_meta( $event_id ) {
-		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only' ), 'individual' );
+		$registration_type = $this->sanitize_choice( 'registration_type', array( 'team', 'individual', 'sponsor_only', 'additional_guests' ), 'individual' );
 		$sponsorship_level    = $this->sanitize_choice( 'sponsorship_level', array( 'platinum', 'gold', 'silver', '' ), '' );
 		$tee_sponsor_selected = $this->sanitize_post_checkbox( 'tee_sponsor_selected' );
 
@@ -526,7 +529,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 
 		if ( 'individual' === $registration_type ) {
 			$participants_to_clear = array( 'member_2', 'member_3', 'member_4' );
-		} elseif ( 'sponsor_only' === $registration_type ) {
+		} elseif ( 'sponsor_only' === $registration_type || 'additional_guests' === $registration_type ) {
 			$participants_to_clear = array( 'captain', 'member_2', 'member_3', 'member_4' );
 		}
 
