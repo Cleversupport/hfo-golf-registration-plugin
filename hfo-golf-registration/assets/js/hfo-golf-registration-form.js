@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -58,12 +59,16 @@
 		var keys = ['registration_type'];
 
 		if (registrationType === 'team') {
-			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
+			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests', 'sponsorship']);
 		} else if (registrationType === 'individual') {
-			keys = keys.concat(['captain', 'additional_guests']);
+			keys = keys.concat(['captain', 'additional_guests', 'sponsorship']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['main_contact', 'additional_guests']);
+		} else if (registrationType === 'sponsor_only') {
+			keys = keys.concat(['sponsorship', 'additional_guests']);
 		}
 
-		keys.push('sponsorship', 'review');
+		keys.push('review');
 		return keys;
 	}
 
@@ -111,6 +116,32 @@
 		return getField(form, 'sponsorship_level');
 	}
 
+	function updateAdditionalGuestsCustomValidity(form) {
+		var detailsField = getField(form, 'additional_guests_details');
+		var lunchField = getField(form, 'additional_lunch_count');
+		var dinnerField = getField(form, 'additional_dinner_count');
+		var requiresGuests = getFieldValue(form, 'registration_type') === 'additional_guests';
+		var hasGuestMeal = getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count') > 0;
+
+		[lunchField, dinnerField, detailsField].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity('');
+			}
+		});
+
+		if (!requiresGuests) {
+			return;
+		}
+
+		if (lunchField && typeof lunchField.setCustomValidity === 'function' && !hasGuestMeal) {
+			lunchField.setCustomValidity('Please enter at least one additional lunch or dinner guest.');
+		}
+
+		if (detailsField && typeof detailsField.setCustomValidity === 'function' && getFieldValue(form, 'additional_guests_details').trim() === '') {
+			detailsField.setCustomValidity('Please enter additional guest details.');
+		}
+	}
+
 	function updateSponsorOnlyCustomValidity(form) {
 		var sponsorshipLevel = getRegistrationSponsorRequirementField(form);
 
@@ -141,6 +172,7 @@
 			setFieldRequired(field, true);
 		});
 
+		updateAdditionalGuestsCustomValidity(form);
 		updateSponsorOnlyCustomValidity(form);
 	}
 
@@ -218,14 +250,6 @@
 			if (isChecked(form, participantKey + '_golf_selected')) {
 				golfQty += 1;
 			}
-
-			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
-			}
-
-			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
-			}
 		});
 
 		if (registrationType !== 'sponsor_only') {
@@ -285,7 +309,7 @@
 
 		if (registrationType === 'individual') {
 			participantsToClear = ['member_2', 'member_3', 'member_4'];
-		} else if (registrationType === 'sponsor_only') {
+		} else if (registrationType === 'sponsor_only' || registrationType === 'additional_guests') {
 			participantsToClear = PARTICIPANT_KEYS;
 		}
 
@@ -293,8 +317,10 @@
 			['golf_selected', 'lunch_selected', 'dinner_selected'].forEach(function (selectionKey) {
 				var field = getField(form, participantKey + '_' + selectionKey);
 
-				if (field) {
+				if (field && field.type === 'checkbox') {
 					field.checked = false;
+				} else if (field) {
+					field.value = '0';
 				}
 			});
 		});
