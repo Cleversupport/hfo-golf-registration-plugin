@@ -603,9 +603,14 @@ class HFO_Golf_Registration_Checkout_Handler {
 		$items            = array();
 		$missing_prices   = array();
 		$missing_products = array();
-		$event_title      = $this->get_event_title( $event_id );
+		$event_title       = $this->get_event_title( $event_id );
+		$registration_type = sanitize_key( get_post_meta( $registration_id, 'registration_type', true ) );
 
 		foreach ( $this->get_checkout_item_definitions() as $item_type => $definition ) {
+			if ( 'sponsor_only' !== $registration_type && $this->is_sponsorship_item_type( $item_type ) ) {
+				continue;
+			}
+
 			$quantity = absint( get_post_meta( $registration_id, $definition['quantity_key'], true ) );
 
 			if ( 'tee_sponsor_qty' === $definition['quantity_key'] ) {
@@ -671,6 +676,16 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		return $items;
+	}
+
+	/**
+	 * Checks whether a checkout item type bills sponsorship.
+	 *
+	 * @param string $item_type Checkout item type key.
+	 * @return bool
+	 */
+	private function is_sponsorship_item_type( $item_type ) {
+		return in_array( $item_type, array( 'platinum_sponsor', 'gold_sponsor', 'silver_sponsor', 'tee_sponsor' ), true );
 	}
 
 	/**
