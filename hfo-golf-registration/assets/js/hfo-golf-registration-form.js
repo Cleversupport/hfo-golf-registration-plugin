@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -61,9 +62,15 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys.push('additional_guests');
 		}
 
-		keys.push('sponsorship', 'review');
+		if (registrationType !== 'additional_guests') {
+			keys.push('sponsorship');
+		}
+
+		keys.push('review');
 		return keys;
 	}
 
@@ -95,7 +102,11 @@
 		return field.type === 'checkbox' || field.type === 'radio';
 	}
 
-	function isOptionalField(field) {
+	function isOptionalField(field, form) {
+		if (field.name === 'additional_guests_details' && getFieldValue(form, 'registration_type') === 'additional_guests') {
+			return false;
+		}
+
 		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
 	}
 
@@ -133,7 +144,7 @@
 
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
-			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field) || shouldSkipGenericRequired(field, form)) {
+			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field, form) || shouldSkipGenericRequired(field, form)) {
 				setFieldRequired(field, false);
 				return;
 			}
@@ -148,6 +159,7 @@
 		var currentStep = form.querySelector('[data-hfo-golf-registration-step][data-step-key="' + currentStepKey + '"]');
 
 		updateRequiredFieldsForVisibleControls(form);
+		updateAdditionalGuestsCustomValidity(form);
 
 		if (!currentStep || currentStep.hidden) {
 			return true;
@@ -180,6 +192,23 @@
 		}
 
 		return false;
+	}
+
+
+	function updateAdditionalGuestsCustomValidity(form) {
+		var lunchCount = getField(form, 'additional_lunch_count');
+		var dinnerCount = getField(form, 'additional_dinner_count');
+		var message = '';
+
+		if (getFieldValue(form, 'registration_type') === 'additional_guests' && getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count') <= 0) {
+			message = 'Please add at least one lunch or dinner guest.';
+		}
+
+		[lunchCount, dinnerCount].forEach(function (field) {
+			if (field && typeof field.setCustomValidity === 'function') {
+				field.setCustomValidity(message);
+			}
+		});
 	}
 
 	function updateSponsorFieldVisibility(form) {
@@ -304,6 +333,7 @@
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateAdditionalGuestsCustomValidity(form);
 			calculateReview(form);
 			return;
 		}
@@ -387,6 +417,7 @@
 
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateAdditionalGuestsCustomValidity(form);
 			calculateReview(form);
 
 			return previousStepKey !== currentStepKey;
@@ -406,6 +437,7 @@
 			nextButton.addEventListener('click', function () {
 				updateSponsorFieldVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
+				updateAdditionalGuestsCustomValidity(form);
 
 				if (!validateCurrentStep(form, currentStepKey)) {
 					return;
@@ -422,6 +454,7 @@
 		form.addEventListener('input', function () {
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateAdditionalGuestsCustomValidity(form);
 			calculateReview(form);
 		});
 
@@ -434,6 +467,7 @@
 				normalizeHiddenParticipantsBeforeSubmit(form);
 				updateSponsorFieldVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
+				updateAdditionalGuestsCustomValidity(form);
 
 				if (!validateCurrentStep(form, currentStepKey)) {
 					event.preventDefault();
@@ -449,6 +483,7 @@
 			normalizeHiddenParticipantsBeforeSubmit(form);
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateAdditionalGuestsCustomValidity(form);
 		});
 
 		form.addEventListener('change', function (event) {
