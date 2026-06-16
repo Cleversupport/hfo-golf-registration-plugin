@@ -61,6 +61,8 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'sponsor_only') {
+			keys.push('additional_guests');
 		}
 
 		keys.push('sponsorship', 'review');
@@ -218,20 +220,10 @@
 			if (isChecked(form, participantKey + '_golf_selected')) {
 				golfQty += 1;
 			}
-
-			if (isChecked(form, participantKey + '_lunch_selected')) {
-				lunchQty += 1;
-			}
-
-			if (isChecked(form, participantKey + '_dinner_selected')) {
-				dinnerQty += 1;
-			}
 		});
 
-		if (registrationType !== 'sponsor_only') {
-			lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
-			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
-		}
+		lunchQty += getNumericFieldValue(form, 'additional_lunch_count');
+		dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
