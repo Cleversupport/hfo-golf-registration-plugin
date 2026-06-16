@@ -994,19 +994,19 @@ class HFO_Golf_Registration_Checkout_Handler {
 	private function get_checkout_item_definitions() {
 		return array(
 			'golf'             => array(
-				'label'          => __( 'Golf', 'hfo-golf-registration' ),
+				'label'          => __( 'Golf Player Registration', 'hfo-golf-registration' ),
 				'quantity_key'   => 'golf_qty',
 				'price_key'      => 'golf_price',
 				'product_option' => 'hfo_golf_registration_golf_product_id',
 			),
 			'lunch'            => array(
-				'label'          => __( 'Lunch', 'hfo-golf-registration' ),
+				'label'          => __( 'Lunch Only Guest', 'hfo-golf-registration' ),
 				'quantity_key'   => 'lunch_qty',
 				'price_key'      => 'lunch_price',
 				'product_option' => 'hfo_golf_registration_lunch_product_id',
 			),
 			'dinner'           => array(
-				'label'          => __( 'Dinner', 'hfo-golf-registration' ),
+				'label'          => __( 'Dinner Only Guest', 'hfo-golf-registration' ),
 				'quantity_key'   => 'dinner_qty',
 				'price_key'      => 'dinner_price',
 				'product_option' => 'hfo_golf_registration_dinner_product_id',
