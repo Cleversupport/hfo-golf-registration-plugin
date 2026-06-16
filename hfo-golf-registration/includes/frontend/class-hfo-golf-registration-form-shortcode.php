@@ -613,6 +613,11 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$dinner_qty += absint( $meta['additional_dinner_count'] );
 		}
 
+		if ( 'additional_guests' === $meta['registration_type'] ) {
+			$meta['sponsorship_level']     = '';
+			$meta['tee_sponsor_selected'] = '0';
+		}
+
 		$sponsor_quantities = array(
 			'platinum_sponsor_qty' => '0',
 			'gold_sponsor_qty'     => '0',

@@ -233,8 +233,9 @@
 			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 		}
 
-		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
-		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
+		var canBillSponsorship = registrationType !== 'additional_guests';
+		var sponsorLevel = canBillSponsorship ? getFieldValue(form, 'sponsorship_level') : '';
+		var teeSponsorSelected = canBillSponsorship && isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
