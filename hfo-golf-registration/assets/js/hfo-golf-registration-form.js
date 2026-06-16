@@ -11,7 +11,8 @@
 	var REGISTRATION_LABELS = {
 		team: 'Team',
 		individual: 'Individual',
-		sponsor_only: 'Sponsor Only'
+		sponsor_only: 'Sponsor Only',
+		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'additional_lunch_count',
@@ -61,6 +62,8 @@
 			keys = keys.concat(['main_contact'], PARTICIPANT_KEYS, ['additional_guests']);
 		} else if (registrationType === 'individual') {
 			keys = keys.concat(['captain', 'additional_guests']);
+		} else if (registrationType === 'additional_guests') {
+			keys = keys.concat(['additional_guests']);
 		}
 
 		keys.push('sponsorship', 'review');
@@ -183,9 +186,11 @@
 	}
 
 	function updateSponsorFieldVisibility(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var canBillSponsorship = registrationType !== 'additional_guests';
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
-		var showSponsorFields = sponsorLevel !== '' || teeSponsorSelected;
+		var showSponsorFields = canBillSponsorship && (sponsorLevel !== '' || teeSponsorSelected);
 		var sponsorFields = form.querySelector('[data-hfo-golf-sponsor-fields]');
 
 		if (sponsorFields) {
@@ -233,17 +238,18 @@
 			dinnerQty += getNumericFieldValue(form, 'additional_dinner_count');
 		}
 
+		var canBillSponsorship = registrationType !== 'additional_guests';
 		var sponsorLevel = getFieldValue(form, 'sponsorship_level');
 		var teeSponsorSelected = isChecked(form, 'tee_sponsor_selected');
 		var subtotal = (golfQty * getPrice(form, 'golfPrice')) +
 			(lunchQty * getPrice(form, 'lunchPrice')) +
 			(dinnerQty * getPrice(form, 'dinnerPrice'));
 
-		if (sponsorLevel) {
+		if (canBillSponsorship && sponsorLevel) {
 			subtotal += getPrice(form, sponsorLevel + 'SponsorPrice');
 		}
 
-		if (teeSponsorSelected) {
+		if (canBillSponsorship && teeSponsorSelected) {
 			subtotal += getPrice(form, 'teeSponsorPrice');
 		}
 
@@ -251,8 +257,8 @@
 		setSummary(form, 'golf_qty', String(golfQty));
 		setSummary(form, 'lunch_qty', String(lunchQty));
 		setSummary(form, 'dinner_qty', String(dinnerQty));
-		setSummary(form, 'sponsorship_level', SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']);
-		setSummary(form, 'tee_sponsor_selected', teeSponsorSelected ? 'Yes' : 'No');
+		setSummary(form, 'sponsorship_level', canBillSponsorship ? (SPONSOR_LABELS[sponsorLevel] || sponsorLevel || SPONSOR_LABELS['']) : SPONSOR_LABELS['']);
+		setSummary(form, 'tee_sponsor_selected', canBillSponsorship && teeSponsorSelected ? 'Yes' : 'No');
 		setSummary(form, 'subtotal', money(subtotal));
 		setSummary(form, 'discount_amount', money(0));
 		setSummary(form, 'grand_total', money(subtotal));
