@@ -417,9 +417,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
 		}
 
+		$site_key   = (string) get_option( self::RECAPTCHA_SITE_KEY_OPTION, '' );
 		$secret_key = (string) get_option( self::RECAPTCHA_SECRET_KEY_OPTION, '' );
 
-		if ( '' === trim( $secret_key ) ) {
+		if ( '' === trim( $site_key ) || '' === trim( $secret_key ) ) {
 			wp_die( esc_html__( 'Registration verification is not configured. Please contact the event organizer.', 'hfo-golf-registration' ) );
 		}
 
