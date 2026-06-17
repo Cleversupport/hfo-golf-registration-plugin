@@ -494,13 +494,16 @@
 
 			event.preventDefault();
 
-			if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
-				if (typeof form.reportValidity === 'function') {
-					form.reportValidity();
-				}
-
+			if (!validateCurrentStep(form, currentStepKey)) {
 				return;
 			}
+
+			if (!tokenField) {
+				showVerificationConfigurationMessage();
+				return;
+			}
+
+			tokenField.value = '';
 
 			if (!siteKey || typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.execute !== 'function' || typeof window.grecaptcha.ready !== 'function') {
 				showVerificationConfigurationMessage();
@@ -513,7 +516,7 @@
 
 			window.grecaptcha.ready(function () {
 				window.grecaptcha.execute(siteKey, { action: action }).then(function (token) {
-					if (!tokenField) {
+					if (!token) {
 						showVerificationConfigurationMessage();
 
 						if (submitButton) {
@@ -525,7 +528,12 @@
 
 					tokenField.value = token;
 					isSubmittingWithRecaptcha = true;
-					form.submit();
+
+					if (window.HTMLFormElement && window.HTMLFormElement.prototype && typeof window.HTMLFormElement.prototype.submit === 'function') {
+						window.HTMLFormElement.prototype.submit.call(form);
+					} else {
+						form.submit();
+					}
 				}).catch(function () {
 					showVerificationConfigurationMessage();
 
