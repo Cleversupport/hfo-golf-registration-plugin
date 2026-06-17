@@ -983,8 +983,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<?php $this->render_text_field( $prefix . '_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_handicap', esc_html__( 'Handicap', 'hfo-golf-registration' ) ); ?>
 			<input type="hidden" name="<?php echo esc_attr( $prefix . '_golf_selected' ); ?>" value="1" />
-			<?php $this->render_checkbox_field( $prefix . '_lunch_selected', esc_html__( 'Lunch', 'hfo-golf-registration' ) ); ?>
-			<?php $this->render_checkbox_field( $prefix . '_dinner_selected', esc_html__( 'Dinner', 'hfo-golf-registration' ) ); ?>
+			<?php $this->render_checkbox_field( $prefix . '_lunch_selected', esc_html__( 'Lunch', 'hfo-golf-registration' ), true ); ?>
+			<?php $this->render_checkbox_field( $prefix . '_dinner_selected', esc_html__( 'Dinner', 'hfo-golf-registration' ), true ); ?>
 		</fieldset>
 		<?php
 	}
