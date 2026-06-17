@@ -325,16 +325,17 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php endif; ?>
 			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); ?>
 				<tr>
-					<td><code><?php echo esc_html( $code ); ?></code></td>
+					<td><code class="hfo-golf-meal-coupon-code"><?php echo esc_html( $code ); ?></code></td>
 					<td><?php echo esc_html( get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ) ); ?></td>
 					<td><?php echo esc_html( get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ) ); ?></td>
 					<td><?php echo esc_html( get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ) ); ?></td>
 					<td><?php echo esc_html( get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ) ); ?></td>
 					<td><?php echo esc_html( $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit() ); ?></td>
 					<td><?php $expires = $coupon->get_date_expires(); echo esc_html( $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—' ); ?></td>
-					<td><?php echo esc_html( get_post_status_object( $coupon_post->post_status )->label ); ?></td>
-					<td>
-						<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('<?php echo esc_js( $code ); ?>');"><?php esc_html_e( 'Copy Code', 'hfo-golf-registration' ); ?></button>
+					<td><?php $status_object = get_post_status_object( $coupon_post->post_status ); $status_label = $status_object ? $status_object->label : $coupon_post->post_status; $status_class = 'publish' === $coupon_post->post_status ? 'hfo-golf-meal-coupon-status--published' : 'hfo-golf-meal-coupon-status--draft'; ?><span class="hfo-golf-meal-coupon-status <?php echo esc_attr( $status_class ); ?>"><?php echo esc_html( $status_label ); ?></span></td>
+					<td class="hfo-golf-meal-coupon-actions-cell">
+						<div class="hfo-golf-meal-coupon-actions-inner">
+							<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('<?php echo esc_js( $code ); ?>');"><?php esc_html_e( 'Copy Code', 'hfo-golf-registration' ); ?></button>
 						<?php if ( 'draft' !== $coupon_post->post_status ) : ?>
 						<form class="hfo-golf-meal-coupon-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 							<input type="hidden" name="action" value="<?php echo esc_attr( self::DISABLE_ACTION ); ?>" />
@@ -343,7 +344,8 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 							<?php wp_nonce_field( self::DISABLE_NONCE_ACTION, self::DISABLE_NONCE_NAME ); ?>
 							<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small" type="submit"><?php esc_html_e( 'Disable Coupon', 'hfo-golf-registration' ); ?></button>
 						</form>
-						<?php endif; ?>
+							<?php endif; ?>
+						</div>
 					</td>
 				</tr>
 			<?php endforeach; ?>
