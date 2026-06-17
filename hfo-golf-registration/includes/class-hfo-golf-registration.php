@@ -43,6 +43,9 @@ class HFO_Golf_Registration {
 		$form_shortcode = new HFO_Golf_Registration_Form_Shortcode();
 		$form_shortcode->register_hooks();
 
+		$meal_coupon_manager_shortcode = new HFO_Golf_Meal_Coupon_Manager_Shortcode();
+		$meal_coupon_manager_shortcode->register_hooks();
+
 		$jetformbuilder = new HFO_Golf_Registration_JetFormBuilder();
 		$jetformbuilder->register_hooks();
 	}
