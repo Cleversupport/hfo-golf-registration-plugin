@@ -36,9 +36,13 @@
 
 .hfo-golf-meal-coupon-card__title {
 	margin: 0 0 8px;
-	font-size: 1.5rem;
 	line-height: 1.25;
-	color: #0f172a;
+}
+
+.hfo-golf-meal-coupon-manager h2 {
+	font-size: 20px;
+	color: #A058BB;
+	font-weight: 600;
 }
 
 .hfo-golf-meal-coupon-card__description,
@@ -65,8 +69,12 @@
 .hfo-golf-meal-coupon-field label {
 	display: block;
 	margin-bottom: 6px;
-	font-weight: 600;
 	color: #1e293b;
+}
+
+.hfo-golf-meal-coupon-manager label {
+	font-size: 14px;
+	font-weight: 600;
 }
 
 .hfo-golf-meal-coupon-checkbox {
@@ -109,9 +117,9 @@
 	justify-content: center;
 	min-height: 42px;
 	padding: 10px 18px;
-	border: 1px solid #1d4ed8;
+	border: 1px solid #A058BB;
 	border-radius: 8px;
-	background: #1d4ed8;
+	background: #A058BB;
 	color: #fff;
 	font-weight: 600;
 	line-height: 1.2;
@@ -119,11 +127,23 @@
 	cursor: pointer;
 }
 
+.hfo-golf-meal-coupon-manager button,
+.hfo-golf-meal-coupon-manager .hfo-golf-meal-coupon-button {
+	background-color: #A058BB;
+	border-color: #A058BB;
+}
+
 .hfo-golf-meal-coupon-actions button:hover,
 .hfo-golf-meal-coupon-button:hover {
-	background: #1e40af;
-	border-color: #1e40af;
+	background: #FEB105;
+	border-color: #FEB105;
 	color: #fff;
+}
+
+.hfo-golf-meal-coupon-manager button:hover,
+.hfo-golf-meal-coupon-manager .hfo-golf-meal-coupon-button:hover {
+	background-color: #FEB105;
+	border-color: #FEB105;
 }
 
 .hfo-golf-meal-coupon-button--small {
@@ -140,9 +160,19 @@
 }
 
 .hfo-golf-meal-coupon-message--success {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	width: 100%;
 	border: 1px solid #bbf7d0;
 	background: #f0fdf4;
 	color: #166534;
+}
+
+.hfo-golf-meal-coupon-message--success .hfo-golf-meal-coupon-button {
+	margin-left: auto;
+	flex-shrink: 0;
 }
 
 .hfo-golf-meal-coupon-message--error {
@@ -155,28 +185,34 @@
 	width: 100%;
 	overflow-x: auto;
 	-webkit-overflow-scrolling: touch;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	background: #fff;
 }
 
 .hfo-golf-meal-coupon-table {
 	width: 100%;
-	min-width: 920px;
+	min-width: 1080px;
 	border-collapse: collapse;
 	background: #fff;
 }
 
 .hfo-golf-meal-coupon-table th,
 .hfo-golf-meal-coupon-table td {
-	padding: 12px 10px;
+	padding: 14px 12px;
 	border-bottom: 1px solid #e2e8f0;
 	text-align: left;
 	vertical-align: middle;
 }
 
 .hfo-golf-meal-coupon-table th {
-	background: #f8fafc;
-	color: #334155;
+	padding: 14px 12px;
+	background: #f8f2fb;
+	color: #A058BB;
 	font-size: 0.875rem;
 	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
 	white-space: nowrap;
 }
 
@@ -184,16 +220,75 @@
 	color: #1e293b;
 }
 
-.hfo-golf-meal-coupon-table code {
-	padding: 3px 6px;
-	border-radius: 5px;
+.hfo-golf-meal-coupon-table tbody tr:nth-child(even) {
+	background: #f8fafc;
+}
+
+.hfo-golf-meal-coupon-table tbody tr:hover {
+	background: #fff8e6;
+}
+
+.hfo-golf-meal-coupon-table tbody tr:last-child td {
+	border-bottom: 0;
+}
+
+.hfo-golf-meal-coupon-code {
+	display: inline-block;
+	padding: 5px 8px;
+	border: 1px solid #e2e8f0;
+	border-radius: 999px;
 	background: #f1f5f9;
 	color: #0f172a;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 0.875rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+
+.hfo-golf-meal-coupon-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 9px;
+	border-radius: 999px;
+	font-size: 0.8125rem;
+	font-weight: 700;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+.hfo-golf-meal-coupon-status--published {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.hfo-golf-meal-coupon-status--draft {
+	background: #f1f5f9;
+	color: #475569;
+}
+
+.hfo-golf-meal-coupon-actions-cell {
+	width: 170px;
+	min-width: 170px;
+}
+
+.hfo-golf-meal-coupon-actions-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+	min-width: 145px;
 }
 
 .hfo-golf-meal-coupon-inline-form {
-	display: inline-flex;
-	margin: 4px 0 0 6px;
+	display: flex;
+	margin: 0;
+}
+
+.hfo-golf-meal-coupon-actions-inner .hfo-golf-meal-coupon-button,
+.hfo-golf-meal-coupon-inline-form .hfo-golf-meal-coupon-button {
+	width: 100%;
+	white-space: nowrap;
 }
 
 @media (max-width: 700px) {
@@ -217,5 +312,17 @@
 
 	.hfo-golf-meal-coupon-actions button {
 		width: 100%;
+	}
+}
+
+@media (max-width: 600px) {
+	.hfo-golf-meal-coupon-message--success {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.hfo-golf-meal-coupon-message--success .hfo-golf-meal-coupon-button {
+		width: 100%;
+		margin-left: 0;
 	}
 }
