@@ -329,6 +329,22 @@
 		});
 	}
 
+	function showVerificationConfigurationMessage() {
+		window.alert('Registration verification is not configured. Please contact the event organizer.');
+	}
+
+	function prepareFormForSubmit(form) {
+		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+
+		if (registrationType === 'individual') {
+			copyCaptainToMainContact(form);
+		}
+
+		normalizeHiddenParticipantsBeforeSubmit(form);
+		updateSponsorFieldVisibility(form);
+		updateRequiredFieldsForVisibleControls(form);
+	}
+
 	function setupForm(form) {
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			updateSponsorFieldVisibility(form);
@@ -345,6 +361,7 @@
 		var nextButton = form.querySelector('[data-hfo-golf-registration-next]');
 		var submitButton = form.querySelector('.hfo-golf-registration-submit');
 		var currentStepKey = 'registration_type';
+		var isSubmittingWithRecaptcha = false;
 
 		function getRegistrationType() {
 			return getFieldValue(form, 'registration_type') || 'individual';
@@ -456,13 +473,7 @@
 
 		if (submitButton) {
 			submitButton.addEventListener('click', function (event) {
-				if (getRegistrationType() === 'individual') {
-					copyCaptainToMainContact(form);
-				}
-
-				normalizeHiddenParticipantsBeforeSubmit(form);
-				updateSponsorFieldVisibility(form);
-				updateRequiredFieldsForVisibleControls(form);
+				prepareFormForSubmit(form);
 
 				if (!validateCurrentStep(form, currentStepKey)) {
 					event.preventDefault();
@@ -470,14 +481,59 @@
 			});
 		}
 
-		form.addEventListener('submit', function () {
-			if (getRegistrationType() === 'individual') {
-				copyCaptainToMainContact(form);
+		form.addEventListener('submit', function (event) {
+			var siteKey = form.dataset.recaptchaSiteKey || '';
+			var action = form.dataset.recaptchaAction || 'hfo_golf_registration_submit';
+			var tokenField = form.querySelector('[data-hfo-golf-registration-recaptcha-token]');
+
+			prepareFormForSubmit(form);
+
+			if (isSubmittingWithRecaptcha) {
+				return;
 			}
 
-			normalizeHiddenParticipantsBeforeSubmit(form);
-			updateSponsorFieldVisibility(form);
-			updateRequiredFieldsForVisibleControls(form);
+			event.preventDefault();
+
+			if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+				if (typeof form.reportValidity === 'function') {
+					form.reportValidity();
+				}
+
+				return;
+			}
+
+			if (!siteKey || typeof window.grecaptcha === 'undefined' || typeof window.grecaptcha.execute !== 'function' || typeof window.grecaptcha.ready !== 'function') {
+				showVerificationConfigurationMessage();
+				return;
+			}
+
+			if (submitButton) {
+				submitButton.disabled = true;
+			}
+
+			window.grecaptcha.ready(function () {
+				window.grecaptcha.execute(siteKey, { action: action }).then(function (token) {
+					if (!tokenField) {
+						showVerificationConfigurationMessage();
+
+						if (submitButton) {
+							submitButton.disabled = false;
+						}
+
+						return;
+					}
+
+					tokenField.value = token;
+					isSubmittingWithRecaptcha = true;
+					form.submit();
+				}).catch(function () {
+					showVerificationConfigurationMessage();
+
+					if (submitButton) {
+						submitButton.disabled = false;
+					}
+				});
+			});
 		});
 
 		form.addEventListener('change', function (event) {

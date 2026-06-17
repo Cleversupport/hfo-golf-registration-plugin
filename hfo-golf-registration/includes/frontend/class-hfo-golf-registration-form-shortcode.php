@@ -42,6 +42,13 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 */
 	const CUSTOM_FRONTEND_CSS_OPTION = 'hfo_golf_registration_custom_frontend_css';
 
+	const RECAPTCHA_SITE_KEY_OPTION = 'hfo_golf_registration_recaptcha_site_key';
+	const RECAPTCHA_SECRET_KEY_OPTION = 'hfo_golf_registration_recaptcha_secret_key';
+	const RECAPTCHA_MINIMUM_SCORE_OPTION = 'hfo_golf_registration_recaptcha_minimum_score';
+	const RECAPTCHA_ACTION = 'hfo_golf_registration_submit';
+	const RECAPTCHA_TOKEN_FIELD = 'hfo_golf_registration_recaptcha_token';
+	const HONEYPOT_FIELD = 'hfo_golf_registration_website';
+
 	/**
 	 * Registers WordPress hooks.
 	 *
@@ -84,12 +91,20 @@ class HFO_Golf_Registration_Form_Shortcode {
 		}
 
 		ob_start();
+		$this->enqueue_assets( true );
+
+		$recaptcha_site_key = (string) get_option( self::RECAPTCHA_SITE_KEY_OPTION, '' );
 		?>
-		<form class="hfo-golf-registration-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-hfo-golf-registration-form data-golf-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'golf_price' ) ); ?>" data-lunch-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'lunch_price' ) ); ?>" data-dinner-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'dinner_price' ) ); ?>" data-platinum-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'platinum_sponsor_price' ) ); ?>" data-gold-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'gold_sponsor_price' ) ); ?>" data-silver-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'silver_sponsor_price' ) ); ?>" data-tee-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'tee_sponsor_price' ) ); ?>">
+		<form class="hfo-golf-registration-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-hfo-golf-registration-form data-recaptcha-site-key="<?php echo esc_attr( $recaptcha_site_key ); ?>" data-recaptcha-action="<?php echo esc_attr( self::RECAPTCHA_ACTION ); ?>" data-golf-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'golf_price' ) ); ?>" data-lunch-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'lunch_price' ) ); ?>" data-dinner-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'dinner_price' ) ); ?>" data-platinum-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'platinum_sponsor_price' ) ); ?>" data-gold-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'gold_sponsor_price' ) ); ?>" data-silver-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'silver_sponsor_price' ) ); ?>" data-tee-sponsor-price="<?php echo esc_attr( $this->get_event_price( $event_id, 'tee_sponsor_price' ) ); ?>">
 			<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
 			<input type="hidden" name="event_id" value="<?php echo esc_attr( $event_id ); ?>" />
 			<input type="hidden" name="related_event" value="<?php echo esc_attr( $event_id ); ?>" />
 			<input type="hidden" name="redirect_to" value="<?php echo esc_url( $redirect_to ); ?>" />
+			<input type="hidden" name="<?php echo esc_attr( self::RECAPTCHA_TOKEN_FIELD ); ?>" value="" data-hfo-golf-registration-recaptcha-token />
+			<div style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+				<label for="<?php echo esc_attr( self::HONEYPOT_FIELD ); ?>"><?php esc_html_e( 'Website', 'hfo-golf-registration' ); ?></label>
+				<input id="<?php echo esc_attr( self::HONEYPOT_FIELD ); ?>" type="text" name="<?php echo esc_attr( self::HONEYPOT_FIELD ); ?>" value="" tabindex="-1" autocomplete="off" aria-hidden="true" />
+			</div>
 			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
 
 			<?php $this->render_step_header(); ?>
@@ -328,6 +343,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Invalid registration request.', 'hfo-golf-registration' ) );
 		}
 
+		$this->validate_anti_spam();
+
 		$event_id = isset( $_POST['event_id'] ) ? absint( wp_unslash( $_POST['event_id'] ) ) : 0;
 		$event    = $this->get_valid_open_event( $event_id );
 
@@ -388,6 +405,62 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$checkout_handler->send_registration_to_checkout( $registration_id );
 	}
 
+	/**
+	 * Validates mandatory honeypot and Google reCAPTCHA v3 fields.
+	 *
+	 * @return void
+	 */
+	private function validate_anti_spam() {
+		$honeypot_value = isset( $_POST[ self::HONEYPOT_FIELD ] ) ? trim( sanitize_text_field( wp_unslash( $_POST[ self::HONEYPOT_FIELD ] ) ) ) : '';
+
+		if ( '' !== $honeypot_value ) {
+			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
+		}
+
+		$secret_key = (string) get_option( self::RECAPTCHA_SECRET_KEY_OPTION, '' );
+
+		if ( '' === trim( $secret_key ) ) {
+			wp_die( esc_html__( 'Registration verification is not configured. Please contact the event organizer.', 'hfo-golf-registration' ) );
+		}
+
+		$token = isset( $_POST[ self::RECAPTCHA_TOKEN_FIELD ] ) ? trim( sanitize_text_field( wp_unslash( $_POST[ self::RECAPTCHA_TOKEN_FIELD ] ) ) ) : '';
+
+		if ( '' === $token ) {
+			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
+		}
+
+		$args = array(
+			'timeout' => 10,
+			'body'    => array(
+				'secret'   => $secret_key,
+				'response' => $token,
+			),
+		);
+
+		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$args['body']['remoteip'] = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+		}
+
+		$response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', $args );
+
+		if ( is_wp_error( $response ) ) {
+			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
+		}
+
+		$body = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+
+		if ( ! is_array( $body ) || empty( $body['success'] ) || self::RECAPTCHA_ACTION !== (string) ( $body['action'] ?? '' ) ) {
+			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
+		}
+
+		$score         = isset( $body['score'] ) && is_numeric( $body['score'] ) ? (float) $body['score'] : 0;
+		$minimum_score = (float) get_option( self::RECAPTCHA_MINIMUM_SCORE_OPTION, 0.5 );
+
+		if ( $score < $minimum_score ) {
+			wp_die( esc_html__( 'Verification failed. Please try again.', 'hfo-golf-registration' ) );
+		}
+	}
+
 
 	/**
 	 * Gets the best available contact label for the registration post title.
@@ -410,7 +483,15 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 *
 	 * @return void
 	 */
-	public function enqueue_assets() {
+	public function enqueue_assets( $force = false ) {
+		if ( ! $force && ! $this->current_page_has_registration_form_shortcode() ) {
+			return;
+		}
+
+		if ( wp_style_is( 'hfo-golf-registration-form', 'enqueued' ) ) {
+			return;
+		}
+
 		wp_enqueue_style(
 			'hfo-golf-registration-form',
 			plugins_url( 'assets/css/hfo-golf-registration-form.css', HFO_GOLF_REGISTRATION_FILE ),
@@ -431,6 +512,29 @@ class HFO_Golf_Registration_Form_Shortcode {
 			HFO_GOLF_REGISTRATION_VERSION,
 			true
 		);
+
+		$site_key = (string) get_option( self::RECAPTCHA_SITE_KEY_OPTION, '' );
+
+		if ( '' !== $site_key ) {
+			wp_enqueue_script(
+				'hfo-golf-registration-recaptcha',
+				'https://www.google.com/recaptcha/api.js?render=' . rawurlencode( $site_key ),
+				array(),
+				null,
+				true
+			);
+		}
+	}
+
+	/**
+	 * Checks whether the current page content contains the public registration form shortcode.
+	 *
+	 * @return bool
+	 */
+	private function current_page_has_registration_form_shortcode() {
+		$post = get_post();
+
+		return $post instanceof WP_Post && has_shortcode( (string) $post->post_content, 'hfo_golf_registration_form' );
 	}
 
 

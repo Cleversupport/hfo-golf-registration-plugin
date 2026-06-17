@@ -50,6 +50,13 @@ class HFO_Golf_Registration_Settings {
 	const FRONTEND_STYLING_SECTION = 'hfo_golf_registration_frontend_styling';
 
 	/**
+	 * reCAPTCHA v3 section ID.
+	 *
+	 * @var string
+	 */
+	const RECAPTCHA_SECTION = 'hfo_golf_registration_recaptcha';
+
+	/**
 	 * GitHub updater section ID.
 	 *
 	 * @var string
@@ -69,6 +76,27 @@ class HFO_Golf_Registration_Settings {
 	 * @var string
 	 */
 	const GITHUB_TOKEN_OPTION = 'hfo_golf_registration_github_token';
+
+	/**
+	 * Option key for the Google reCAPTCHA v3 site key.
+	 *
+	 * @var string
+	 */
+	const RECAPTCHA_SITE_KEY_OPTION = 'hfo_golf_registration_recaptcha_site_key';
+
+	/**
+	 * Option key for the Google reCAPTCHA v3 secret key.
+	 *
+	 * @var string
+	 */
+	const RECAPTCHA_SECRET_KEY_OPTION = 'hfo_golf_registration_recaptcha_secret_key';
+
+	/**
+	 * Option key for the minimum accepted Google reCAPTCHA v3 score.
+	 *
+	 * @var string
+	 */
+	const RECAPTCHA_MINIMUM_SCORE_OPTION = 'hfo_golf_registration_recaptcha_minimum_score';
 
 	/**
 	 * Action name used to create default products.
@@ -157,6 +185,36 @@ class HFO_Golf_Registration_Settings {
 			)
 		);
 
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::RECAPTCHA_SITE_KEY_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_recaptcha_key' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::RECAPTCHA_SECRET_KEY_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_recaptcha_key' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::RECAPTCHA_MINIMUM_SCORE_OPTION,
+			array(
+				'type'              => 'number',
+				'sanitize_callback' => array( $this, 'sanitize_recaptcha_minimum_score' ),
+				'default'           => 0.5,
+			)
+		);
+
 		add_settings_section(
 			self::DEFAULT_PRODUCTS_SECTION,
 			esc_html__( 'Default WooCommerce Products', 'hfo-golf-registration' ),
@@ -175,6 +233,13 @@ class HFO_Golf_Registration_Settings {
 			self::FRONTEND_STYLING_SECTION,
 			esc_html__( 'Frontend Styling', 'hfo-golf-registration' ),
 			array( $this, 'render_frontend_styling_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_section(
+			self::RECAPTCHA_SECTION,
+			esc_html__( 'reCAPTCHA v3', 'hfo-golf-registration' ),
+			array( $this, 'render_recaptcha_section' ),
 			self::PAGE_SLUG
 		);
 
@@ -199,6 +264,30 @@ class HFO_Golf_Registration_Settings {
 			array( $this, 'render_github_token_field' ),
 			self::PAGE_SLUG,
 			self::GITHUB_UPDATES_SECTION
+		);
+
+		add_settings_field(
+			self::RECAPTCHA_SITE_KEY_OPTION,
+			esc_html__( 'reCAPTCHA v3 Site Key', 'hfo-golf-registration' ),
+			array( $this, 'render_recaptcha_site_key_field' ),
+			self::PAGE_SLUG,
+			self::RECAPTCHA_SECTION
+		);
+
+		add_settings_field(
+			self::RECAPTCHA_SECRET_KEY_OPTION,
+			esc_html__( 'reCAPTCHA v3 Secret Key', 'hfo-golf-registration' ),
+			array( $this, 'render_recaptcha_secret_key_field' ),
+			self::PAGE_SLUG,
+			self::RECAPTCHA_SECTION
+		);
+
+		add_settings_field(
+			self::RECAPTCHA_MINIMUM_SCORE_OPTION,
+			esc_html__( 'Minimum Score', 'hfo-golf-registration' ),
+			array( $this, 'render_recaptcha_minimum_score_field' ),
+			self::PAGE_SLUG,
+			self::RECAPTCHA_SECTION
 		);
 
 		foreach ( $this->get_product_mapping_fields() as $field_key => $field ) {
@@ -300,6 +389,18 @@ class HFO_Golf_Registration_Settings {
 	}
 
 	/**
+	 * Renders the reCAPTCHA v3 section description.
+	 *
+	 * @return void
+	 */
+	public function render_recaptcha_section() {
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'Google reCAPTCHA v3 is mandatory for the public golf registration form. Submissions are blocked until both keys are configured.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
 	 * Renders the GitHub updates section description.
 	 *
 	 * @return void
@@ -349,6 +450,56 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p class="description">%s</p>',
 			esc_html__( 'Used only for GitHub API and release download requests. The saved token is never displayed back in this field.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the Google reCAPTCHA v3 site key field.
+	 *
+	 * @return void
+	 */
+	public function render_recaptcha_site_key_field() {
+		$value = (string) get_option( self::RECAPTCHA_SITE_KEY_OPTION, '' );
+
+		printf(
+			'<input id="%1$s" name="%1$s" type="text" class="regular-text" value="%2$s" autocomplete="off" />',
+			esc_attr( self::RECAPTCHA_SITE_KEY_OPTION ),
+			esc_attr( $value )
+		);
+	}
+
+	/**
+	 * Renders the Google reCAPTCHA v3 secret key field.
+	 *
+	 * @return void
+	 */
+	public function render_recaptcha_secret_key_field() {
+		$has_key = '' !== (string) get_option( self::RECAPTCHA_SECRET_KEY_OPTION, '' );
+
+		printf(
+			'<input id="%1$s" name="%1$s" type="password" class="regular-text" value="" autocomplete="new-password" placeholder="%2$s" />',
+			esc_attr( self::RECAPTCHA_SECRET_KEY_OPTION ),
+			esc_attr( $has_key ? __( 'Secret key saved; leave blank to keep it', 'hfo-golf-registration' ) : __( 'Required', 'hfo-golf-registration' ) )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'The saved secret key is never displayed and is used only for server-side verification.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the Google reCAPTCHA v3 minimum score field.
+	 *
+	 * @return void
+	 */
+	public function render_recaptcha_minimum_score_field() {
+		$value = (float) get_option( self::RECAPTCHA_MINIMUM_SCORE_OPTION, 0.5 );
+
+		printf(
+			'<input id="%1$s" name="%1$s" type="number" class="small-text" value="%2$s" min="0" max="1" step="0.1" />',
+			esc_attr( self::RECAPTCHA_MINIMUM_SCORE_OPTION ),
+			esc_attr( (string) $value )
 		);
 	}
 
@@ -569,6 +720,40 @@ class HFO_Golf_Registration_Settings {
 		}
 
 		return $token;
+	}
+
+	/**
+	 * Sanitizes a Google reCAPTCHA v3 key before saving.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return string
+	 */
+	public function sanitize_recaptcha_key( $value ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$key = trim( sanitize_text_field( wp_unslash( $value ) ) );
+
+		if ( '' === $key && 'sanitize_option_' . self::RECAPTCHA_SECRET_KEY_OPTION === current_filter() ) {
+			$existing_key = get_option( self::RECAPTCHA_SECRET_KEY_OPTION, '' );
+
+			return is_string( $existing_key ) ? $existing_key : '';
+		}
+
+		return $key;
+	}
+
+	/**
+	 * Sanitizes the minimum Google reCAPTCHA v3 score.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return float
+	 */
+	public function sanitize_recaptcha_minimum_score( $value ) {
+		$score = is_numeric( $value ) ? (float) $value : 0.5;
+
+		return min( 1, max( 0, $score ) );
 	}
 
 	/**
