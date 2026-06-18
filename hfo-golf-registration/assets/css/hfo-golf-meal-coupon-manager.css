@@ -739,3 +739,127 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+.hfo-golf-meal-coupon-email-line {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+}
+
+.hfo-golf-meal-coupon-email-line--sent {
+	cursor: help;
+}
+
+.hfo-golf-meal-coupon-email-line .hfo-golf-meal-coupon-recipient-email {
+	color: #64748b;
+	text-decoration: none;
+}
+
+.hfo-golf-meal-coupon-email-line .hfo-golf-meal-coupon-recipient-email:hover {
+	color: #A058BB;
+	text-decoration: underline;
+}
+
+.hfo-golf-meal-coupon-email-sent-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	border-radius: 999px;
+	background: #f0fdf4;
+	color: #166534;
+	font-size: 0.75rem;
+	line-height: 1;
+	cursor: help;
+}
+
+.hfo-golf-meal-coupon-email-log-card-list {
+	display: none;
+}
+
+.hfo-golf-meal-coupon-email-log-status {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 9px;
+	border-radius: 999px;
+	font-size: 0.78rem;
+	font-weight: 800;
+	line-height: 1.2;
+}
+
+.hfo-golf-meal-coupon-email-log-status--sent {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.hfo-golf-meal-coupon-email-log-status--failed {
+	background: #fff8e6;
+	color: #92400e;
+}
+
+.hfo-golf-meal-coupon-email-log-card,
+.hfo-golf-meal-coupon-email-log-card-meta div {
+	border: 1px solid #eadcf0;
+	border-radius: 16px;
+	background: #fff;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+
+.hfo-golf-meal-coupon-email-log-card {
+	padding: 18px;
+}
+
+.hfo-golf-meal-coupon-email-log-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 14px;
+}
+
+.hfo-golf-meal-coupon-email-log-card-meta {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	margin: 0;
+}
+
+.hfo-golf-meal-coupon-email-log-card-meta div {
+	padding: 10px;
+	box-shadow: none;
+}
+
+.hfo-golf-meal-coupon-email-log-card-meta dt {
+	margin: 0 0 3px;
+	color: #64748b;
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.hfo-golf-meal-coupon-email-log-card-meta dd {
+	margin: 0;
+	color: #0f172a;
+	font-weight: 700;
+	word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+	.hfo-golf-meal-coupon-email-log-table {
+		display: none;
+	}
+
+	.hfo-golf-meal-coupon-email-log-card-list {
+		display: grid;
+		gap: 16px;
+	}
+}
+
+@media (max-width: 700px) {
+	.hfo-golf-meal-coupon-email-log-card-meta {
+		grid-template-columns: 1fr;
+	}
+}
