@@ -466,3 +466,260 @@
 		margin-left: 0;
 	}
 }
+
+.hfo-golf-meal-coupon-manager {
+	max-width: 1180px;
+	background: linear-gradient(180deg, rgba(160, 88, 187, 0.08), rgba(254, 177, 5, 0.04) 320px, transparent 640px);
+	border-radius: 24px;
+}
+
+.hfo-golf-meal-coupon-intro {
+	max-width: 1100px;
+	margin: 0 auto 18px;
+	padding: 30px;
+	border: 1px solid rgba(160, 88, 187, 0.18);
+	border-radius: 18px;
+	background: linear-gradient(135deg, #A058BB, #7f3f99);
+	box-shadow: 0 18px 42px rgba(80, 46, 94, 0.18);
+	color: #fff;
+}
+
+.hfo-golf-meal-coupon-intro h1 {
+	margin: 0 0 8px;
+	color: #fff;
+	font-size: clamp(2rem, 4vw, 3rem);
+	line-height: 1.05;
+}
+
+.hfo-golf-meal-coupon-intro p {
+	max-width: 720px;
+	margin: 0;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 1rem;
+}
+
+.hfo-golf-meal-coupon-eyebrow {
+	display: inline-flex;
+	margin: 0 0 10px !important;
+	padding: 5px 10px;
+	border-radius: 999px;
+	background: rgba(254, 177, 5, 0.18);
+	color: #fff !important;
+	font-size: 0.75rem !important;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.hfo-golf-meal-coupon-helper-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	max-width: 1100px;
+	margin: 0 auto 28px;
+}
+
+.hfo-golf-meal-coupon-helper-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 18px;
+	border: 1px solid #eadcf0;
+	border-radius: 14px;
+	background: #fff;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.hfo-golf-meal-coupon-helper-card strong {
+	color: #A058BB;
+}
+
+.hfo-golf-meal-coupon-helper-card span {
+	color: #475569;
+	font-size: 0.9rem;
+	line-height: 1.45;
+}
+
+.hfo-golf-meal-coupon-card,
+.hfo-golf-meal-coupon-table-section {
+	border-color: #eadcf0;
+	border-radius: 18px;
+	box-shadow: 0 16px 36px rgba(51, 65, 85, 0.1);
+}
+
+.hfo-golf-meal-coupon-field input[type="text"]:focus,
+.hfo-golf-meal-coupon-field input[type="email"]:focus,
+.hfo-golf-meal-coupon-field input[type="number"]:focus,
+.hfo-golf-meal-coupon-field input[type="date"]:focus,
+.hfo-golf-meal-coupon-field textarea:focus {
+	border-color: #A058BB;
+	box-shadow: 0 0 0 3px rgba(160, 88, 187, 0.16);
+	outline: none;
+}
+
+.hfo-golf-meal-coupon-code,
+.hfo-golf-meal-coupon-card-code {
+	border-color: #eadcf0;
+	background: #f8f2fb;
+	color: #7f3f99;
+}
+
+.hfo-golf-meal-coupon-action-primary {
+	background: #A058BB !important;
+	border-color: #A058BB !important;
+	color: #fff !important;
+}
+
+.hfo-golf-meal-coupon-action-primary:hover {
+	background: #FEB105 !important;
+	border-color: #FEB105 !important;
+	color: #fff !important;
+}
+
+.hfo-golf-meal-coupon-action-secondary {
+	background: #fff !important;
+	border-color: #A058BB !important;
+	color: #A058BB !important;
+}
+
+.hfo-golf-meal-coupon-action-secondary:hover {
+	background: #fff8e6 !important;
+	border-color: #FEB105 !important;
+	color: #7f3f99 !important;
+}
+
+.hfo-golf-meal-coupon-card-list {
+	display: none;
+}
+
+.hfo-golf-meal-coupon-empty-card,
+.hfo-golf-meal-coupon-card-item {
+	padding: 18px;
+	border: 1px solid #eadcf0;
+	border-radius: 16px;
+	background: #fff;
+	box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+
+.hfo-golf-meal-coupon-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 14px;
+}
+
+.hfo-golf-meal-coupon-card-code {
+	display: inline-flex;
+	padding: 6px 10px;
+	border: 1px solid #eadcf0;
+	border-radius: 999px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+	font-size: 0.86rem;
+	font-weight: 800;
+	letter-spacing: 0.03em;
+}
+
+.hfo-golf-meal-coupon-card-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
+	gap: 18px;
+}
+
+.hfo-golf-meal-coupon-card-recipient,
+.hfo-golf-meal-coupon-card-primary,
+.hfo-golf-meal-coupon-card-secondary {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.hfo-golf-meal-coupon-card-meta {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	margin: 0;
+}
+
+.hfo-golf-meal-coupon-card-meta div {
+	padding: 10px;
+	border-radius: 12px;
+	background: #f8fafc;
+}
+
+.hfo-golf-meal-coupon-card-meta dt {
+	margin: 0 0 3px;
+	color: #64748b;
+	font-size: 0.72rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.hfo-golf-meal-coupon-card-meta dd {
+	margin: 0;
+	color: #0f172a;
+	font-weight: 700;
+}
+
+.hfo-golf-meal-coupon-card-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 10px;
+	margin-top: 18px;
+}
+
+.hfo-golf-meal-coupon-card-actions .hfo-golf-meal-coupon-button,
+.hfo-golf-meal-coupon-card-actions .hfo-golf-meal-coupon-inline-form {
+	width: 100%;
+}
+
+.hfo-golf-meal-coupon-card-actions .hfo-golf-meal-coupon-button {
+	min-height: 38px;
+}
+
+@media (max-width: 1024px) {
+	.hfo-golf-meal-coupon-table-wrap {
+		padding: 0;
+		border: 0;
+		background: transparent;
+	}
+
+	.hfo-golf-meal-coupon-table {
+		display: none;
+	}
+
+	.hfo-golf-meal-coupon-card-list {
+		display: grid;
+		gap: 16px;
+	}
+}
+
+@media (max-width: 700px) {
+	.hfo-golf-meal-coupon-manager {
+		border-radius: 0;
+	}
+
+	.hfo-golf-meal-coupon-intro,
+	.hfo-golf-meal-coupon-helper-grid {
+		margin-right: 0;
+		margin-left: 0;
+	}
+
+	.hfo-golf-meal-coupon-intro {
+		padding: 24px 20px;
+		border-radius: 14px;
+	}
+
+	.hfo-golf-meal-coupon-helper-grid,
+	.hfo-golf-meal-coupon-card-body,
+	.hfo-golf-meal-coupon-card-meta {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 420px) {
+	.hfo-golf-meal-coupon-card-actions {
+		grid-template-columns: 1fr;
+	}
+}
