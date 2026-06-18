@@ -192,7 +192,7 @@
 
 .hfo-golf-meal-coupon-table {
 	width: 100%;
-	min-width: 1080px;
+	min-width: 820px;
 	border-collapse: collapse;
 	background: #fff;
 }
@@ -246,10 +246,38 @@
 	white-space: nowrap;
 }
 
-.hfo-golf-meal-coupon-status {
+
+.hfo-golf-meal-coupon-recipient {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	min-width: 160px;
+}
+
+.hfo-golf-meal-coupon-recipient-name {
+	color: #0f172a;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.hfo-golf-meal-coupon-recipient-email {
+	color: #64748b;
+	font-size: 0.8125rem;
+	line-height: 1.25;
+	word-break: break-word;
+}
+
+.hfo-golf-meal-coupon-meals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-width: 120px;
+}
+
+.hfo-golf-meal-coupon-meal-pill {
 	display: inline-flex;
 	align-items: center;
-	padding: 4px 9px;
+	padding: 4px 8px;
 	border-radius: 999px;
 	font-size: 0.8125rem;
 	font-weight: 700;
@@ -257,27 +285,27 @@
 	white-space: nowrap;
 }
 
-.hfo-golf-meal-coupon-status--published {
-	background: #dcfce7;
-	color: #166534;
+.hfo-golf-meal-coupon-meal-pill--lunch {
+	background: #fff8e6;
+	color: #92400e;
 }
 
-.hfo-golf-meal-coupon-status--draft {
-	background: #f1f5f9;
-	color: #475569;
+.hfo-golf-meal-coupon-meal-pill--dinner {
+	background: #f8f2fb;
+	color: #A058BB;
 }
 
 .hfo-golf-meal-coupon-actions-cell {
-	width: 170px;
-	min-width: 170px;
+	width: 118px;
+	min-width: 118px;
 }
 
 .hfo-golf-meal-coupon-actions-inner {
 	display: flex;
 	flex-direction: column;
 	align-items: stretch;
-	gap: 8px;
-	min-width: 145px;
+	gap: 6px;
+	min-width: 96px;
 }
 
 .hfo-golf-meal-coupon-inline-form {
@@ -289,6 +317,23 @@
 .hfo-golf-meal-coupon-inline-form .hfo-golf-meal-coupon-button {
 	width: 100%;
 	white-space: nowrap;
+}
+
+
+.hfo-golf-meal-coupon-action-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	min-height: 32px;
+	padding: 7px 10px;
+	font-size: 0.8125rem;
+	line-height: 1.1;
+}
+
+.hfo-golf-meal-coupon-action-icon {
+	font-size: 0.95em;
+	line-height: 1;
 }
 
 @media (max-width: 700px) {
