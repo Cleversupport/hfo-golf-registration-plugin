@@ -31,6 +31,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		add_shortcode( 'hfo_golf_meal_coupon_manager', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_form', array( $this, 'render_form_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_table', array( $this, 'render_table_shortcode' ) );
+		add_shortcode( 'hfo_golf_meal_coupon_email_log', array( $this, 'render_email_log_shortcode' ) );
 		add_action( 'admin_post_' . self::CREATE_ACTION, array( $this, 'handle_create' ) );
 		add_action( 'admin_post_' . self::DISABLE_ACTION, array( $this, 'handle_disable' ) );
 	}
@@ -97,6 +98,27 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		?>
 		<div class="hfo-golf-meal-coupon-manager">
 			<?php $this->render_table_section(); ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Renders only the meal coupon email log shortcode.
+	 *
+	 * @return string
+	 */
+	public function render_email_log_shortcode() {
+		if ( ! $this->current_user_can_manage() ) {
+			return $this->render_permission_message();
+		}
+
+		$this->enqueue_assets();
+
+		ob_start();
+		?>
+		<div class="hfo-golf-meal-coupon-manager">
+			<?php $this->render_email_log_section(); ?>
 		</div>
 		<?php
 		return ob_get_clean();
