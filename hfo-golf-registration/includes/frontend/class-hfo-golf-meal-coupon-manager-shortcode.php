@@ -318,29 +318,56 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		);
 		?>
 		<table class="hfo-golf-meal-coupon-table">
-			<thead><tr><th><?php esc_html_e( 'Code', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Recipient', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Meals', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Usage', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Expiration', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Actions', 'hfo-golf-registration' ); ?></th></tr></thead>
+			<thead>
+				<tr>
+					<th class="hfo-golf-meal-coupon-details-cell"><?php esc_html_e( 'Coupon Details', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-code"><?php esc_html_e( 'Code', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-recipient"><?php esc_html_e( 'Recipient', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-meals"><?php esc_html_e( 'Meals', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-usage"><?php esc_html_e( 'Usage', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-expiration"><?php esc_html_e( 'Expiration', 'hfo-golf-registration' ); ?></th>
+					<th class="hfo-golf-meal-coupon-column-actions"><?php esc_html_e( 'Actions', 'hfo-golf-registration' ); ?></th>
+				</tr>
+			</thead>
 			<tbody>
 			<?php if ( empty( $coupons ) ) : ?>
-				<tr><td colspan="6"><?php esc_html_e( 'No active meal coupons found.', 'hfo-golf-registration' ); ?></td></tr>
+				<tr><td colspan="7"><?php esc_html_e( 'No active meal coupons found.', 'hfo-golf-registration' ); ?></td></tr>
 			<?php endif; ?>
-			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); ?>
+			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
 				<tr>
-					<td><code class="hfo-golf-meal-coupon-code"><?php echo esc_html( $code ); ?></code></td>
-					<td>
+					<td class="hfo-golf-meal-coupon-details-cell">
+						<div class="hfo-golf-meal-coupon-details">
+							<code class="hfo-golf-meal-coupon-code hfo-golf-meal-coupon-details-code"><?php echo esc_html( $code ); ?></code>
+							<div class="hfo-golf-meal-coupon-details-recipient">
+								<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
+								<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
+							</div>
+							<div class="hfo-golf-meal-coupon-details-meals hfo-golf-meal-coupon-meals" aria-label="<?php echo esc_attr( sprintf( __( 'Lunch: %1$s, Dinner: %2$s', 'hfo-golf-registration' ), $lunch_count, $dinner_count ) ); ?>">
+								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--lunch"><?php echo esc_html( sprintf( __( 'Lunch %s', 'hfo-golf-registration' ), $lunch_count ) ); ?></span>
+								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--dinner"><?php echo esc_html( sprintf( __( 'Dinner %s', 'hfo-golf-registration' ), $dinner_count ) ); ?></span>
+							</div>
+							<div class="hfo-golf-meal-coupon-details-meta">
+								<span><?php echo esc_html( sprintf( __( 'Usage: %s', 'hfo-golf-registration' ), $usage ) ); ?></span>
+								<span><?php echo esc_html( sprintf( __( 'Expiration: %s', 'hfo-golf-registration' ), $expiration ) ); ?></span>
+							</div>
+						</div>
+					</td>
+					<td class="hfo-golf-meal-coupon-column-code"><code class="hfo-golf-meal-coupon-code"><?php echo esc_html( $code ); ?></code></td>
+					<td class="hfo-golf-meal-coupon-column-recipient">
 						<div class="hfo-golf-meal-coupon-recipient">
 							<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
 							<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
 						</div>
 					</td>
-					<td>
+					<td class="hfo-golf-meal-coupon-column-meals">
 						<div class="hfo-golf-meal-coupon-meals" aria-label="<?php echo esc_attr( sprintf( __( 'Lunch: %1$s, Dinner: %2$s', 'hfo-golf-registration' ), $lunch_count, $dinner_count ) ); ?>">
 							<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--lunch"><?php echo esc_html( sprintf( __( 'Lunch %s', 'hfo-golf-registration' ), $lunch_count ) ); ?></span>
 							<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--dinner"><?php echo esc_html( sprintf( __( 'Dinner %s', 'hfo-golf-registration' ), $dinner_count ) ); ?></span>
 						</div>
 					</td>
-					<td><?php echo esc_html( $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit() ); ?></td>
-					<td><?php $expires = $coupon->get_date_expires(); echo esc_html( $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—' ); ?></td>
-					<td class="hfo-golf-meal-coupon-actions-cell">
+					<td class="hfo-golf-meal-coupon-column-usage"><?php echo esc_html( $usage ); ?></td>
+					<td class="hfo-golf-meal-coupon-column-expiration"><?php echo esc_html( $expiration ); ?></td>
+					<td class="hfo-golf-meal-coupon-actions-cell hfo-golf-meal-coupon-column-actions">
 						<div class="hfo-golf-meal-coupon-actions-inner">
 							<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-button" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('<?php echo esc_js( $code ); ?>');" aria-label="<?php echo esc_attr( sprintf( __( 'Copy coupon code %s', 'hfo-golf-registration' ), $code ) ); ?>" title="<?php esc_attr_e( 'Copy Code', 'hfo-golf-registration' ); ?>"><span class="hfo-golf-meal-coupon-action-icon" aria-hidden="true">⧉</span><span><?php esc_html_e( 'Copy', 'hfo-golf-registration' ); ?></span></button>
 							<form class="hfo-golf-meal-coupon-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
