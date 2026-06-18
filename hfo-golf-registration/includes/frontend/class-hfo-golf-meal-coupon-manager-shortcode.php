@@ -31,6 +31,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		add_shortcode( 'hfo_golf_meal_coupon_manager', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_form', array( $this, 'render_form_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_table', array( $this, 'render_table_shortcode' ) );
+		add_shortcode( 'hfo_golf_meal_coupon_email_log', array( $this, 'render_email_log_shortcode' ) );
 		add_action( 'admin_post_' . self::CREATE_ACTION, array( $this, 'handle_create' ) );
 		add_action( 'admin_post_' . self::DISABLE_ACTION, array( $this, 'handle_disable' ) );
 	}
@@ -53,6 +54,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php $this->render_intro_section(); ?>
 			<?php $this->render_form_section(); ?>
 			<?php $this->render_table_section(); ?>
+			<?php $this->render_email_log_section(); ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -96,6 +98,27 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		?>
 		<div class="hfo-golf-meal-coupon-manager">
 			<?php $this->render_table_section(); ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Renders only the meal coupon email log shortcode.
+	 *
+	 * @return string
+	 */
+	public function render_email_log_shortcode() {
+		if ( ! $this->current_user_can_manage() ) {
+			return $this->render_permission_message();
+		}
+
+		$this->enqueue_assets();
+
+		ob_start();
+		?>
+		<div class="hfo-golf-meal-coupon-manager">
+			<?php $this->render_email_log_section(); ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -312,6 +335,19 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		$email_sent = false;
 		if ( $email_requested && is_email( $recipient_email ) ) {
 			$email_sent = $this->send_coupon_email( $recipient_email, $recipient_name, $code, $lunch_count, $dinner_count, $restrict_to_email );
+			$this->append_email_log_entry(
+				$coupon_id,
+				array(
+					'timestamp'            => current_time( 'mysql' ),
+					'recipient_email'      => $recipient_email,
+					'recipient_name'       => $recipient_name,
+					'coupon_code'          => $code,
+					'status'               => $email_sent ? 'sent' : 'failed',
+					'triggered_by_user_id' => get_current_user_id(),
+					'context'              => 'creation',
+					'message'              => $email_sent ? '' : __( 'wp_mail returned false.', 'hfo-golf-registration' ),
+				)
+			);
 		}
 		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_sent', $email_sent ? '1' : '0' );
 		if ( $email_sent ) {
@@ -404,14 +440,14 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php if ( empty( $coupons ) ) : ?>
 				<tr><td colspan="7"><?php esc_html_e( 'No active meal coupons found.', 'hfo-golf-registration' ); ?></td></tr>
 			<?php endif; ?>
-			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
+			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $email_sent = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent', true ); $email_sent_at = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent_at', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
 				<tr>
 					<td class="hfo-golf-meal-coupon-details-cell">
 						<div class="hfo-golf-meal-coupon-details">
 							<code class="hfo-golf-meal-coupon-code hfo-golf-meal-coupon-details-code"><?php echo esc_html( $code ); ?></code>
 							<div class="hfo-golf-meal-coupon-details-recipient">
 								<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
-								<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
+								<?php $this->render_recipient_email_line( $recipient_email, $email_sent, $email_sent_at ); ?>
 							</div>
 							<div class="hfo-golf-meal-coupon-details-meals hfo-golf-meal-coupon-meals" aria-label="<?php echo esc_attr( sprintf( __( 'Lunch: %1$s, Dinner: %2$s', 'hfo-golf-registration' ), $lunch_count, $dinner_count ) ); ?>">
 								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--lunch"><?php echo esc_html( sprintf( __( 'Lunch %s', 'hfo-golf-registration' ), $lunch_count ) ); ?></span>
@@ -427,7 +463,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 					<td class="hfo-golf-meal-coupon-column-recipient">
 						<div class="hfo-golf-meal-coupon-recipient">
 							<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
-							<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
+							<?php $this->render_recipient_email_line( $recipient_email, $email_sent, $email_sent_at ); ?>
 						</div>
 					</td>
 					<td class="hfo-golf-meal-coupon-column-meals">
@@ -458,7 +494,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php if ( empty( $coupons ) ) : ?>
 				<div class="hfo-golf-meal-coupon-empty-card"><?php esc_html_e( 'No active meal coupons found.', 'hfo-golf-registration' ); ?></div>
 			<?php endif; ?>
-			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
+			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $email_sent = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent', true ); $email_sent_at = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent_at', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
 				<article class="hfo-golf-meal-coupon-card-item">
 					<div class="hfo-golf-meal-coupon-card-header">
 						<code class="hfo-golf-meal-coupon-card-code"><?php echo esc_html( $code ); ?></code>
@@ -467,7 +503,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 						<div class="hfo-golf-meal-coupon-card-primary">
 							<div class="hfo-golf-meal-coupon-card-recipient">
 								<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
-								<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
+								<?php $this->render_recipient_email_line( $recipient_email, $email_sent, $email_sent_at ); ?>
 							</div>
 							<div class="hfo-golf-meal-coupon-card-meals hfo-golf-meal-coupon-meals" aria-label="<?php echo esc_attr( sprintf( __( 'Lunch: %1$s, Dinner: %2$s', 'hfo-golf-registration' ), $lunch_count, $dinner_count ) ); ?>">
 								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--lunch"><?php echo esc_html( sprintf( __( 'Lunch %s', 'hfo-golf-registration' ), $lunch_count ) ); ?></span>
@@ -495,6 +531,139 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php endforeach; ?>
 		</div>
 		<?php
+	}
+
+
+	/**
+	 * Renders a recipient email with an emailed indicator when available.
+	 *
+	 * @param string $recipient_email Recipient email address.
+	 * @param string $email_sent      Email sent meta flag.
+	 * @param string $email_sent_at   Email sent timestamp.
+	 * @return void
+	 */
+	private function render_recipient_email_line( $recipient_email, $email_sent, $email_sent_at ) {
+		$tooltip_email = $recipient_email;
+		$sent_date     = $email_sent_at ? $this->format_log_timestamp( $email_sent_at ) : '';
+		$tooltip       = __( 'Coupon was emailed to this address.', 'hfo-golf-registration' );
+
+		if ( $sent_date && $tooltip_email ) {
+			$tooltip = sprintf( __( 'Coupon was emailed to %1$s on %2$s.', 'hfo-golf-registration' ), $tooltip_email, $sent_date );
+		} elseif ( $sent_date ) {
+			$tooltip = sprintf( __( 'Coupon was emailed to this address on %s.', 'hfo-golf-registration' ), $sent_date );
+		}
+		?>
+		<span class="hfo-golf-meal-coupon-recipient-email hfo-golf-meal-coupon-email-line">
+			<?php if ( $recipient_email ) : ?>
+				<a href="mailto:<?php echo esc_attr( $recipient_email ); ?>"><?php echo esc_html( $recipient_email ); ?></a>
+			<?php else : ?>
+				<span><?php echo esc_html( '—' ); ?></span>
+			<?php endif; ?>
+			<?php if ( '1' === (string) $email_sent ) : ?>
+				<span class="hfo-golf-meal-coupon-email-sent-indicator" title="<?php echo esc_attr( $tooltip ); ?>" aria-label="<?php echo esc_attr( $tooltip ); ?>" role="img">
+					<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.4 5.1c-.5-.2-.5-.9 0-1.1l19-2.9c.5-.1.9.4.7.9l-7 19c-.2.5-.9.5-1.1 0l-3.2-7.2-5.4 5.4c-.3.3-.8.3-1.1 0l-.5-.5c-.3-.3-.3-.8 0-1.1l5.4-5.4L2.4 5.1Zm4.1.4 5.4 4.9 5.3-5.3-10.7.4Zm7.1 7.1 1.9 4.9 3.9-10.8-5.8 5.9Z"/></svg>
+				</span>
+			<?php endif; ?>
+		</span>
+		<?php
+	}
+
+	/** Renders recent meal coupon email log entries. */
+	private function render_email_log_section() {
+		$entries = $this->get_recent_email_log_entries();
+		?>
+		<section class="hfo-golf-meal-coupon-email-log-section" aria-labelledby="hfo-golf-meal-coupon-email-log-title">
+			<div class="hfo-golf-meal-coupon-card__header">
+				<h2 id="hfo-golf-meal-coupon-email-log-title" class="hfo-golf-meal-coupon-card__title"><?php esc_html_e( 'Email Send Log', 'hfo-golf-registration' ); ?></h2>
+				<p class="hfo-golf-meal-coupon-card__description"><?php esc_html_e( 'Recent email activity for generated meal coupon codes.', 'hfo-golf-registration' ); ?></p>
+			</div>
+			<?php if ( empty( $entries ) ) : ?>
+				<p class="hfo-golf-meal-coupon-empty-card"><?php esc_html_e( 'No meal coupon emails have been sent yet.', 'hfo-golf-registration' ); ?></p>
+			<?php else : ?>
+				<div class="hfo-golf-meal-coupon-table-wrap">
+					<table class="hfo-golf-meal-coupon-table hfo-golf-meal-coupon-email-log-table">
+						<thead><tr><th><?php esc_html_e( 'Date/Time', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Coupon Code', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Recipient', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Email', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Status', 'hfo-golf-registration' ); ?></th><th><?php esc_html_e( 'Sent By', 'hfo-golf-registration' ); ?></th></tr></thead>
+						<tbody>
+						<?php foreach ( $entries as $entry ) : $user = ! empty( $entry['triggered_by_user_id'] ) ? get_userdata( absint( $entry['triggered_by_user_id'] ) ) : false; ?>
+							<tr>
+								<td><?php echo esc_html( $this->format_log_timestamp( $entry['timestamp'] ?? '' ) ); ?></td>
+								<td><code class="hfo-golf-meal-coupon-code"><?php echo esc_html( $entry['coupon_code'] ?? '' ); ?></code></td>
+								<td><?php echo esc_html( $entry['recipient_name'] ?? '' ); ?></td>
+								<td><?php echo esc_html( $entry['recipient_email'] ?? '' ); ?></td>
+								<td><span class="hfo-golf-meal-coupon-status-badge hfo-golf-meal-coupon-status-badge--<?php echo esc_attr( ( $entry['status'] ?? '' ) === 'sent' ? 'sent' : 'failed' ); ?>"><?php echo esc_html( ( $entry['status'] ?? '' ) === 'sent' ? __( 'Sent', 'hfo-golf-registration' ) : __( 'Failed', 'hfo-golf-registration' ) ); ?></span></td>
+								<td><?php echo esc_html( $user ? $user->display_name : __( 'Unknown', 'hfo-golf-registration' ) ); ?></td>
+							</tr>
+						<?php endforeach; ?>
+						</tbody>
+					</table>
+				</div>
+			<?php endif; ?>
+		</section>
+		<?php
+	}
+
+	/** Gets recent email log entries across meal coupons. */
+	private function get_recent_email_log_entries() {
+		$coupons = get_posts(
+			array(
+				'post_type'      => 'shop_coupon',
+				'post_status'    => array( 'publish', 'draft' ),
+				'posts_per_page' => -1,
+				'meta_key'       => self::META_FLAG,
+				'meta_value'     => '1',
+				'fields'         => 'ids',
+			)
+		);
+		$entries = array();
+		foreach ( $coupons as $coupon_id ) {
+			$log = get_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_log', true );
+			if ( ! is_array( $log ) ) {
+				continue;
+			}
+			foreach ( $log as $entry ) {
+				if ( is_array( $entry ) ) {
+					$entries[] = $entry;
+				}
+			}
+		}
+		usort(
+			$entries,
+			function ( $a, $b ) {
+				return strtotime( $b['timestamp'] ?? '' ) <=> strtotime( $a['timestamp'] ?? '' );
+			}
+		);
+		return array_slice( $entries, 0, 50 );
+	}
+
+	/** Appends a meal coupon email log entry. */
+	private function append_email_log_entry( $coupon_id, $entry ) {
+		$log = get_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_log', true );
+		if ( ! is_array( $log ) ) {
+			$log = array();
+		}
+		$log[] = array(
+			'timestamp'            => sanitize_text_field( $entry['timestamp'] ?? current_time( 'mysql' ) ),
+			'recipient_email'      => sanitize_email( $entry['recipient_email'] ?? '' ),
+			'recipient_name'       => sanitize_text_field( $entry['recipient_name'] ?? '' ),
+			'coupon_code'          => sanitize_text_field( $entry['coupon_code'] ?? '' ),
+			'status'               => ( $entry['status'] ?? '' ) === 'sent' ? 'sent' : 'failed',
+			'triggered_by_user_id' => absint( $entry['triggered_by_user_id'] ?? 0 ),
+			'context'              => sanitize_key( $entry['context'] ?? 'creation' ),
+			'message'              => sanitize_text_field( $entry['message'] ?? '' ),
+		);
+		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_log', $log );
+	}
+
+	/** Formats email log timestamps for display. */
+	private function format_log_timestamp( $timestamp ) {
+		if ( ! $timestamp ) {
+			return '';
+		}
+		$unix = strtotime( $timestamp );
+		if ( ! $unix ) {
+			return $timestamp;
+		}
+		return date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $unix );
 	}
 
 	private function validate_create_request( $recipient_name, $recipient_email, $restrict_to_email, $email_requested, $lunch_count, $dinner_count, $expiration_date ) {
