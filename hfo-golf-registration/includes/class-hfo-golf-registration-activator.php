@@ -30,8 +30,11 @@ class HFO_Golf_Registration_Activator {
 	 * @return void
 	 */
 	public static function activate() {
-		self::register_meal_coupon_manager_role();
-		self::add_meal_coupon_capability_to_administrators();
+		self::register_roles_and_capabilities();
+
+		if ( defined( 'HFO_GOLF_REGISTRATION_VERSION' ) ) {
+			update_option( 'hfo_golf_registration_installed_version', HFO_GOLF_REGISTRATION_VERSION );
+		}
 
 		HFO_Golf_Event_Post_Type::register();
 		HFO_Golf_Registration_Post_Type::register();
@@ -40,19 +43,32 @@ class HFO_Golf_Registration_Activator {
 	}
 
 	/**
-	 * Adds the limited HFO Meal Coupon Manager role.
+	 * Registers plugin roles and capabilities.
 	 *
 	 * @return void
 	 */
-	private static function register_meal_coupon_manager_role() {
-		add_role(
-			self::MEAL_COUPON_MANAGER_ROLE,
-			__( 'HFO Meal Coupon Manager', 'hfo-golf-registration' ),
-			array(
-				'read'                         => true,
-				self::MEAL_COUPON_CAPABILITY   => true,
-			)
-		);
+	public static function register_roles_and_capabilities() {
+		$meal_coupon_manager = get_role( self::MEAL_COUPON_MANAGER_ROLE );
+
+		if ( ! $meal_coupon_manager ) {
+			add_role(
+				self::MEAL_COUPON_MANAGER_ROLE,
+				__( 'HFO Meal Coupon Manager', 'hfo-golf-registration' ),
+				array(
+					'read'                       => true,
+					self::MEAL_COUPON_CAPABILITY => true,
+				)
+			);
+
+			$meal_coupon_manager = get_role( self::MEAL_COUPON_MANAGER_ROLE );
+		}
+
+		if ( $meal_coupon_manager ) {
+			$meal_coupon_manager->add_cap( 'read' );
+			$meal_coupon_manager->add_cap( self::MEAL_COUPON_CAPABILITY );
+		}
+
+		self::add_meal_coupon_capability_to_administrators();
 	}
 
 	/**
