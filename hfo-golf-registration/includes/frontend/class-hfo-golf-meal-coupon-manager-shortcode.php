@@ -31,6 +31,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		add_shortcode( 'hfo_golf_meal_coupon_manager', array( $this, 'render_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_form', array( $this, 'render_form_shortcode' ) );
 		add_shortcode( 'hfo_golf_meal_coupon_table', array( $this, 'render_table_shortcode' ) );
+		add_shortcode( 'hfo_golf_meal_coupon_email_log', array( $this, 'render_email_log_shortcode' ) );
 		add_action( 'admin_post_' . self::CREATE_ACTION, array( $this, 'handle_create' ) );
 		add_action( 'admin_post_' . self::DISABLE_ACTION, array( $this, 'handle_disable' ) );
 	}
@@ -53,6 +54,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php $this->render_intro_section(); ?>
 			<?php $this->render_form_section(); ?>
 			<?php $this->render_table_section(); ?>
+			<?php $this->render_email_log_section(); ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -96,6 +98,27 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		?>
 		<div class="hfo-golf-meal-coupon-manager">
 			<?php $this->render_table_section(); ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Renders only the meal coupon email log shortcode.
+	 *
+	 * @return string
+	 */
+	public function render_email_log_shortcode() {
+		if ( ! $this->current_user_can_manage() ) {
+			return $this->render_permission_message();
+		}
+
+		$this->enqueue_assets();
+
+		ob_start();
+		?>
+		<div class="hfo-golf-meal-coupon-manager">
+			<?php $this->render_email_log_section(); ?>
 		</div>
 		<?php
 		return ob_get_clean();
@@ -245,6 +268,58 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			</div>
 			<div class="hfo-golf-meal-coupon-table-wrap">
 				<?php $this->render_coupon_table(); ?>
+			</div>
+		</section>
+		<?php
+	}
+
+	/**
+	 * Renders the meal coupon email log section.
+	 *
+	 * @return void
+	 */
+	private function render_email_log_section() {
+		$coupons = get_posts(
+			array(
+				'post_type'      => 'shop_coupon',
+				'post_status'    => array( 'publish', 'draft' ),
+				'posts_per_page' => 20,
+				'meta_key'       => '_hfo_golf_meal_coupon_email_requested',
+				'meta_value'     => '1',
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+			)
+		);
+		?>
+		<section class="hfo-golf-meal-coupon-table-section" aria-labelledby="hfo-golf-meal-coupon-email-log-title">
+			<div class="hfo-golf-meal-coupon-card__header">
+				<h2 id="hfo-golf-meal-coupon-email-log-title" class="hfo-golf-meal-coupon-card__title"><?php esc_html_e( 'Meal Coupon Email Log', 'hfo-golf-registration' ); ?></h2>
+				<p class="hfo-golf-meal-coupon-card__description"><?php esc_html_e( 'Review recent meal coupon email delivery attempts.', 'hfo-golf-registration' ); ?></p>
+			</div>
+			<div class="hfo-golf-meal-coupon-table-wrap">
+				<table class="hfo-golf-meal-coupon-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Coupon', 'hfo-golf-registration' ); ?></th>
+							<th><?php esc_html_e( 'Recipient', 'hfo-golf-registration' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'hfo-golf-registration' ); ?></th>
+							<th><?php esc_html_e( 'Sent At', 'hfo-golf-registration' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+					<?php if ( empty( $coupons ) ) : ?>
+						<tr><td colspan="4"><?php esc_html_e( 'No meal coupon email attempts found.', 'hfo-golf-registration' ); ?></td></tr>
+					<?php endif; ?>
+					<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $email_sent = '1' === get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent', true ); $sent_at = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_email_sent_at', true ); ?>
+						<tr>
+							<td><code class="hfo-golf-meal-coupon-code"><?php echo esc_html( $coupon->get_code() ); ?></code></td>
+							<td><?php echo esc_html( trim( $recipient_name . ' <' . $recipient_email . '>' ) ); ?></td>
+							<td><?php echo esc_html( $email_sent ? __( 'Sent', 'hfo-golf-registration' ) : __( 'Failed', 'hfo-golf-registration' ) ); ?></td>
+							<td><?php echo esc_html( $sent_at ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $sent_at ) : '—' ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
 			</div>
 		</section>
 		<?php
