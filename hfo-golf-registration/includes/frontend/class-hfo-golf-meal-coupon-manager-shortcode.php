@@ -181,6 +181,9 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 					<p class="hfo-golf-meal-coupon-field hfo-golf-meal-coupon-field--full">
 						<label class="hfo-golf-meal-coupon-checkbox"><input id="hfo_meal_coupon_restrict_to_email" type="checkbox" name="restrict_to_email" value="1" /> <?php esc_html_e( 'Restrict coupon to this email', 'hfo-golf-registration' ); ?></label>
 					</p>
+					<p class="hfo-golf-meal-coupon-field hfo-golf-meal-coupon-field--full">
+						<label class="hfo-golf-meal-coupon-checkbox"><input id="hfo_meal_coupon_email_coupon_to_recipient" type="checkbox" name="email_coupon_to_recipient" value="1" /> <?php esc_html_e( 'Email coupon to recipient', 'hfo-golf-registration' ); ?></label>
+					</p>
 					<p class="hfo-golf-meal-coupon-field hfo-golf-meal-coupon-field--full hfo-golf-meal-coupon-help"><?php esc_html_e( 'Enter how many lunch and/or dinner guest meals should be covered by this coupon.', 'hfo-golf-registration' ); ?></p>
 					<p class="hfo-golf-meal-coupon-field">
 						<label for="hfo_meal_coupon_lunch_count"><?php esc_html_e( 'Free Lunch Guests', 'hfo-golf-registration' ); ?></label>
@@ -206,9 +209,21 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		(function(){
 			var email = document.getElementById('hfo_meal_coupon_recipient_email');
 			var restrict = document.getElementById('hfo_meal_coupon_restrict_to_email');
-			if (!email || !restrict) { return; }
+			var emailCoupon = document.getElementById('hfo_meal_coupon_email_coupon_to_recipient');
+			if (!email || !restrict || !emailCoupon) { return; }
+			var emailCouponChanged = false;
+			function syncEmailCouponDefault() {
+				if (!emailCouponChanged) {
+					emailCoupon.checked = !!email.value.trim();
+				}
+			}
+			syncEmailCouponDefault();
+			emailCoupon.addEventListener('change', function(){
+				emailCouponChanged = true;
+			});
 			email.addEventListener('input', function(){
 				if (email.value.trim()) { restrict.checked = true; }
+				syncEmailCouponDefault();
 			});
 		}());
 		</script>
@@ -246,12 +261,13 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		$recipient_name    = isset( $_POST['recipient_name'] ) ? sanitize_text_field( wp_unslash( $_POST['recipient_name'] ) ) : '';
 		$recipient_email   = isset( $_POST['recipient_email'] ) ? sanitize_email( wp_unslash( $_POST['recipient_email'] ) ) : '';
 		$restrict_to_email = ! empty( $_POST['restrict_to_email'] );
+		$email_requested   = ! empty( $_POST['email_coupon_to_recipient'] );
 		$lunch_count       = isset( $_POST['lunch_count'] ) ? max( 0, absint( $_POST['lunch_count'] ) ) : 0;
 		$dinner_count      = isset( $_POST['dinner_count'] ) ? max( 0, absint( $_POST['dinner_count'] ) ) : 0;
 		$expiration_date   = isset( $_POST['expiration_date'] ) ? sanitize_text_field( wp_unslash( $_POST['expiration_date'] ) ) : '';
 		$internal_note     = isset( $_POST['internal_note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['internal_note'] ) ) : '';
 
-		$errors = $this->validate_create_request( $recipient_name, $recipient_email, $restrict_to_email, $lunch_count, $dinner_count, $expiration_date );
+		$errors = $this->validate_create_request( $recipient_name, $recipient_email, $restrict_to_email, $email_requested, $lunch_count, $dinner_count, $expiration_date );
 		if ( ! empty( $errors ) ) {
 			wp_safe_redirect( add_query_arg( array( 'hfo_meal_coupon_error' => rawurlencode( reset( $errors ) ) ), $redirect_to ) );
 			exit;
@@ -291,8 +307,26 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_restrict_to_email', $restrict_to_email ? '1' : '0' );
 		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_note', $internal_note );
 		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_created_by', get_current_user_id() );
+		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_requested', $email_requested ? '1' : '0' );
 
-		wp_safe_redirect( add_query_arg( array( 'hfo_meal_coupon_created' => rawurlencode( $code ) ), $redirect_to ) );
+		$email_sent = false;
+		if ( $email_requested && is_email( $recipient_email ) ) {
+			$email_sent = $this->send_coupon_email( $recipient_email, $recipient_name, $code, $lunch_count, $dinner_count, $restrict_to_email );
+		}
+		update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_sent', $email_sent ? '1' : '0' );
+		if ( $email_sent ) {
+			update_post_meta( $coupon_id, '_hfo_golf_meal_coupon_email_sent_at', current_time( 'mysql' ) );
+		}
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'hfo_meal_coupon_created'      => rawurlencode( $code ),
+					'hfo_meal_coupon_email_status' => $email_requested ? ( $email_sent ? 'sent' : 'failed' ) : 'not_requested',
+				),
+				$redirect_to
+			)
+		);
 		exit;
 	}
 
@@ -319,8 +353,16 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 
 	private function render_create_notice() {
 		if ( ! empty( $_GET['hfo_meal_coupon_created'] ) ) {
-			$code = sanitize_text_field( wp_unslash( $_GET['hfo_meal_coupon_created'] ) );
-			echo '<div class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--success"><span>' . esc_html__( 'Coupon created successfully:', 'hfo-golf-registration' ) . ' <strong>' . esc_html( $code ) . '</strong></span> <button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-primary" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' . esc_js( $code ) . '\');" aria-label="' . esc_attr__( 'Copy created coupon code', 'hfo-golf-registration' ) . '" title="' . esc_attr__( 'Copy Code', 'hfo-golf-registration' ) . '"><span aria-hidden="true">⧉</span> ' . esc_html__( 'Copy Code', 'hfo-golf-registration' ) . '</button></div>';
+			$code         = sanitize_text_field( wp_unslash( $_GET['hfo_meal_coupon_created'] ) );
+			$email_status = isset( $_GET['hfo_meal_coupon_email_status'] ) ? sanitize_key( wp_unslash( $_GET['hfo_meal_coupon_email_status'] ) ) : 'not_requested';
+			$message      = __( 'Coupon created successfully:', 'hfo-golf-registration' );
+			if ( 'sent' === $email_status ) {
+				$message = __( 'Coupon created and emailed successfully:', 'hfo-golf-registration' );
+			} elseif ( 'failed' === $email_status ) {
+				$message = __( 'Coupon created successfully, but the email could not be sent:', 'hfo-golf-registration' );
+			}
+			$notice_class = 'failed' === $email_status ? 'hfo-golf-meal-coupon-message--warning' : 'hfo-golf-meal-coupon-message--success';
+			echo '<div class="hfo-golf-meal-coupon-message ' . esc_attr( $notice_class ) . '"><span>' . esc_html( $message ) . ' <strong>' . esc_html( $code ) . '</strong></span> <button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-primary" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' . esc_js( $code ) . '\');" aria-label="' . esc_attr__( 'Copy created coupon code', 'hfo-golf-registration' ) . '" title="' . esc_attr__( 'Copy Code', 'hfo-golf-registration' ) . '"><span aria-hidden="true">⧉</span> ' . esc_html__( 'Copy Code', 'hfo-golf-registration' ) . '</button></div>';
 		}
 		if ( ! empty( $_GET['hfo_meal_coupon_error'] ) ) {
 			echo '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--error">' . esc_html( sanitize_text_field( wp_unslash( $_GET['hfo_meal_coupon_error'] ) ) ) . '</p>';
@@ -455,7 +497,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		<?php
 	}
 
-	private function validate_create_request( $recipient_name, $recipient_email, $restrict_to_email, $lunch_count, $dinner_count, $expiration_date ) {
+	private function validate_create_request( $recipient_name, $recipient_email, $restrict_to_email, $email_requested, $lunch_count, $dinner_count, $expiration_date ) {
 		$errors = array();
 		if ( '' === $recipient_name ) {
 			$errors[] = __( 'Recipient Name is required.', 'hfo-golf-registration' );
@@ -465,6 +507,9 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		}
 		if ( $restrict_to_email && ( '' === $recipient_email || ! is_email( $recipient_email ) ) ) {
 			$errors[] = __( 'Recipient Email is required and must be valid when restricting the coupon to an email.', 'hfo-golf-registration' );
+		}
+		if ( $email_requested && ( '' === $recipient_email || ! is_email( $recipient_email ) ) ) {
+			$errors[] = __( 'Recipient Email is required and must be valid when emailing the coupon to the recipient.', 'hfo-golf-registration' );
 		}
 		if ( ! class_exists( 'WC_Coupon' ) ) {
 			$errors[] = __( 'WooCommerce coupons are not available.', 'hfo-golf-registration' );
@@ -494,6 +539,30 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			$code = 'HFO-MEAL-' . strtoupper( wp_generate_password( 8, false, false ) );
 		} while ( wc_get_coupon_id_by_code( $code ) );
 		return $code;
+	}
+
+	private function send_coupon_email( $recipient_email, $recipient_name, $code, $lunch_count, $dinner_count, $restrict_to_email ) {
+		$subject = __( 'Your complimentary meal coupon from Hearts of the Father Outreach', 'hfo-golf-registration' );
+		$body    = '<p>' . esc_html( $recipient_name ? sprintf( __( 'Hello %s,', 'hfo-golf-registration' ), $recipient_name ) : __( 'Hello,', 'hfo-golf-registration' ) ) . '</p>';
+		$body   .= '<p>' . esc_html__( 'Hearts of the Father Outreach has created a complimentary meal coupon for you.', 'hfo-golf-registration' ) . '</p>';
+		$body   .= '<p><strong>' . esc_html__( 'Coupon code:', 'hfo-golf-registration' ) . '</strong> ' . esc_html( $code ) . '</p>';
+		$body   .= '<p><strong>' . esc_html__( 'This coupon covers:', 'hfo-golf-registration' ) . '</strong></p>';
+		$body   .= '<ul>';
+		$body   .= '<li>' . esc_html( sprintf( __( 'Lunch guest quantity: %d', 'hfo-golf-registration' ), $lunch_count ) ) . '</li>';
+		$body   .= '<li>' . esc_html( sprintf( __( 'Dinner guest quantity: %d', 'hfo-golf-registration' ), $dinner_count ) ) . '</li>';
+		$body   .= '</ul>';
+		$body   .= '<p>' . esc_html__( 'Use this coupon code during checkout for complimentary lunch and/or dinner guest meals.', 'hfo-golf-registration' ) . '</p>';
+		if ( $restrict_to_email ) {
+			$body .= '<p>' . esc_html__( 'This coupon is restricted to the email address used for this invitation.', 'hfo-golf-registration' ) . '</p>';
+		}
+		$body .= '<p>' . esc_html__( 'With appreciation,', 'hfo-golf-registration' ) . '<br />' . esc_html__( 'Hearts of the Father Outreach', 'hfo-golf-registration' ) . '</p>';
+
+		return wp_mail(
+			$recipient_email,
+			$subject,
+			$body,
+			array( 'Content-Type: text/html; charset=UTF-8' )
+		);
 	}
 
 	private function get_redirect_url() {

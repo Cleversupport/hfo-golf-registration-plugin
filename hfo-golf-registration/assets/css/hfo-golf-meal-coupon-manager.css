@@ -181,6 +181,22 @@
 	color: #991b1b;
 }
 
+.hfo-golf-meal-coupon-message--warning {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	width: 100%;
+	border: 1px solid #f5d48a;
+	background: #fff8e6;
+	color: #7a4f00;
+}
+
+.hfo-golf-meal-coupon-message--warning .hfo-golf-meal-coupon-button {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
 .hfo-golf-meal-coupon-table-wrap {
 	width: 100%;
 	overflow-x: auto;
@@ -577,15 +593,15 @@
 }
 
 .hfo-golf-meal-coupon-action-secondary {
-	background: #fff !important;
-	border-color: #A058BB !important;
-	color: #A058BB !important;
+	background-color: #FEB105 !important;
+	border-color: #FEB105 !important;
+	color: #fff !important;
 }
 
 .hfo-golf-meal-coupon-action-secondary:hover {
-	background: #fff8e6 !important;
-	border-color: #FEB105 !important;
-	color: #7f3f99 !important;
+	background-color: #A058BB !important;
+	border-color: #A058BB !important;
+	color: #fff !important;
 }
 
 .hfo-golf-meal-coupon-card-list {
