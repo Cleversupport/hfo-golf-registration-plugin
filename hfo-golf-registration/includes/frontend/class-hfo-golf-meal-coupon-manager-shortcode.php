@@ -675,7 +675,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	}
 
 	private function current_user_can_manage() {
-		return current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' );
+		return current_user_can( 'manage_options' ) || current_user_can( 'manage_hfo_meal_coupons' );
 	}
 
 	private function is_valid_product( $product_id ) {

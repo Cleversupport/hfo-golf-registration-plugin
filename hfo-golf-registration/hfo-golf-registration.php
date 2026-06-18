@@ -3,7 +3,7 @@
  * Plugin Name: HFO Golf Registration
  * Plugin URI:  https://github.com/Cleversupport/hfo-golf-registration-plugin
  * Description: Base plugin structure for HFO golf events and registrations.
- * Version:     0.1.33
+ * Version:     0.1.34
  * Author:      HFO
  * Text Domain: hfo-golf-registration
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HFO_GOLF_REGISTRATION_VERSION', '0.1.33' );
+define( 'HFO_GOLF_REGISTRATION_VERSION', '0.1.34' );
 define( 'HFO_GOLF_REGISTRATION_FILE', __FILE__ );
 define( 'HFO_GOLF_REGISTRATION_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -33,6 +33,21 @@ require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-regi
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-meal-coupon-manager-shortcode.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-jetformbuilder.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration.php';
+
+/**
+ * Ensures update-time setup tasks run for existing active installs.
+ *
+ * @return void
+ */
+function hfo_golf_registration_maybe_update_installed_version() {
+	$installed_version = get_option( 'hfo_golf_registration_installed_version' );
+
+	if ( ! $installed_version || version_compare( $installed_version, HFO_GOLF_REGISTRATION_VERSION, '<' ) ) {
+		HFO_Golf_Registration_Activator::register_roles_and_capabilities();
+		update_option( 'hfo_golf_registration_installed_version', HFO_GOLF_REGISTRATION_VERSION );
+	}
+}
+add_action( 'init', 'hfo_golf_registration_maybe_update_installed_version' );
 
 register_activation_hook( __FILE__, array( 'HFO_Golf_Registration_Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'HFO_Golf_Registration_Deactivator', 'deactivate' ) );
