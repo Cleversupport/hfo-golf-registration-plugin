@@ -50,6 +50,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		ob_start();
 		?>
 		<div class="hfo-golf-meal-coupon-manager">
+			<?php $this->render_intro_section(); ?>
 			<?php $this->render_form_section(); ?>
 			<?php $this->render_table_section(); ?>
 		</div>
@@ -72,6 +73,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 		ob_start();
 		?>
 		<div class="hfo-golf-meal-coupon-manager">
+			<?php $this->render_intro_section(); ?>
 			<?php $this->render_form_section(); ?>
 		</div>
 		<?php
@@ -120,6 +122,33 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	 */
 	private function render_permission_message() {
 		return '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--error">' . esc_html__( 'You do not have permission to manage meal coupons.', 'hfo-golf-registration' ) . '</p>';
+	}
+
+	/**
+	 * Renders the manager intro and helper cards.
+	 *
+	 * @return void
+	 */
+	private function render_intro_section() {
+		?>
+		<section class="hfo-golf-meal-coupon-intro" aria-labelledby="hfo-golf-meal-coupon-intro-title">
+			<div>
+				<p class="hfo-golf-meal-coupon-eyebrow"><?php esc_html_e( 'HFO Golf Registration', 'hfo-golf-registration' ); ?></p>
+				<h1 id="hfo-golf-meal-coupon-intro-title"><?php esc_html_e( 'Meal Coupon Manager', 'hfo-golf-registration' ); ?></h1>
+				<p><?php esc_html_e( 'Generate, copy, and disable approved meal coupons from one polished admin workspace.', 'hfo-golf-registration' ); ?></p>
+			</div>
+		</section>
+		<div class="hfo-golf-meal-coupon-helper-grid" aria-label="<?php esc_attr_e( 'Meal coupon guidance', 'hfo-golf-registration' ); ?>">
+			<div class="hfo-golf-meal-coupon-helper-card">
+				<strong><?php esc_html_e( 'Meal coverage', 'hfo-golf-registration' ); ?></strong>
+				<span><?php esc_html_e( 'Lunch and dinner quantities determine the covered guest meal items.', 'hfo-golf-registration' ); ?></span>
+			</div>
+			<div class="hfo-golf-meal-coupon-helper-card">
+				<strong><?php esc_html_e( 'Email restriction', 'hfo-golf-registration' ); ?></strong>
+				<span><?php esc_html_e( 'Add a recipient email to automatically offer the email restriction option.', 'hfo-golf-registration' ); ?></span>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**
@@ -291,7 +320,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	private function render_create_notice() {
 		if ( ! empty( $_GET['hfo_meal_coupon_created'] ) ) {
 			$code = sanitize_text_field( wp_unslash( $_GET['hfo_meal_coupon_created'] ) );
-			echo '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--success">' . esc_html__( 'Coupon created successfully:', 'hfo-golf-registration' ) . ' <strong>' . esc_html( $code ) . '</strong> <button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' . esc_js( $code ) . '\');">' . esc_html__( 'Copy Code', 'hfo-golf-registration' ) . '</button></p>';
+			echo '<div class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--success"><span>' . esc_html__( 'Coupon created successfully:', 'hfo-golf-registration' ) . ' <strong>' . esc_html( $code ) . '</strong></span> <button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-primary" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' . esc_js( $code ) . '\');" aria-label="' . esc_attr__( 'Copy created coupon code', 'hfo-golf-registration' ) . '" title="' . esc_attr__( 'Copy Code', 'hfo-golf-registration' ) . '"><span aria-hidden="true">⧉</span> ' . esc_html__( 'Copy Code', 'hfo-golf-registration' ) . '</button></div>';
 		}
 		if ( ! empty( $_GET['hfo_meal_coupon_error'] ) ) {
 			echo '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--error">' . esc_html( sanitize_text_field( wp_unslash( $_GET['hfo_meal_coupon_error'] ) ) ) . '</p>';
@@ -383,6 +412,46 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 			<?php endforeach; ?>
 			</tbody>
 		</table>
+		<div class="hfo-golf-meal-coupon-card-list">
+			<?php if ( empty( $coupons ) ) : ?>
+				<div class="hfo-golf-meal-coupon-empty-card"><?php esc_html_e( 'No active meal coupons found.', 'hfo-golf-registration' ); ?></div>
+			<?php endif; ?>
+			<?php foreach ( $coupons as $coupon_post ) : $coupon = new WC_Coupon( $coupon_post->ID ); $code = $coupon->get_code(); $recipient_name = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_name', true ); $recipient_email = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_recipient_email', true ); $lunch_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_lunch_count', true ); $dinner_count = get_post_meta( $coupon_post->ID, '_hfo_golf_meal_coupon_dinner_count', true ); $usage = $coupon->get_usage_count() . ' / ' . $coupon->get_usage_limit(); $expires = $coupon->get_date_expires(); $expiration = $expires ? $expires->date_i18n( get_option( 'date_format' ) ) : '—'; ?>
+				<article class="hfo-golf-meal-coupon-card-item">
+					<div class="hfo-golf-meal-coupon-card-header">
+						<code class="hfo-golf-meal-coupon-card-code"><?php echo esc_html( $code ); ?></code>
+					</div>
+					<div class="hfo-golf-meal-coupon-card-body">
+						<div class="hfo-golf-meal-coupon-card-primary">
+							<div class="hfo-golf-meal-coupon-card-recipient">
+								<span class="hfo-golf-meal-coupon-recipient-name"><?php echo esc_html( $recipient_name ); ?></span>
+								<span class="hfo-golf-meal-coupon-recipient-email"><?php echo esc_html( $recipient_email ); ?></span>
+							</div>
+							<div class="hfo-golf-meal-coupon-card-meals hfo-golf-meal-coupon-meals" aria-label="<?php echo esc_attr( sprintf( __( 'Lunch: %1$s, Dinner: %2$s', 'hfo-golf-registration' ), $lunch_count, $dinner_count ) ); ?>">
+								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--lunch"><?php echo esc_html( sprintf( __( 'Lunch %s', 'hfo-golf-registration' ), $lunch_count ) ); ?></span>
+								<span class="hfo-golf-meal-coupon-meal-pill hfo-golf-meal-coupon-meal-pill--dinner"><?php echo esc_html( sprintf( __( 'Dinner %s', 'hfo-golf-registration' ), $dinner_count ) ); ?></span>
+							</div>
+						</div>
+						<div class="hfo-golf-meal-coupon-card-secondary">
+							<dl class="hfo-golf-meal-coupon-card-meta">
+								<div><dt><?php esc_html_e( 'Usage', 'hfo-golf-registration' ); ?></dt><dd><?php echo esc_html( $usage ); ?></dd></div>
+								<div><dt><?php esc_html_e( 'Expiration', 'hfo-golf-registration' ); ?></dt><dd><?php echo esc_html( $expiration ); ?></dd></div>
+							</dl>
+						</div>
+					</div>
+					<div class="hfo-golf-meal-coupon-card-actions">
+						<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-primary" type="button" onclick="navigator.clipboard&&navigator.clipboard.writeText('<?php echo esc_js( $code ); ?>');" aria-label="<?php echo esc_attr( sprintf( __( 'Copy coupon code %s', 'hfo-golf-registration' ), $code ) ); ?>" title="<?php esc_attr_e( 'Copy Code', 'hfo-golf-registration' ); ?>"><span class="hfo-golf-meal-coupon-action-icon" aria-hidden="true">⧉</span><span><?php esc_html_e( 'Copy Code', 'hfo-golf-registration' ); ?></span></button>
+						<form class="hfo-golf-meal-coupon-inline-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="<?php echo esc_attr( self::DISABLE_ACTION ); ?>" />
+							<input type="hidden" name="coupon_id" value="<?php echo esc_attr( $coupon_post->ID ); ?>" />
+							<input type="hidden" name="redirect_to" value="<?php echo esc_url( $this->get_current_url() ); ?>" />
+							<?php wp_nonce_field( self::DISABLE_NONCE_ACTION, self::DISABLE_NONCE_NAME ); ?>
+							<button class="hfo-golf-meal-coupon-button hfo-golf-meal-coupon-button--small hfo-golf-meal-coupon-action-secondary" type="submit" aria-label="<?php echo esc_attr( sprintf( __( 'Disable coupon %s', 'hfo-golf-registration' ), $code ) ); ?>" title="<?php esc_attr_e( 'Disable Coupon', 'hfo-golf-registration' ); ?>"><span class="hfo-golf-meal-coupon-action-icon" aria-hidden="true">⊘</span><span><?php esc_html_e( 'Disable', 'hfo-golf-registration' ); ?></span></button>
+						</form>
+					</div>
+				</article>
+			<?php endforeach; ?>
+		</div>
 		<?php
 	}
 
