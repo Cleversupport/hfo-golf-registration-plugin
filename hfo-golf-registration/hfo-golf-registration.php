@@ -34,6 +34,21 @@ require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-meal
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-jetformbuilder.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration.php';
 
+/**
+ * Ensures update-time setup tasks run for existing active installs.
+ *
+ * @return void
+ */
+function hfo_golf_registration_maybe_update_installed_version() {
+	$installed_version = get_option( 'hfo_golf_registration_installed_version' );
+
+	if ( ! $installed_version || version_compare( $installed_version, HFO_GOLF_REGISTRATION_VERSION, '<' ) ) {
+		HFO_Golf_Registration_Activator::register_roles_and_capabilities();
+		update_option( 'hfo_golf_registration_installed_version', HFO_GOLF_REGISTRATION_VERSION );
+	}
+}
+add_action( 'init', 'hfo_golf_registration_maybe_update_installed_version' );
+
 register_activation_hook( __FILE__, array( 'HFO_Golf_Registration_Activator', 'activate' ) );
 register_deactivation_hook( __FILE__, array( 'HFO_Golf_Registration_Deactivator', 'deactivate' ) );
 
