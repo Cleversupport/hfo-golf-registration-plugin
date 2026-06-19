@@ -80,6 +80,9 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'hide_golf_registration_formatted_order_item_meta' ), 10, 2 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
+		add_action( 'woocommerce_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
+		add_action( 'woocommerce_thankyou', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
 
@@ -576,7 +579,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
-		$this->link_order_to_customer_user( $order, $registration_id );
+		$this->maybe_link_golf_order_to_customer_user( $order );
 
 		if ( method_exists( $order, 'add_order_note' ) ) {
 			$order->add_order_note(
@@ -592,6 +595,57 @@ class HFO_Golf_Registration_Checkout_Handler {
 	}
 
 	/**
+	 * Links a golf registration order to a customer user after checkout data is available.
+	 *
+	 * @param WC_Order|int $order_or_order_id WooCommerce order object or order ID.
+	 * @return void
+	 */
+	public function maybe_link_golf_order_to_customer_user( $order_or_order_id ) {
+		$order = $order_or_order_id;
+
+		if ( is_numeric( $order_or_order_id ) && function_exists( 'wc_get_order' ) ) {
+			$order = wc_get_order( absint( $order_or_order_id ) );
+		}
+
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'get_id' ) ) {
+			return;
+		}
+
+		if ( '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
+			return;
+		}
+
+		$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+
+		if ( 0 === $registration_id ) {
+			$registration_id = $this->get_registration_id_from_session();
+		}
+
+		if ( 0 === $registration_id ) {
+			$golf_order_data = $this->get_golf_order_data_from_order( $order );
+			$registration_id  = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+		}
+
+		if ( 0 === $registration_id ) {
+			$this->track_customer_user_link_error( $order, 'missing_registration_id' );
+			return;
+		}
+
+		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			$this->track_customer_user_link_error( $order, 'invalid_registration_id' );
+			return;
+		}
+
+		$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
+
+		if ( method_exists( $order, 'save_meta_data' ) ) {
+			$order->save_meta_data();
+		}
+
+		$this->link_order_to_customer_user( $order, $registration_id );
+	}
+
+	/**
 	 * Links a guest golf registration order to a customer user.
 	 *
 	 * @param WC_Order $order           WooCommerce order object.
@@ -603,11 +657,22 @@ class HFO_Golf_Registration_Checkout_Handler {
 			return;
 		}
 
+		if ( method_exists( $order, 'get_meta' ) && '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
+			return;
+		}
+
 		$user_id        = absint( $order->get_customer_id() );
 		$customer_email = $this->get_customer_email_for_registration_order( $order, $registration_id );
+		$created_user   = false;
 
 		if ( 0 === $user_id ) {
+			if ( '' === $customer_email ) {
+				$this->track_customer_user_link_error( $order, 'missing_billing_email' );
+				return;
+			}
+
 			if ( ! is_email( $customer_email ) ) {
+				$this->track_customer_user_link_error( $order, 'invalid_billing_email' );
 				return;
 			}
 
@@ -629,10 +694,11 @@ class HFO_Golf_Registration_Checkout_Handler {
 				);
 
 				if ( is_wp_error( $user_id ) ) {
+					$this->track_customer_user_link_error( $order, 'user_creation_failed' );
 					return;
 				}
 
-				$this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
+				$created_user = true;
 			}
 		}
 
@@ -657,6 +723,19 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 		update_post_meta( $registration_id, 'hfo_golf_customer_user_id', $user_id );
 		update_post_meta( $registration_id, 'hfo_golf_customer_email', $customer_email );
+
+		if ( $created_user ) {
+			$email_sent = $this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
+			$order->update_meta_data( '_hfo_golf_customer_welcome_email_sent', $email_sent ? '1' : '0' );
+
+			if ( ! $email_sent ) {
+				$this->track_customer_user_link_error( $order, 'email_send_failed' );
+			}
+
+			if ( method_exists( $order, 'save' ) ) {
+				$order->save();
+			}
+		}
 	}
 
 	/**
@@ -677,7 +756,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 			$customer_email = sanitize_email( get_post_meta( $registration_id, 'sponsor_email', true ) );
 		}
 
-		return is_email( $customer_email ) ? $customer_email : '';
+		return $customer_email;
 	}
 
 	/**
@@ -727,13 +806,13 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @param int    $user_id            Customer user ID.
 	 * @param string $customer_email     Customer email address.
 	 * @param string $generated_password Generated customer password.
-	 * @return void
+	 * @return bool Whether the email was sent successfully.
 	 */
 	private function send_customer_welcome_email( $user_id, $customer_email, $generated_password ) {
 		$user = get_user_by( 'id', $user_id );
 
 		if ( ! $user || ! is_email( $customer_email ) ) {
-			return;
+			return false;
 		}
 
 		$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
@@ -760,7 +839,31 @@ You can log in with this password now. You may change it later from your account
 			$generated_password
 		);
 
-		wp_mail( $customer_email, $subject, $message );
+		return (bool) wp_mail( $customer_email, $subject, $message );
+	}
+
+	/**
+	 * Tracks a customer user linking failure on an order.
+	 *
+	 * @param WC_Order $order  WooCommerce order object.
+	 * @param string   $reason Failure reason.
+	 * @return void
+	 */
+	private function track_customer_user_link_error( $order, $reason ) {
+		if ( $order && method_exists( $order, 'update_meta_data' ) ) {
+			$order->update_meta_data( '_hfo_golf_customer_user_link_error', $reason );
+
+			if ( method_exists( $order, 'save_meta_data' ) ) {
+				$order->save_meta_data();
+			} elseif ( method_exists( $order, 'save' ) ) {
+				$order->save();
+			}
+		}
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			$order_id = $order && method_exists( $order, 'get_id' ) ? absint( $order->get_id() ) : 0;
+			error_log( sprintf( 'HFO golf customer user linking failed for order %d: %s', $order_id, $reason ) );
+		}
 	}
 
 	/**
