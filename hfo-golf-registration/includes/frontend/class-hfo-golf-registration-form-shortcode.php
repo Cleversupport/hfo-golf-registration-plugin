@@ -430,7 +430,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			WC()->initialize_session();
 		}
 
-		if ( WC()->session && method_exists( WC()->session, 'set_customer_session_cookie' ) && ! WC()->session->has_session() ) {
+		if ( WC()->session && method_exists( WC()->session, 'set_customer_session_cookie' ) && ( ! method_exists( WC()->session, 'has_session' ) || ! WC()->session->has_session() ) ) {
 			WC()->session->set_customer_session_cookie( true );
 		}
 
@@ -450,7 +450,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 			error_log( 'HFO Golf Registration guest submission detected.' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
 
-		$contact = $this->get_checkout_billing_contact_from_meta( $meta );
+		$billing_contact = HFO_Golf_Registration_Checkout_Handler::get_checkout_billing_contact_from_meta( $meta );
+		$contact         = HFO_Golf_Registration_Checkout_Handler::get_customer_billing_contact_from_billing_fields( $billing_contact );
+
+		if ( WC()->session ) {
+			WC()->session->set( HFO_Golf_Registration_Checkout_Handler::BILLING_PREFILL_SESSION_KEY, $billing_contact );
+		}
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'HFO Golf Registration setting WooCommerce checkout customer billing data.' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -466,30 +471,6 @@ class HFO_Golf_Registration_Form_Shortcode {
 		WC()->customer->set_billing_postcode( $contact['postcode'] );
 		WC()->customer->set_billing_country( $contact['country'] );
 		WC()->customer->save();
-	}
-
-	/**
-	 * Gets checkout billing contact fields from registration meta.
-	 *
-	 * @param array<string,string> $meta Sanitized submitted meta.
-	 * @return array<string,string>
-	 */
-	private function get_checkout_billing_contact_from_meta( $meta ) {
-		$is_sponsor_only = isset( $meta['registration_type'] ) && 'sponsor_only' === $meta['registration_type'];
-		$name            = $is_sponsor_only && ! empty( $meta['sponsor_contact_name'] ) ? $meta['sponsor_contact_name'] : $meta['main_contact_name'];
-		$name_parts      = preg_split( '/\s+/', trim( sanitize_text_field( $name ) ), 2 );
-
-		return array(
-			'first_name' => isset( $name_parts[0] ) ? sanitize_text_field( $name_parts[0] ) : '',
-			'last_name'  => isset( $name_parts[1] ) ? sanitize_text_field( $name_parts[1] ) : '',
-			'email'      => sanitize_email( $is_sponsor_only && ! empty( $meta['sponsor_email'] ) ? $meta['sponsor_email'] : $meta['main_contact_email'] ),
-			'phone'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_phone'] ) ? $meta['sponsor_phone'] : $meta['main_contact_phone'] ),
-			'address_1'  => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_address'] ) ? $meta['sponsor_address'] : $meta['main_contact_address'] ),
-			'city'       => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_city'] ) ? $meta['sponsor_city'] : $meta['main_contact_city'] ),
-			'state'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_state'] ) ? $meta['sponsor_state'] : $meta['main_contact_state'] ),
-			'postcode'   => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_zip'] ) ? $meta['sponsor_zip'] : $meta['main_contact_zip'] ),
-			'country'    => sanitize_text_field( ! empty( $meta['billing_country'] ) ? $meta['billing_country'] : 'US' ),
-		);
 	}
 
 	/**
