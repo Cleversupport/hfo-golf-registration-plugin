@@ -84,6 +84,54 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'woocommerce_thankyou', array( $this, 'maybe_link_golf_order_to_customer_user' ), 10, 1 );
 		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ), 10, 1 );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
+		add_filter( 'woocommerce_get_checkout_order_received_url', array( $this, 'filter_golf_order_received_url' ), 10, 2 );
+	}
+
+	/**
+	 * Redirects completed golf registration checkouts to the configured confirmation page.
+	 *
+	 * @param string   $url   WooCommerce order received URL.
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return string
+	 */
+	public function filter_golf_order_received_url( $url, $order ) {
+		try {
+			if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'get_id' ) || ! method_exists( $order, 'get_order_key' ) ) {
+				return $url;
+			}
+
+			$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+
+			if ( 0 === $registration_id ) {
+				return $url;
+			}
+
+			$page_id = absint( get_option( 'hfo_golf_checkout_confirmation_page_id', 0 ) );
+
+			if ( 0 === $page_id || 'publish' !== get_post_status( $page_id ) ) {
+				return $url;
+			}
+
+			$page_url = get_permalink( $page_id );
+
+			if ( ! $page_url ) {
+				return $url;
+			}
+
+			return add_query_arg(
+				array(
+					'hfo_order_id'  => absint( $order->get_id() ),
+					'hfo_order_key' => sanitize_text_field( $order->get_order_key() ),
+				),
+				$page_url
+			);
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO golf confirmation page redirect failed: ' . $e->getMessage() );
+			}
+
+			return $url;
+		}
 	}
 
 	/**
@@ -728,6 +776,11 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 			$order->set_customer_id( $user_id );
 			$order->update_meta_data( '_hfo_golf_customer_user_linked', '1' );
+			$this->add_order_note_safely( $order, __( 'Customer user linked to this golf registration.', 'hfo-golf-registration' ) );
+
+			if ( $created_user ) {
+				$this->add_order_note_safely( $order, __( 'New customer user created for this golf registration.', 'hfo-golf-registration' ) );
+			}
 
 			if ( method_exists( $order, 'save' ) ) {
 				$order->save();
@@ -740,7 +793,24 @@ class HFO_Golf_Registration_Checkout_Handler {
 				$email_sent = $this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
 				$order->update_meta_data( '_hfo_golf_customer_welcome_email_sent', $email_sent ? '1' : '0' );
 
-				if ( ! $email_sent ) {
+				if ( $email_sent ) {
+					$this->add_order_note_safely(
+						$order,
+						sprintf(
+							/* translators: %s: customer email address. */
+							__( 'Welcome email sent to %s.', 'hfo-golf-registration' ),
+							$customer_email
+						)
+					);
+				} else {
+					$this->add_order_note_safely(
+						$order,
+						sprintf(
+							/* translators: %s: customer email address. */
+							__( 'Welcome email failed for %s. Please check SMTP/email settings.', 'hfo-golf-registration' ),
+							$customer_email
+						)
+					);
 					$this->track_customer_user_link_error( $order, 'email_send_failed' );
 				}
 
@@ -750,6 +820,26 @@ class HFO_Golf_Registration_Checkout_Handler {
 			}
 		} catch ( Throwable $e ) {
 			$this->track_customer_user_link_error( $order, 'fatal_error', $e->getMessage() );
+		}
+	}
+
+
+	/**
+	 * Adds an admin-visible order note without allowing note failures to affect checkout.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @param string   $note  Order note text.
+	 * @return void
+	 */
+	private function add_order_note_safely( $order, $note ) {
+		try {
+			if ( $order && method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( sanitize_text_field( (string) $note ), false, false );
+			}
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO golf order note failed: ' . $e->getMessage() );
+			}
 		}
 	}
 

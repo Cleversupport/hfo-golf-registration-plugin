@@ -120,6 +120,13 @@ class HFO_Golf_Registration_Settings {
 	const RECAPTCHA_MINIMUM_SCORE_OPTION = 'hfo_golf_registration_recaptcha_minimum_score';
 
 	/**
+	 * Option key for the golf checkout confirmation page.
+	 *
+	 * @var string
+	 */
+	const CHECKOUT_CONFIRMATION_PAGE_OPTION = 'hfo_golf_checkout_confirmation_page_id';
+
+	/**
 	 * Action name used to create default products.
 	 *
 	 * @var string
@@ -256,6 +263,16 @@ class HFO_Golf_Registration_Settings {
 			)
 		);
 
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::CHECKOUT_CONFIRMATION_PAGE_OPTION,
+			array(
+				'type'              => 'integer',
+				'sanitize_callback' => 'absint',
+				'default'           => 0,
+			)
+		);
+
 		add_settings_section(
 			self::DEFAULT_PRODUCTS_SECTION,
 			esc_html__( 'Default WooCommerce Products', 'hfo-golf-registration' ),
@@ -320,6 +337,14 @@ class HFO_Golf_Registration_Settings {
 			array( $this, 'render_custom_frontend_css_field' ),
 			self::PAGE_SLUG,
 			self::FRONTEND_STYLING_SECTION
+		);
+
+		add_settings_field(
+			self::CHECKOUT_CONFIRMATION_PAGE_OPTION,
+			esc_html__( 'Golf Checkout Confirmation Page', 'hfo-golf-registration' ),
+			array( $this, 'render_checkout_confirmation_page_field' ),
+			self::PAGE_SLUG,
+			self::PRODUCT_MAPPING_SECTION
 		);
 
 		add_settings_field(
@@ -638,6 +663,32 @@ class HFO_Golf_Registration_Settings {
 			'<input id="%1$s" name="%1$s" type="number" class="small-text" value="%2$s" min="0" max="1" step="0.1" />',
 			esc_attr( self::RECAPTCHA_MINIMUM_SCORE_OPTION ),
 			esc_attr( (string) $value )
+		);
+	}
+
+
+	/**
+	 * Renders the golf checkout confirmation page selector field.
+	 *
+	 * @return void
+	 */
+	public function render_checkout_confirmation_page_field() {
+		$value = absint( get_option( self::CHECKOUT_CONFIRMATION_PAGE_OPTION, 0 ) );
+
+		wp_dropdown_pages(
+			array(
+				'name'              => self::CHECKOUT_CONFIRMATION_PAGE_OPTION,
+				'id'                => self::CHECKOUT_CONFIRMATION_PAGE_OPTION,
+				'selected'          => $value,
+				'show_option_none'  => __( 'Use WooCommerce default', 'hfo-golf-registration' ),
+				'option_none_value' => '0',
+				'post_status'       => 'publish',
+			)
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'Select the page customers should see after completing a golf registration checkout. If no page is selected, WooCommerce will use its default order received page.', 'hfo-golf-registration' )
 		);
 	}
 
