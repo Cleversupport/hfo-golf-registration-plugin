@@ -21,6 +21,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	const DISABLE_NONCE_ACTION = 'hfo_golf_meal_coupon_disable';
 	const DISABLE_NONCE_NAME = 'hfo_golf_meal_coupon_disable_nonce';
 	const META_FLAG = '_hfo_golf_meal_coupon';
+	const ACCESS_MESSAGE_OPTION = 'hfo_golf_meal_coupon_access_message';
 
 	/**
 	 * Registers WordPress hooks.
@@ -144,7 +145,22 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	 * @return string
 	 */
 	private function render_permission_message() {
-		return '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--error">' . esc_html__( 'You do not have permission to manage meal coupons.', 'hfo-golf-registration' ) . '</p>';
+		return '<p class="hfo-golf-meal-coupon-message hfo-golf-meal-coupon-message--error">' . $this->get_rendered_access_message() . '</p>';
+	}
+
+	/**
+	 * Returns the configured access denied message with allowed HTML and shortcode output.
+	 *
+	 * @return string
+	 */
+	private function get_rendered_access_message() {
+		$message = (string) get_option( self::ACCESS_MESSAGE_OPTION, '' );
+
+		if ( '' === trim( $message ) ) {
+			$message = __( 'You do not have permission to manage meal coupons.', 'hfo-golf-registration' );
+		}
+
+		return do_shortcode( wp_kses_post( $message ) );
 	}
 
 	/**
@@ -321,7 +337,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	/** Handle coupon creation. */
 	public function handle_create() {
 		if ( ! $this->current_user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to manage meal coupons.', 'hfo-golf-registration' ), 403 );
+			wp_die( $this->get_rendered_access_message(), 403 );
 		}
 		check_admin_referer( self::CREATE_NONCE_ACTION, self::CREATE_NONCE_NAME );
 
@@ -401,7 +417,7 @@ class HFO_Golf_Meal_Coupon_Manager_Shortcode {
 	/** Handle disabling a coupon. */
 	public function handle_disable() {
 		if ( ! $this->current_user_can_manage() ) {
-			wp_die( esc_html__( 'You do not have permission to manage meal coupons.', 'hfo-golf-registration' ), 403 );
+			wp_die( $this->get_rendered_access_message(), 403 );
 		}
 		check_admin_referer( self::DISABLE_NONCE_ACTION, self::DISABLE_NONCE_NAME );
 
