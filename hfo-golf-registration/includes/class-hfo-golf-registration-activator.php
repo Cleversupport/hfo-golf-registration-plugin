@@ -58,5 +58,48 @@ class HFO_Golf_Registration_Activator {
 		if ( $administrator ) {
 			$administrator->add_cap( 'manage_hfo_meal_coupons' );
 		}
+
+		self::sync_meal_coupon_role_capabilities();
+	}
+
+	/**
+	 * Synchronizes the meal coupon capability with the configured additional roles.
+	 *
+	 * @param array|null $allowed_roles Optional sanitized role slugs. Defaults to the saved option.
+	 * @return void
+	 */
+	public static function sync_meal_coupon_role_capabilities( $allowed_roles = null ) {
+		$wp_roles = wp_roles();
+
+		if ( ! $wp_roles ) {
+			return;
+		}
+
+		if ( null === $allowed_roles ) {
+			$allowed_roles = get_option( 'hfo_golf_meal_coupon_allowed_roles', array() );
+		}
+
+		if ( ! is_array( $allowed_roles ) ) {
+			$allowed_roles = array();
+		}
+
+		$allowed_roles   = array_map( 'sanitize_key', $allowed_roles );
+		$protected_roles = array( 'administrator', 'hfo_meal_coupon_manager' );
+		$roles_to_allow  = array_unique( array_merge( $allowed_roles, $protected_roles ) );
+
+		foreach ( $wp_roles->roles as $role_slug => $role_details ) {
+			$role = get_role( $role_slug );
+
+			if ( ! $role ) {
+				continue;
+			}
+
+			if ( in_array( $role_slug, $roles_to_allow, true ) ) {
+				$role->add_cap( 'manage_hfo_meal_coupons' );
+				continue;
+			}
+
+			$role->remove_cap( 'manage_hfo_meal_coupons' );
+		}
 	}
 }
