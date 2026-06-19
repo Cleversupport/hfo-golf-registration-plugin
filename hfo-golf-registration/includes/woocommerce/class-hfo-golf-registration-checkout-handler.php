@@ -79,10 +79,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_golf_registration_meta_to_order_item' ), 10, 4 );
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'hide_golf_registration_formatted_order_item_meta' ), 10, 2 );
-		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
-		add_action( 'woocommerce_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
-		add_action( 'woocommerce_thankyou', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
-		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ) );
+		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ), 10, 1 );
+		add_action( 'woocommerce_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ), 10, 3 );
+		add_action( 'woocommerce_thankyou', array( $this, 'maybe_link_golf_order_to_customer_user' ), 10, 1 );
+		add_action( 'woocommerce_store_api_checkout_order_processed', array( $this, 'maybe_link_golf_order_to_customer_user' ), 10, 1 );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
 
@@ -527,70 +527,74 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @return void
 	 */
 	public function link_created_order_to_registration( $order ) {
-		if ( ! $order || ! method_exists( $order, 'get_id' ) || ! method_exists( $order, 'get_status' ) ) {
-			return;
-		}
-
-		$registration_id = method_exists( $order, 'get_meta' ) ? absint( $order->get_meta( 'hfo_golf_registration_id', true ) ) : 0;
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'HFO registration_id: ' . $registration_id );
-			error_log( 'HFO order meta registration_id: ' . ( method_exists( $order, 'get_meta' ) ? $order->get_meta( 'hfo_golf_registration_id' ) : '' ) );
-		}
-
-		$golf_order_data = array();
-
-		if ( $this->is_valid_registration( $registration_id ) ) {
-			$golf_order_data = $this->get_golf_order_data_from_order( $order );
-		} else {
-			$session_registration_id = $this->get_registration_id_from_session();
-
-			if ( $this->is_valid_registration( $session_registration_id ) ) {
-				$registration_id = $session_registration_id;
-			} else {
-				$golf_order_data = $this->get_golf_order_data_from_order( $order );
-				$registration_id  = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+		try {
+			if ( ! $order || ! method_exists( $order, 'get_id' ) || ! method_exists( $order, 'get_status' ) ) {
+				return;
 			}
-		}
 
-		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			$registration_id = method_exists( $order, 'get_meta' ) ? absint( $order->get_meta( 'hfo_golf_registration_id', true ) ) : 0;
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'HFO registration_id missing for WooCommerce order ' . $order->get_id() );
-			}
-			return;
-		}
-
-		if ( empty( $golf_order_data ) ) {
-			$golf_order_data = array(
-				'registration_id' => $registration_id,
-				'event_id'        => $this->get_registration_event_id( $registration_id ),
-			);
-		}
-
-		if ( method_exists( $order, 'update_meta_data' ) ) {
-			$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
-
-			if ( ! empty( $golf_order_data['event_id'] ) ) {
-				$order->update_meta_data( 'hfo_golf_event_id', absint( $golf_order_data['event_id'] ) );
+				error_log( 'HFO registration_id: ' . $registration_id );
+				error_log( 'HFO order meta registration_id: ' . ( method_exists( $order, 'get_meta' ) ? $order->get_meta( 'hfo_golf_registration_id' ) : '' ) );
 			}
 
-			if ( method_exists( $order, 'save_meta_data' ) ) {
-				$order->save_meta_data();
+			$golf_order_data = array();
+
+			if ( $this->is_valid_registration( $registration_id ) ) {
+				$golf_order_data = $this->get_golf_order_data_from_order( $order );
+			} else {
+				$session_registration_id = $this->get_registration_id_from_session();
+
+				if ( $this->is_valid_registration( $session_registration_id ) ) {
+					$registration_id = $session_registration_id;
+				} else {
+					$golf_order_data = $this->get_golf_order_data_from_order( $order );
+					$registration_id  = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+				}
 			}
-		}
 
-		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
-		$this->maybe_link_golf_order_to_customer_user( $order );
+			if ( ! $this->is_valid_registration( $registration_id ) ) {
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'HFO registration_id missing for WooCommerce order ' . $order->get_id() );
+				}
+				return;
+			}
 
-		if ( method_exists( $order, 'add_order_note' ) ) {
-			$order->add_order_note(
-				sprintf(
-					/* translators: %d: golf registration post ID. */
-					__( 'Linked to Golf Registration #%d.', 'hfo-golf-registration' ),
-					$registration_id
-				),
-				false,
-				true
-			);
+			if ( empty( $golf_order_data ) ) {
+				$golf_order_data = array(
+					'registration_id' => $registration_id,
+					'event_id'        => $this->get_registration_event_id( $registration_id ),
+				);
+			}
+
+			if ( method_exists( $order, 'update_meta_data' ) ) {
+				$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
+
+				if ( ! empty( $golf_order_data['event_id'] ) ) {
+					$order->update_meta_data( 'hfo_golf_event_id', absint( $golf_order_data['event_id'] ) );
+				}
+
+				if ( method_exists( $order, 'save_meta_data' ) ) {
+					$order->save_meta_data();
+				}
+			}
+
+			$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
+			$this->maybe_link_golf_order_to_customer_user( $order );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note(
+					sprintf(
+						/* translators: %d: golf registration post ID. */
+						__( 'Linked to Golf Registration #%d.', 'hfo-golf-registration' ),
+						$registration_id
+					),
+					false,
+					true
+				);
+			}
+		} catch ( Throwable $e ) {
+			$this->track_customer_user_link_error( $order, 'fatal_error', $e->getMessage() );
 		}
 	}
 
@@ -600,49 +604,55 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @param WC_Order|int $order_or_order_id WooCommerce order object or order ID.
 	 * @return void
 	 */
-	public function maybe_link_golf_order_to_customer_user( $order_or_order_id ) {
+	public function maybe_link_golf_order_to_customer_user( $order_or_order_id = 0 ) {
 		$order = $order_or_order_id;
 
-		if ( is_numeric( $order_or_order_id ) && function_exists( 'wc_get_order' ) ) {
-			$order = wc_get_order( absint( $order_or_order_id ) );
+		try {
+			if ( is_numeric( $order_or_order_id ) && function_exists( 'wc_get_order' ) ) {
+				$order = wc_get_order( absint( $order_or_order_id ) );
+			}
+
+			if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'get_id' ) ) {
+				return;
+			}
+
+			if ( '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
+				return;
+			}
+
+			$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+
+			if ( 0 === $registration_id ) {
+				$registration_id = $this->get_registration_id_from_session();
+			}
+
+			if ( 0 === $registration_id ) {
+				$golf_order_data = $this->get_golf_order_data_from_order( $order );
+				$registration_id  = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+			}
+
+			if ( 0 === $registration_id ) {
+				$this->track_customer_user_link_error( $order, 'missing_registration_id' );
+				return;
+			}
+
+			if ( ! $this->is_valid_registration( $registration_id ) ) {
+				$this->track_customer_user_link_error( $order, 'invalid_registration_id' );
+				return;
+			}
+
+			if ( method_exists( $order, 'update_meta_data' ) ) {
+				$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
+			}
+
+			if ( method_exists( $order, 'save_meta_data' ) ) {
+				$order->save_meta_data();
+			}
+
+			$this->link_order_to_customer_user( $order, $registration_id );
+		} catch ( Throwable $e ) {
+			$this->track_customer_user_link_error( $order, 'fatal_error', $e->getMessage() );
 		}
-
-		if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'get_id' ) ) {
-			return;
-		}
-
-		if ( '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
-			return;
-		}
-
-		$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
-
-		if ( 0 === $registration_id ) {
-			$registration_id = $this->get_registration_id_from_session();
-		}
-
-		if ( 0 === $registration_id ) {
-			$golf_order_data = $this->get_golf_order_data_from_order( $order );
-			$registration_id  = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
-		}
-
-		if ( 0 === $registration_id ) {
-			$this->track_customer_user_link_error( $order, 'missing_registration_id' );
-			return;
-		}
-
-		if ( ! $this->is_valid_registration( $registration_id ) ) {
-			$this->track_customer_user_link_error( $order, 'invalid_registration_id' );
-			return;
-		}
-
-		$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
-
-		if ( method_exists( $order, 'save_meta_data' ) ) {
-			$order->save_meta_data();
-		}
-
-		$this->link_order_to_customer_user( $order, $registration_id );
 	}
 
 	/**
@@ -653,88 +663,93 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @return void
 	 */
 	private function link_order_to_customer_user( $order, $registration_id ) {
-		if ( ! $order || ! method_exists( $order, 'get_customer_id' ) || ! method_exists( $order, 'set_customer_id' ) ) {
-			return;
-		}
+		try {
+			if ( ! $order || ! method_exists( $order, 'get_customer_id' ) || ! method_exists( $order, 'set_customer_id' ) ) {
+				return;
+			}
 
-		if ( method_exists( $order, 'get_meta' ) && '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
-			return;
-		}
+			if ( method_exists( $order, 'get_meta' ) && '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
+				return;
+			}
 
-		$user_id        = absint( $order->get_customer_id() );
-		$customer_email = $this->get_customer_email_for_registration_order( $order, $registration_id );
-		$created_user   = false;
+			$user_id            = absint( $order->get_customer_id() );
+			$customer_email     = $this->get_customer_email_for_registration_order( $order, $registration_id );
+			$created_user       = false;
+			$generated_password = '';
 
-		if ( 0 === $user_id ) {
-			if ( '' === $customer_email ) {
-				$this->track_customer_user_link_error( $order, 'missing_billing_email' );
+			if ( 0 === $user_id ) {
+				if ( '' === $customer_email ) {
+					$this->track_customer_user_link_error( $order, 'missing_billing_email' );
+					return;
+				}
+
+				if ( ! is_email( $customer_email ) ) {
+					$this->track_customer_user_link_error( $order, 'invalid_billing_email' );
+					return;
+				}
+
+				$existing_user_id = email_exists( $customer_email );
+
+				if ( $existing_user_id ) {
+					$user_id = absint( $existing_user_id );
+				} else {
+					$generated_password = wp_generate_password( 16, true, true );
+					$user_id            = wp_insert_user(
+						array(
+							'user_login' => $this->generate_unique_customer_username( $customer_email ),
+							'user_email' => $customer_email,
+							'user_pass'  => $generated_password,
+							'first_name' => $this->get_order_billing_field( $order, 'get_billing_first_name' ),
+							'last_name'  => $this->get_order_billing_field( $order, 'get_billing_last_name' ),
+							'role'       => 'customer',
+						)
+					);
+
+					if ( is_wp_error( $user_id ) ) {
+						$this->track_customer_user_link_error( $order, 'user_creation_failed', $user_id->get_error_message() );
+						return;
+					}
+
+					$created_user = true;
+				}
+			}
+
+			if ( 0 === $user_id ) {
 				return;
 			}
 
 			if ( ! is_email( $customer_email ) ) {
-				$this->track_customer_user_link_error( $order, 'invalid_billing_email' );
-				return;
-			}
+				$user = get_user_by( 'id', $user_id );
 
-			$existing_user_id = email_exists( $customer_email );
-
-			if ( $existing_user_id ) {
-				$user_id = absint( $existing_user_id );
-			} else {
-				$generated_password = wp_generate_password( 16, true, true );
-				$user_id            = wp_insert_user(
-					array(
-						'user_login' => $this->generate_unique_customer_username( $customer_email ),
-						'user_email' => $customer_email,
-						'user_pass'  => $generated_password,
-						'first_name' => $this->get_order_billing_field( $order, 'get_billing_first_name' ),
-						'last_name'  => $this->get_order_billing_field( $order, 'get_billing_last_name' ),
-						'role'       => 'customer',
-					)
-				);
-
-				if ( is_wp_error( $user_id ) ) {
-					$this->track_customer_user_link_error( $order, 'user_creation_failed' );
-					return;
+				if ( $user && is_email( $user->user_email ) ) {
+					$customer_email = $user->user_email;
 				}
-
-				$created_user = true;
 			}
-		}
 
-		if ( 0 === $user_id ) {
-			return;
-		}
-
-		if ( ! is_email( $customer_email ) ) {
-			$user = get_user_by( 'id', $user_id );
-
-			if ( $user && is_email( $user->user_email ) ) {
-				$customer_email = $user->user_email;
-			}
-		}
-
-		$order->set_customer_id( $user_id );
-		$order->update_meta_data( '_hfo_golf_customer_user_linked', '1' );
-
-		if ( method_exists( $order, 'save' ) ) {
-			$order->save();
-		}
-
-		update_post_meta( $registration_id, 'hfo_golf_customer_user_id', $user_id );
-		update_post_meta( $registration_id, 'hfo_golf_customer_email', $customer_email );
-
-		if ( $created_user ) {
-			$email_sent = $this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
-			$order->update_meta_data( '_hfo_golf_customer_welcome_email_sent', $email_sent ? '1' : '0' );
-
-			if ( ! $email_sent ) {
-				$this->track_customer_user_link_error( $order, 'email_send_failed' );
-			}
+			$order->set_customer_id( $user_id );
+			$order->update_meta_data( '_hfo_golf_customer_user_linked', '1' );
 
 			if ( method_exists( $order, 'save' ) ) {
 				$order->save();
 			}
+
+			update_post_meta( $registration_id, 'hfo_golf_customer_user_id', $user_id );
+			update_post_meta( $registration_id, 'hfo_golf_customer_email', $customer_email );
+
+			if ( $created_user ) {
+				$email_sent = $this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
+				$order->update_meta_data( '_hfo_golf_customer_welcome_email_sent', $email_sent ? '1' : '0' );
+
+				if ( ! $email_sent ) {
+					$this->track_customer_user_link_error( $order, 'email_send_failed' );
+				}
+
+				if ( method_exists( $order, 'save' ) ) {
+					$order->save();
+				}
+			}
+		} catch ( Throwable $e ) {
+			$this->track_customer_user_link_error( $order, 'fatal_error', $e->getMessage() );
 		}
 	}
 
@@ -809,22 +824,23 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 * @return bool Whether the email was sent successfully.
 	 */
 	private function send_customer_welcome_email( $user_id, $customer_email, $generated_password ) {
-		$user = get_user_by( 'id', $user_id );
+		try {
+			$user = get_user_by( 'id', $user_id );
 
-		if ( ! $user || ! is_email( $customer_email ) ) {
-			return false;
-		}
+			if ( ! $user || ! is_email( $customer_email ) ) {
+				return false;
+			}
 
-		$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
-		$login_url = wp_login_url();
-		$subject   = sprintf(
-			/* translators: %s: site name. */
-			__( 'Welcome to %s', 'hfo-golf-registration' ),
-			$site_name
-		);
-		$message   = sprintf(
-			/* translators: 1: site name, 2: login URL, 3: username or email, 4: generated password. */
-			__( "Welcome to %1$s.
+			$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+			$login_url = wp_login_url();
+			$subject   = sprintf(
+				/* translators: %s: site name. */
+				__( 'Welcome to %s', 'hfo-golf-registration' ),
+				$site_name
+			);
+			$message   = sprintf(
+				/* translators: 1: site name, 2: login URL, 3: username or email, 4: generated password. */
+				__( "Welcome to %1$s.
 
 Your customer account has been created for your golf registration order.
 
@@ -833,36 +849,63 @@ Username/Email: %3$s
 Password: %4$s
 
 You can log in with this password now. You may change it later from your account if you want, but it is not required.", 'hfo-golf-registration' ),
-			$site_name,
-			$login_url,
-			$user->user_login ? $user->user_login : $customer_email,
-			$generated_password
-		);
+				$site_name,
+				$login_url,
+				$user->user_login ? $user->user_login : $customer_email,
+				$generated_password
+			);
 
-		return (bool) wp_mail( $customer_email, $subject, $message );
+			return (bool) wp_mail( $customer_email, $subject, $message );
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO golf customer welcome email failed: ' . $e->getMessage() );
+			}
+
+			return false;
+		}
 	}
 
 	/**
 	 * Tracks a customer user linking failure on an order.
 	 *
-	 * @param WC_Order $order  WooCommerce order object.
-	 * @param string   $reason Failure reason.
+	 * @param WC_Order $order         WooCommerce order object.
+	 * @param string   $reason        Failure reason.
+	 * @param string   $error_message Optional detailed error message.
 	 * @return void
 	 */
-	private function track_customer_user_link_error( $order, $reason ) {
-		if ( $order && method_exists( $order, 'update_meta_data' ) ) {
-			$order->update_meta_data( '_hfo_golf_customer_user_link_error', $reason );
+	private function track_customer_user_link_error( $order, $reason, $error_message = '' ) {
+		try {
+			$sanitized_reason  = sanitize_key( $reason );
+			$sanitized_message = sanitize_text_field( (string) $error_message );
 
-			if ( method_exists( $order, 'save_meta_data' ) ) {
-				$order->save_meta_data();
-			} elseif ( method_exists( $order, 'save' ) ) {
-				$order->save();
+			if ( $order && method_exists( $order, 'update_meta_data' ) ) {
+				$order->update_meta_data( '_hfo_golf_customer_user_link_error', $sanitized_reason );
+
+				if ( '' !== $sanitized_message ) {
+					$order->update_meta_data( '_hfo_golf_customer_user_link_error_message', $sanitized_message );
+				}
+
+				if ( method_exists( $order, 'save_meta_data' ) ) {
+					$order->save_meta_data();
+				} elseif ( method_exists( $order, 'save' ) ) {
+					$order->save();
+				}
 			}
-		}
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			$order_id = $order && method_exists( $order, 'get_id' ) ? absint( $order->get_id() ) : 0;
-			error_log( sprintf( 'HFO golf customer user linking failed for order %d: %s', $order_id, $reason ) );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				$order_id      = $order && method_exists( $order, 'get_id' ) ? absint( $order->get_id() ) : 0;
+				$debug_message = sprintf( 'HFO golf customer user linking failed for order %d: %s', $order_id, $sanitized_reason );
+
+				if ( '' !== $error_message ) {
+					$debug_message .= ' - ' . $error_message;
+				}
+
+				error_log( $debug_message );
+			}
+		} catch ( Throwable $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO golf customer user link error tracking failed: ' . $e->getMessage() );
+			}
 		}
 	}
 
