@@ -64,6 +64,13 @@ class HFO_Golf_Registration_Checkout_Handler {
 	const REGISTRATION_STATUS_META_KEY = 'registration_status';
 
 	/**
+	 * WooCommerce session key for golf checkout billing prefill data.
+	 *
+	 * @var string
+	 */
+	const BILLING_PREFILL_SESSION_KEY = 'hfo_golf_checkout_billing_prefill';
+
+	/**
 	 * Registers WordPress and WooCommerce hooks.
 	 *
 	 * @return void
@@ -80,6 +87,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hide_golf_registration_order_item_meta' ) );
 		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'hide_golf_registration_formatted_order_item_meta' ), 10, 2 );
 		add_action( 'woocommerce_checkout_order_created', array( $this, 'link_created_order_to_registration' ) );
+		add_filter( 'woocommerce_checkout_get_value', array( $this, 'prefill_checkout_field_value' ), 10, 2 );
 		add_action( 'woocommerce_order_status_changed', array( $this, 'sync_registration_status_from_order' ), 10, 4 );
 	}
 
@@ -216,6 +224,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$this->ensure_cart_is_loaded();
+		$this->store_registration_billing_prefill( $registration_id );
 
 		if ( ! WC()->cart ) {
 			return new WP_Error( 'hfo_golf_registration_cart_unavailable', __( 'WooCommerce cart is unavailable. Please try again.', 'hfo-golf-registration' ) );
@@ -530,6 +539,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
+		$this->clear_billing_prefill();
 
 		if ( method_exists( $order, 'add_order_note' ) ) {
 			$order->add_order_note(
@@ -784,17 +794,165 @@ class HFO_Golf_Registration_Checkout_Handler {
 	}
 
 	/**
+	 * Prefills a WooCommerce checkout field from golf registration session data.
+	 *
+	 * @param mixed  $value WooCommerce's current field value.
+	 * @param string $input Checkout field key.
+	 * @return mixed
+	 */
+	public function prefill_checkout_field_value( $value, $input ) {
+		$input = sanitize_key( $input );
+
+		if ( ! in_array( $input, self::get_supported_billing_prefill_fields(), true ) ) {
+			return $value;
+		}
+
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return $value;
+		}
+
+		$prefill = WC()->session->get( self::BILLING_PREFILL_SESSION_KEY );
+
+		if ( ! is_array( $prefill ) || empty( $prefill[ $input ] ) ) {
+			return $value;
+		}
+
+		return $prefill[ $input ];
+	}
+
+	/**
+	 * Gets sanitized WooCommerce billing fields from submitted or stored registration meta.
+	 *
+	 * @param array<string,string> $meta Registration meta.
+	 * @return array<string,string>
+	 */
+	public static function get_checkout_billing_contact_from_meta( $meta ) {
+		$is_sponsor_only = isset( $meta['registration_type'] ) && 'sponsor_only' === $meta['registration_type'];
+		$name            = $is_sponsor_only && ! empty( $meta['sponsor_contact_name'] ) ? $meta['sponsor_contact_name'] : self::get_meta_value( $meta, 'main_contact_name' );
+		$name_parts      = preg_split( '/\s+/', trim( sanitize_text_field( $name ) ), 2 );
+
+		$billing_contact = array(
+			'billing_first_name' => isset( $name_parts[0] ) ? sanitize_text_field( $name_parts[0] ) : '',
+			'billing_last_name'  => isset( $name_parts[1] ) ? sanitize_text_field( $name_parts[1] ) : '',
+			'billing_email'      => sanitize_email( $is_sponsor_only && ! empty( $meta['sponsor_email'] ) ? $meta['sponsor_email'] : self::get_meta_value( $meta, 'main_contact_email' ) ),
+			'billing_phone'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_phone'] ) ? $meta['sponsor_phone'] : self::get_meta_value( $meta, 'main_contact_phone' ) ),
+			'billing_address_1'  => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_address'] ) ? $meta['sponsor_address'] : self::get_meta_value( $meta, 'main_contact_address' ) ),
+			'billing_city'       => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_city'] ) ? $meta['sponsor_city'] : self::get_meta_value( $meta, 'main_contact_city' ) ),
+			'billing_state'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_state'] ) ? $meta['sponsor_state'] : self::get_meta_value( $meta, 'main_contact_state' ) ),
+			'billing_postcode'   => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_zip'] ) ? $meta['sponsor_zip'] : self::get_meta_value( $meta, 'main_contact_zip' ) ),
+			'billing_country'    => sanitize_text_field( ! empty( $meta['billing_country'] ) ? $meta['billing_country'] : 'US' ),
+		);
+
+		return array_intersect_key( $billing_contact, array_flip( self::get_supported_billing_prefill_fields() ) );
+	}
+
+	/**
+	 * Converts WooCommerce billing field keys to the existing customer setter data shape.
+	 *
+	 * @param array<string,string> $billing_contact Billing field data.
+	 * @return array<string,string>
+	 */
+	public static function get_customer_billing_contact_from_billing_fields( $billing_contact ) {
+		return array(
+			'first_name' => isset( $billing_contact['billing_first_name'] ) ? $billing_contact['billing_first_name'] : '',
+			'last_name'  => isset( $billing_contact['billing_last_name'] ) ? $billing_contact['billing_last_name'] : '',
+			'email'      => isset( $billing_contact['billing_email'] ) ? $billing_contact['billing_email'] : '',
+			'phone'      => isset( $billing_contact['billing_phone'] ) ? $billing_contact['billing_phone'] : '',
+			'address_1'  => isset( $billing_contact['billing_address_1'] ) ? $billing_contact['billing_address_1'] : '',
+			'city'       => isset( $billing_contact['billing_city'] ) ? $billing_contact['billing_city'] : '',
+			'state'      => isset( $billing_contact['billing_state'] ) ? $billing_contact['billing_state'] : '',
+			'postcode'   => isset( $billing_contact['billing_postcode'] ) ? $billing_contact['billing_postcode'] : '',
+			'country'    => isset( $billing_contact['billing_country'] ) ? $billing_contact['billing_country'] : 'US',
+		);
+	}
+
+	/**
+	 * Gets the supported billing prefill field keys.
+	 *
+	 * @return array<int,string>
+	 */
+	private static function get_supported_billing_prefill_fields() {
+		return array(
+			'billing_first_name',
+			'billing_last_name',
+			'billing_email',
+			'billing_phone',
+			'billing_address_1',
+			'billing_city',
+			'billing_state',
+			'billing_postcode',
+			'billing_country',
+		);
+	}
+
+	/**
+	 * Gets a string value from registration meta.
+	 *
+	 * @param array<string,string> $meta Registration meta.
+	 * @param string              $key  Meta key.
+	 * @return string
+	 */
+	private static function get_meta_value( $meta, $key ) {
+		return isset( $meta[ $key ] ) ? (string) $meta[ $key ] : '';
+	}
+
+	/**
+	 * Stores registration billing prefill data in the WooCommerce session.
+	 *
+	 * @param int $registration_id Registration post ID.
+	 * @return void
+	 */
+	private function store_registration_billing_prefill( $registration_id ) {
+		$this->ensure_cart_is_loaded();
+
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return;
+		}
+
+		$meta = array();
+
+		foreach ( array( 'registration_type', 'main_contact_name', 'main_contact_email', 'main_contact_phone', 'main_contact_address', 'main_contact_city', 'main_contact_state', 'main_contact_zip', 'sponsor_contact_name', 'sponsor_email', 'sponsor_phone', 'sponsor_address', 'sponsor_city', 'sponsor_state', 'sponsor_zip', 'billing_country' ) as $key ) {
+			$meta[ $key ] = (string) get_post_meta( $registration_id, $key, true );
+		}
+
+		WC()->session->set( self::BILLING_PREFILL_SESSION_KEY, self::get_checkout_billing_contact_from_meta( $meta ) );
+	}
+
+	/**
 	 * Ensures the WooCommerce cart is available during admin-post processing.
 	 *
 	 * @return void
 	 */
 	private function ensure_cart_is_loaded() {
-		if ( WC()->cart ) {
+		if ( ! function_exists( 'WC' ) ) {
 			return;
 		}
 
 		if ( function_exists( 'wc_load_cart' ) ) {
 			wc_load_cart();
+		}
+
+		if ( ! WC()->session && method_exists( WC(), 'initialize_session' ) ) {
+			WC()->initialize_session();
+		}
+
+		if ( WC()->session && method_exists( WC()->session, 'set_customer_session_cookie' ) && ( ! method_exists( WC()->session, 'has_session' ) || ! WC()->session->has_session() ) ) {
+			WC()->session->set_customer_session_cookie( true );
+		}
+
+		if ( ! WC()->customer && class_exists( 'WC_Customer' ) ) {
+			WC()->customer = new WC_Customer( get_current_user_id(), true );
+		}
+	}
+
+	/**
+	 * Clears golf checkout billing prefill session data.
+	 *
+	 * @return void
+	 */
+	private function clear_billing_prefill() {
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			WC()->session->__unset( self::BILLING_PREFILL_SESSION_KEY );
 		}
 	}
 
