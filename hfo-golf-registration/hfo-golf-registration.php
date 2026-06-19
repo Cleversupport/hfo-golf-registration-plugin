@@ -31,6 +31,7 @@ require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-frontend.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-registration-form-shortcode.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-meal-coupon-manager-shortcode.php';
+require_once HFO_GOLF_REGISTRATION_PATH . 'includes/frontend/class-hfo-golf-my-registration-shortcode.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-jetformbuilder.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration.php';
 
