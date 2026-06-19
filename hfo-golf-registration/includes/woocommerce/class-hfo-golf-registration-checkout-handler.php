@@ -405,8 +405,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 		$order->update_meta_data( 'hfo_golf_registration_id', $golf_order_data['registration_id'] );
 		$order->update_meta_data( 'hfo_golf_event_id', $golf_order_data['event_id'] );
-		error_log( 'HFO registration_id: ' . $golf_order_data['registration_id'] );
-		error_log( 'HFO order meta registration_id: ' . $order->get_meta( 'hfo_golf_registration_id' ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO registration_id: ' . $golf_order_data['registration_id'] );
+			error_log( 'HFO order meta registration_id: ' . $order->get_meta( 'hfo_golf_registration_id' ) );
+		}
 
 		if ( method_exists( $order, 'save' ) ) {
 			$order->save();
@@ -527,8 +529,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$registration_id = method_exists( $order, 'get_meta' ) ? absint( $order->get_meta( 'hfo_golf_registration_id', true ) ) : 0;
-		error_log( 'HFO registration_id: ' . $registration_id );
-		error_log( 'HFO order meta registration_id: ' . ( method_exists( $order, 'get_meta' ) ? $order->get_meta( 'hfo_golf_registration_id' ) : '' ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO registration_id: ' . $registration_id );
+			error_log( 'HFO order meta registration_id: ' . ( method_exists( $order, 'get_meta' ) ? $order->get_meta( 'hfo_golf_registration_id' ) : '' ) );
+		}
 
 		$golf_order_data = array();
 
@@ -546,7 +550,9 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		if ( ! $this->is_valid_registration( $registration_id ) ) {
-			error_log( 'HFO registration_id missing for WooCommerce order ' . $order->get_id() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO registration_id missing for WooCommerce order ' . $order->get_id() );
+			}
 			return;
 		}
 
