@@ -65,7 +65,7 @@ class HFO_Golf_Registration_Frontend {
 			<?php $this->render_text_field( 'main_contact_phone', true ); ?>
 			<?php $this->render_text_field( 'main_contact_address', true ); ?>
 			<?php $this->render_text_field( 'main_contact_city', true ); ?>
-			<?php $this->render_text_field( 'main_contact_state', true ); ?>
+			<?php $this->render_state_select_field( 'main_contact_state', true ); ?>
 			<?php $this->render_text_field( 'main_contact_zip', true ); ?>
 
 			<h3><?php esc_html_e( 'Team Captain', 'hfo-golf-registration' ); ?></h3>
@@ -146,7 +146,7 @@ class HFO_Golf_Registration_Frontend {
 			'main_contact_phone'        => $main_contact_phone,
 			'main_contact_address'      => $this->sanitize_post_text( 'main_contact_address' ),
 			'main_contact_city'         => $this->sanitize_post_text( 'main_contact_city' ),
-			'main_contact_state'        => $this->sanitize_post_text( 'main_contact_state' ),
+			'main_contact_state'        => $this->sanitize_post_state( 'main_contact_state' ),
 			'main_contact_zip'          => $this->sanitize_post_text( 'main_contact_zip' ),
 			'captain_name'              => $this->sanitize_post_text( 'captain_name' ),
 			'captain_email'             => sanitize_email( $this->sanitize_post_text( 'captain_email' ) ),
@@ -282,6 +282,14 @@ class HFO_Golf_Registration_Frontend {
 		return sanitize_text_field( $value );
 	}
 
+	private function sanitize_post_state( $key ) {
+		$value      = $this->sanitize_post_text( $key );
+		$state_code = strtoupper( sanitize_key( $value ) );
+		$states     = $this->get_us_state_options();
+
+		return isset( $states[ $state_code ] ) ? $state_code : '';
+	}
+
 	private function sanitize_post_textarea( $key ) {
 		$value = isset( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : '';
 		return sanitize_textarea_field( $value );
@@ -297,6 +305,90 @@ class HFO_Golf_Registration_Frontend {
 		?>
 		<p><label for="<?php echo esc_attr( $name ); ?>"><?php echo esc_html( ucwords( str_replace( '_', ' ', $name ) ) ); ?></label><br /><input type="email" name="<?php echo esc_attr( $name ); ?>" id="<?php echo esc_attr( $name ); ?>" <?php echo $required ? 'required' : ''; ?>></p>
 		<?php
+	}
+
+	private function render_state_select_field( $field_name, $required = false, $selected_value = '' ) {
+		if ( '' === $selected_value && isset( $_POST[ $field_name ] ) ) {
+			$selected_value = $this->sanitize_post_state( $field_name );
+		} else {
+			$selected_value = strtoupper( sanitize_key( $selected_value ) );
+		}
+
+		?>
+		<p>
+			<label for="<?php echo esc_attr( $field_name ); ?>"><?php echo esc_html( ucwords( str_replace( '_', ' ', $field_name ) ) ); ?></label><br />
+			<select name="<?php echo esc_attr( $field_name ); ?>" id="<?php echo esc_attr( $field_name ); ?>" <?php echo $required ? 'required' : ''; ?>>
+				<option value=""><?php esc_html_e( 'Select a state', 'hfo-golf-registration' ); ?></option>
+				<?php foreach ( $this->get_us_state_options() as $state_code => $state_name ) : ?>
+					<option value="<?php echo esc_attr( $state_code ); ?>"<?php selected( $selected_value, $state_code ); ?>><?php echo esc_html( $state_name ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</p>
+		<?php
+	}
+
+	private function get_us_state_options() {
+		if ( function_exists( 'WC' ) && WC() && isset( WC()->countries ) && is_callable( array( WC()->countries, 'get_states' ) ) ) {
+			$woocommerce_states = WC()->countries->get_states( 'US' );
+
+			if ( is_array( $woocommerce_states ) && ! empty( $woocommerce_states ) ) {
+				return $woocommerce_states;
+			}
+		}
+
+		return array(
+			'AL' => __( 'Alabama', 'hfo-golf-registration' ),
+			'AK' => __( 'Alaska', 'hfo-golf-registration' ),
+			'AZ' => __( 'Arizona', 'hfo-golf-registration' ),
+			'AR' => __( 'Arkansas', 'hfo-golf-registration' ),
+			'CA' => __( 'California', 'hfo-golf-registration' ),
+			'CO' => __( 'Colorado', 'hfo-golf-registration' ),
+			'CT' => __( 'Connecticut', 'hfo-golf-registration' ),
+			'DE' => __( 'Delaware', 'hfo-golf-registration' ),
+			'DC' => __( 'District of Columbia', 'hfo-golf-registration' ),
+			'FL' => __( 'Florida', 'hfo-golf-registration' ),
+			'GA' => __( 'Georgia', 'hfo-golf-registration' ),
+			'HI' => __( 'Hawaii', 'hfo-golf-registration' ),
+			'ID' => __( 'Idaho', 'hfo-golf-registration' ),
+			'IL' => __( 'Illinois', 'hfo-golf-registration' ),
+			'IN' => __( 'Indiana', 'hfo-golf-registration' ),
+			'IA' => __( 'Iowa', 'hfo-golf-registration' ),
+			'KS' => __( 'Kansas', 'hfo-golf-registration' ),
+			'KY' => __( 'Kentucky', 'hfo-golf-registration' ),
+			'LA' => __( 'Louisiana', 'hfo-golf-registration' ),
+			'ME' => __( 'Maine', 'hfo-golf-registration' ),
+			'MD' => __( 'Maryland', 'hfo-golf-registration' ),
+			'MA' => __( 'Massachusetts', 'hfo-golf-registration' ),
+			'MI' => __( 'Michigan', 'hfo-golf-registration' ),
+			'MN' => __( 'Minnesota', 'hfo-golf-registration' ),
+			'MS' => __( 'Mississippi', 'hfo-golf-registration' ),
+			'MO' => __( 'Missouri', 'hfo-golf-registration' ),
+			'MT' => __( 'Montana', 'hfo-golf-registration' ),
+			'NE' => __( 'Nebraska', 'hfo-golf-registration' ),
+			'NV' => __( 'Nevada', 'hfo-golf-registration' ),
+			'NH' => __( 'New Hampshire', 'hfo-golf-registration' ),
+			'NJ' => __( 'New Jersey', 'hfo-golf-registration' ),
+			'NM' => __( 'New Mexico', 'hfo-golf-registration' ),
+			'NY' => __( 'New York', 'hfo-golf-registration' ),
+			'NC' => __( 'North Carolina', 'hfo-golf-registration' ),
+			'ND' => __( 'North Dakota', 'hfo-golf-registration' ),
+			'OH' => __( 'Ohio', 'hfo-golf-registration' ),
+			'OK' => __( 'Oklahoma', 'hfo-golf-registration' ),
+			'OR' => __( 'Oregon', 'hfo-golf-registration' ),
+			'PA' => __( 'Pennsylvania', 'hfo-golf-registration' ),
+			'RI' => __( 'Rhode Island', 'hfo-golf-registration' ),
+			'SC' => __( 'South Carolina', 'hfo-golf-registration' ),
+			'SD' => __( 'South Dakota', 'hfo-golf-registration' ),
+			'TN' => __( 'Tennessee', 'hfo-golf-registration' ),
+			'TX' => __( 'Texas', 'hfo-golf-registration' ),
+			'UT' => __( 'Utah', 'hfo-golf-registration' ),
+			'VT' => __( 'Vermont', 'hfo-golf-registration' ),
+			'VA' => __( 'Virginia', 'hfo-golf-registration' ),
+			'WA' => __( 'Washington', 'hfo-golf-registration' ),
+			'WV' => __( 'West Virginia', 'hfo-golf-registration' ),
+			'WI' => __( 'Wisconsin', 'hfo-golf-registration' ),
+			'WY' => __( 'Wyoming', 'hfo-golf-registration' ),
+		);
 	}
 
 	private function render_number_field( $name ) {

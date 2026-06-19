@@ -133,7 +133,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_text_field( 'main_contact_phone', esc_html__( 'Phone', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'main_contact_address', esc_html__( 'Address', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'main_contact_city', esc_html__( 'City', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_text_field( 'main_contact_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
+				<?php $this->render_state_select_field( 'main_contact_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'main_contact_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
 			</section>
 
@@ -186,7 +186,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 					<?php $this->render_text_field( 'sponsor_phone', esc_html__( 'Sponsor Phone', 'hfo-golf-registration' ) ); ?>
 					<?php $this->render_text_field( 'sponsor_address', esc_html__( 'Sponsor Address', 'hfo-golf-registration' ) ); ?>
 					<?php $this->render_text_field( 'sponsor_city', esc_html__( 'Sponsor City', 'hfo-golf-registration' ) ); ?>
-					<?php $this->render_text_field( 'sponsor_state', esc_html__( 'Sponsor State', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_state_select_field( 'sponsor_state', esc_html__( 'Sponsor State', 'hfo-golf-registration' ) ); ?>
 					<?php $this->render_text_field( 'sponsor_zip', esc_html__( 'Sponsor ZIP', 'hfo-golf-registration' ) ); ?>
 				</div>
 
@@ -486,7 +486,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'phone'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_phone'] ) ? $meta['sponsor_phone'] : $meta['main_contact_phone'] ),
 			'address_1'  => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_address'] ) ? $meta['sponsor_address'] : $meta['main_contact_address'] ),
 			'city'       => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_city'] ) ? $meta['sponsor_city'] : $meta['main_contact_city'] ),
-			'state'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_state'] ) ? $meta['sponsor_state'] : $meta['main_contact_state'] ),
+			'state'      => $this->sanitize_state_code( $is_sponsor_only && ! empty( $meta['sponsor_state'] ) ? $meta['sponsor_state'] : $meta['main_contact_state'] ),
 			'postcode'   => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_zip'] ) ? $meta['sponsor_zip'] : $meta['main_contact_zip'] ),
 			'country'    => sanitize_text_field( ! empty( $meta['billing_country'] ) ? $meta['billing_country'] : 'US' ),
 		);
@@ -673,7 +673,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'main_contact_phone'        => $this->sanitize_post_text( 'main_contact_phone' ),
 			'main_contact_address'      => $this->sanitize_post_text( 'main_contact_address' ),
 			'main_contact_city'         => $this->sanitize_post_text( 'main_contact_city' ),
-			'main_contact_state'        => $this->sanitize_post_text( 'main_contact_state' ),
+			'main_contact_state'        => $this->sanitize_post_state( 'main_contact_state' ),
 			'main_contact_zip'          => $this->sanitize_post_text( 'main_contact_zip' ),
 			'additional_lunch_count'    => (string) $this->sanitize_post_count( 'additional_lunch_count' ),
 			'additional_dinner_count'   => (string) $this->sanitize_post_count( 'additional_dinner_count' ),
@@ -687,7 +687,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'sponsor_phone'             => $this->sanitize_post_text( 'sponsor_phone' ),
 			'sponsor_address'           => $this->sanitize_post_text( 'sponsor_address' ),
 			'sponsor_city'              => $this->sanitize_post_text( 'sponsor_city' ),
-			'sponsor_state'             => $this->sanitize_post_text( 'sponsor_state' ),
+			'sponsor_state'             => $this->sanitize_post_state( 'sponsor_state' ),
 			'sponsor_zip'               => $this->sanitize_post_text( 'sponsor_zip' ),
 			'discount_code_used'        => '',
 			'discount_amount'           => '0.00',
@@ -722,7 +722,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			$prefix . '_phone'              => $this->sanitize_post_text( $prefix . '_phone' ),
 			$prefix . '_address'            => $this->sanitize_post_text( $prefix . '_address' ),
 			$prefix . '_city'               => $this->sanitize_post_text( $prefix . '_city' ),
-			$prefix . '_state'              => $this->sanitize_post_text( $prefix . '_state' ),
+			$prefix . '_state'              => $this->sanitize_post_state( $prefix . '_state' ),
 			$prefix . '_zip'                => $this->sanitize_post_text( $prefix . '_zip' ),
 			$prefix . '_handicap'           => $this->sanitize_post_text( $prefix . '_handicap' ),
 			$prefix . '_golf_selected'      => $this->sanitize_post_checkbox( $prefix . '_golf_selected' ),
@@ -1089,6 +1089,98 @@ class HFO_Golf_Registration_Form_Shortcode {
 	}
 
 	/**
+	 * Sanitizes a posted US state field to a WooCommerce-compatible state code.
+	 *
+	 * @param string $key Posted key.
+	 * @return string
+	 */
+	private function sanitize_post_state( $key ) {
+		return $this->sanitize_state_code( $this->sanitize_post_text( $key ) );
+	}
+
+	/**
+	 * Sanitizes a US state value to a known uppercase state code.
+	 *
+	 * @param string $value Submitted state value.
+	 * @return string
+	 */
+	private function sanitize_state_code( $value ) {
+		$state_code = strtoupper( sanitize_key( (string) $value ) );
+		$states     = $this->get_us_state_options();
+
+		return isset( $states[ $state_code ] ) ? $state_code : '';
+	}
+
+	/**
+	 * Gets WooCommerce US state options with a hardcoded fallback.
+	 *
+	 * @return array<string,string>
+	 */
+	private function get_us_state_options() {
+		if ( function_exists( 'WC' ) && WC() && isset( WC()->countries ) && is_callable( array( WC()->countries, 'get_states' ) ) ) {
+			$woocommerce_states = WC()->countries->get_states( 'US' );
+
+			if ( is_array( $woocommerce_states ) && ! empty( $woocommerce_states ) ) {
+				return $woocommerce_states;
+			}
+		}
+
+		return array(
+			'AL' => __( 'Alabama', 'hfo-golf-registration' ),
+			'AK' => __( 'Alaska', 'hfo-golf-registration' ),
+			'AZ' => __( 'Arizona', 'hfo-golf-registration' ),
+			'AR' => __( 'Arkansas', 'hfo-golf-registration' ),
+			'CA' => __( 'California', 'hfo-golf-registration' ),
+			'CO' => __( 'Colorado', 'hfo-golf-registration' ),
+			'CT' => __( 'Connecticut', 'hfo-golf-registration' ),
+			'DE' => __( 'Delaware', 'hfo-golf-registration' ),
+			'DC' => __( 'District of Columbia', 'hfo-golf-registration' ),
+			'FL' => __( 'Florida', 'hfo-golf-registration' ),
+			'GA' => __( 'Georgia', 'hfo-golf-registration' ),
+			'HI' => __( 'Hawaii', 'hfo-golf-registration' ),
+			'ID' => __( 'Idaho', 'hfo-golf-registration' ),
+			'IL' => __( 'Illinois', 'hfo-golf-registration' ),
+			'IN' => __( 'Indiana', 'hfo-golf-registration' ),
+			'IA' => __( 'Iowa', 'hfo-golf-registration' ),
+			'KS' => __( 'Kansas', 'hfo-golf-registration' ),
+			'KY' => __( 'Kentucky', 'hfo-golf-registration' ),
+			'LA' => __( 'Louisiana', 'hfo-golf-registration' ),
+			'ME' => __( 'Maine', 'hfo-golf-registration' ),
+			'MD' => __( 'Maryland', 'hfo-golf-registration' ),
+			'MA' => __( 'Massachusetts', 'hfo-golf-registration' ),
+			'MI' => __( 'Michigan', 'hfo-golf-registration' ),
+			'MN' => __( 'Minnesota', 'hfo-golf-registration' ),
+			'MS' => __( 'Mississippi', 'hfo-golf-registration' ),
+			'MO' => __( 'Missouri', 'hfo-golf-registration' ),
+			'MT' => __( 'Montana', 'hfo-golf-registration' ),
+			'NE' => __( 'Nebraska', 'hfo-golf-registration' ),
+			'NV' => __( 'Nevada', 'hfo-golf-registration' ),
+			'NH' => __( 'New Hampshire', 'hfo-golf-registration' ),
+			'NJ' => __( 'New Jersey', 'hfo-golf-registration' ),
+			'NM' => __( 'New Mexico', 'hfo-golf-registration' ),
+			'NY' => __( 'New York', 'hfo-golf-registration' ),
+			'NC' => __( 'North Carolina', 'hfo-golf-registration' ),
+			'ND' => __( 'North Dakota', 'hfo-golf-registration' ),
+			'OH' => __( 'Ohio', 'hfo-golf-registration' ),
+			'OK' => __( 'Oklahoma', 'hfo-golf-registration' ),
+			'OR' => __( 'Oregon', 'hfo-golf-registration' ),
+			'PA' => __( 'Pennsylvania', 'hfo-golf-registration' ),
+			'RI' => __( 'Rhode Island', 'hfo-golf-registration' ),
+			'SC' => __( 'South Carolina', 'hfo-golf-registration' ),
+			'SD' => __( 'South Dakota', 'hfo-golf-registration' ),
+			'TN' => __( 'Tennessee', 'hfo-golf-registration' ),
+			'TX' => __( 'Texas', 'hfo-golf-registration' ),
+			'UT' => __( 'Utah', 'hfo-golf-registration' ),
+			'VT' => __( 'Vermont', 'hfo-golf-registration' ),
+			'VA' => __( 'Virginia', 'hfo-golf-registration' ),
+			'WA' => __( 'Washington', 'hfo-golf-registration' ),
+			'WV' => __( 'West Virginia', 'hfo-golf-registration' ),
+			'WI' => __( 'Wisconsin', 'hfo-golf-registration' ),
+			'WY' => __( 'Wyoming', 'hfo-golf-registration' ),
+		);
+	}
+
+	/**
 	 * Sanitizes a posted textarea field.
 	 *
 	 * @param string $key Posted key.
@@ -1171,7 +1263,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<?php $this->render_text_field( $prefix . '_phone', esc_html__( 'Phone', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_address', esc_html__( 'Address', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_city', esc_html__( 'City', 'hfo-golf-registration' ) ); ?>
-			<?php $this->render_text_field( $prefix . '_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
+			<?php $this->render_state_select_field( $prefix . '_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_handicap', esc_html__( 'Verified Handicap', 'hfo-golf-registration' ) ); ?>
 			<input type="hidden" name="<?php echo esc_attr( $prefix . '_golf_selected' ); ?>" value="1" />
@@ -1251,6 +1343,34 @@ class HFO_Golf_Registration_Form_Shortcode {
 		<p class="hfo-golf-registration-field">
 			<label for="<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label>
 			<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="<?php echo esc_attr( $type ); ?>"<?php echo $required ? ' required' : ''; ?><?php echo 'number' === $type ? ' min="0"' : ''; ?><?php echo '' !== $step ? ' step="' . esc_attr( $step ) . '"' : ''; ?> />
+		</p>
+		<?php
+	}
+
+	/**
+	 * Renders a US state select field using WooCommerce-compatible state codes.
+	 *
+	 * @param string $field_name     Field name.
+	 * @param string $label          Field label.
+	 * @param string $selected_value Selected state code.
+	 * @return void
+	 */
+	private function render_state_select_field( $field_name, $label, $selected_value = '' ) {
+		if ( '' === $selected_value && isset( $_POST[ $field_name ] ) ) {
+			$selected_value = $this->sanitize_post_state( $field_name );
+		} else {
+			$selected_value = $this->sanitize_state_code( $selected_value );
+		}
+
+		?>
+		<p class="hfo-golf-registration-field">
+			<label for="<?php echo esc_attr( $field_name ); ?>"><?php echo esc_html( $label ); ?></label>
+			<select id="<?php echo esc_attr( $field_name ); ?>" name="<?php echo esc_attr( $field_name ); ?>">
+				<option value=""><?php esc_html_e( 'Select a state', 'hfo-golf-registration' ); ?></option>
+				<?php foreach ( $this->get_us_state_options() as $state_code => $state_name ) : ?>
+					<option value="<?php echo esc_attr( $state_code ); ?>"<?php selected( $selected_value, $state_code ); ?>><?php echo esc_html( $state_name ); ?></option>
+				<?php endforeach; ?>
+			</select>
 		</p>
 		<?php
 	}
