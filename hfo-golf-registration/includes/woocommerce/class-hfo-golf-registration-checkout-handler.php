@@ -530,6 +530,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
+		$this->link_customer_user_to_golf_order( $order, $registration_id );
 
 		if ( method_exists( $order, 'add_order_note' ) ) {
 			$order->add_order_note(
@@ -542,6 +543,117 @@ class HFO_Golf_Registration_Checkout_Handler {
 				true
 			);
 		}
+	}
+
+	/**
+	 * Creates or links a WordPress customer user for a golf registration order.
+	 *
+	 * @param WC_Order $order           WooCommerce order object.
+	 * @param int      $registration_id Golf registration post ID.
+	 * @return void
+	 */
+	private function link_customer_user_to_golf_order( $order, $registration_id ) {
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'get_billing_email' ) ) {
+			return;
+		}
+
+		if ( '1' === (string) $order->get_meta( '_hfo_golf_customer_user_linked', true ) ) {
+			return;
+		}
+
+		$registration_id = absint( $registration_id );
+
+		if ( ! $this->is_valid_registration( $registration_id ) ) {
+			return;
+		}
+
+		$billing_email = sanitize_email( $order->get_billing_email() );
+
+		if ( '' === $billing_email || ! is_email( $billing_email ) ) {
+			return;
+		}
+
+		$user_id = email_exists( $billing_email );
+
+		if ( ! $user_id ) {
+			$user_id = $this->create_customer_user_for_order_email( $billing_email );
+		}
+
+		$user_id = absint( $user_id );
+
+		if ( ! $user_id ) {
+			return;
+		}
+
+		if ( method_exists( $order, 'set_customer_id' ) ) {
+			$order->set_customer_id( $user_id );
+		}
+
+		$order->update_meta_data( '_hfo_golf_customer_user_linked', '1' );
+
+		if ( method_exists( $order, 'save' ) ) {
+			$order->save();
+		}
+
+		update_post_meta( $registration_id, 'hfo_golf_customer_user_id', $user_id );
+		update_post_meta( $registration_id, 'hfo_golf_customer_email', $billing_email );
+	}
+
+	/**
+	 * Creates a WordPress customer user for a billing email and sends a password setup email.
+	 *
+	 * @param string $billing_email Customer billing email.
+	 * @return int User ID, or 0 on failure.
+	 */
+	private function create_customer_user_for_order_email( $billing_email ) {
+		$username = $this->generate_unique_customer_username( $billing_email );
+		$role     = get_role( 'customer' ) ? 'customer' : get_option( 'default_role', 'subscriber' );
+
+		if ( in_array( $role, array( 'administrator', 'shop_manager', 'meal_coupon_manager' ), true ) ) {
+			$role = 'subscriber';
+		}
+
+		$user_id = wp_insert_user(
+			array(
+				'user_login' => $username,
+				'user_email' => $billing_email,
+				'user_pass'  => wp_generate_password( 24, true, true ),
+				'role'       => $role,
+			)
+		);
+
+		if ( is_wp_error( $user_id ) ) {
+			return 0;
+		}
+
+		wp_new_user_notification( $user_id, null, 'user' );
+
+		return absint( $user_id );
+	}
+
+	/**
+	 * Generates a unique username from a customer email address.
+	 *
+	 * @param string $billing_email Customer billing email.
+	 * @return string Unique username.
+	 */
+	private function generate_unique_customer_username( $billing_email ) {
+		$email_parts = explode( '@', $billing_email );
+		$base        = sanitize_user( reset( $email_parts ), true );
+
+		if ( '' === $base ) {
+			$base = 'customer';
+		}
+
+		$username = $base;
+		$suffix   = 1;
+
+		while ( username_exists( $username ) ) {
+			$username = $base . $suffix;
+			++$suffix;
+		}
+
+		return $username;
 	}
 
 	/**
