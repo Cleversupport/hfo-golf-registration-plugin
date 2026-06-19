@@ -78,6 +78,13 @@ class HFO_Golf_Registration_Settings {
 	const MEAL_COUPON_ALLOWED_ROLES_OPTION = 'hfo_golf_meal_coupon_allowed_roles';
 
 	/**
+	 * Option key for the meal coupon access denied message.
+	 *
+	 * @var string
+	 */
+	const MEAL_COUPON_ACCESS_MESSAGE_OPTION = 'hfo_golf_meal_coupon_access_message';
+
+	/**
 	 * Option key for custom frontend CSS.
 	 *
 	 * @var string
@@ -191,6 +198,16 @@ class HFO_Golf_Registration_Settings {
 
 		register_setting(
 			self::SETTINGS_GROUP,
+			self::MEAL_COUPON_ACCESS_MESSAGE_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => array( $this, 'sanitize_meal_coupon_access_message' ),
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
 			self::CUSTOM_FRONTEND_CSS_OPTION,
 			array(
 				'type'              => 'string',
@@ -285,6 +302,14 @@ class HFO_Golf_Registration_Settings {
 			self::MEAL_COUPON_ALLOWED_ROLES_OPTION,
 			esc_html__( 'Additional roles allowed to manage meal coupons', 'hfo-golf-registration' ),
 			array( $this, 'render_meal_coupon_allowed_roles_field' ),
+			self::PAGE_SLUG,
+			self::MEAL_COUPON_ACCESS_SECTION
+		);
+
+		add_settings_field(
+			self::MEAL_COUPON_ACCESS_MESSAGE_OPTION,
+			esc_html__( 'Meal Coupon Access Message', 'hfo-golf-registration' ),
+			array( $this, 'render_meal_coupon_access_message_field' ),
 			self::PAGE_SLUG,
 			self::MEAL_COUPON_ACCESS_SECTION
 		);
@@ -502,6 +527,26 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p class="description">%s</p>',
 			esc_html__( 'Administrators and the HFO Meal Coupon Manager role always keep meal coupon access and do not need to be selected.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the meal coupon access denied message textarea field.
+	 *
+	 * @return void
+	 */
+	public function render_meal_coupon_access_message_field() {
+		$value = (string) get_option( self::MEAL_COUPON_ACCESS_MESSAGE_OPTION, '' );
+
+		printf(
+			'<textarea id="%1$s" name="%1$s" rows="5" class="large-text">%2$s</textarea>',
+			esc_attr( self::MEAL_COUPON_ACCESS_MESSAGE_OPTION ),
+			esc_textarea( $value )
+		);
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'You can use HTML and shortcodes (Elementor templates supported).', 'hfo-golf-registration' )
 		);
 	}
 
@@ -802,6 +847,20 @@ class HFO_Golf_Registration_Settings {
 		HFO_Golf_Registration_Activator::sync_meal_coupon_role_capabilities( $roles );
 
 		return $roles;
+	}
+
+	/**
+	 * Sanitizes the meal coupon access denied message before saving.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return string
+	 */
+	public function sanitize_meal_coupon_access_message( $value ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		return wp_kses_post( wp_unslash( $value ) );
 	}
 
 	/**
