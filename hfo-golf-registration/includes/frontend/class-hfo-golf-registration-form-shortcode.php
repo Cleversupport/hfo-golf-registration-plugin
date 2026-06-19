@@ -401,8 +401,95 @@ class HFO_Golf_Registration_Form_Shortcode {
 			update_post_meta( $registration_id, $key, $value );
 		}
 
+		$this->populate_checkout_customer_data( $meta );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && function_exists( 'wc_get_checkout_url' ) ) {
+			error_log( 'HFO Golf Registration checkout redirect URL: ' . wc_get_checkout_url() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
 		$checkout_handler = new HFO_Golf_Registration_Checkout_Handler();
 		$checkout_handler->send_registration_to_checkout( $registration_id );
+	}
+
+	/**
+	 * Populates WooCommerce checkout customer data from the submitted registration.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return void
+	 */
+	private function populate_checkout_customer_data( $meta ) {
+		if ( ! function_exists( 'WC' ) ) {
+			return;
+		}
+
+		if ( function_exists( 'wc_load_cart' ) ) {
+			wc_load_cart();
+		}
+
+		if ( ! WC()->session && method_exists( WC(), 'initialize_session' ) ) {
+			WC()->initialize_session();
+		}
+
+		if ( WC()->session && method_exists( WC()->session, 'set_customer_session_cookie' ) && ! WC()->session->has_session() ) {
+			WC()->session->set_customer_session_cookie( true );
+		}
+
+		if ( ! WC()->cart && function_exists( 'wc_load_cart' ) ) {
+			wc_load_cart();
+		}
+
+		if ( ! WC()->customer && class_exists( 'WC_Customer' ) ) {
+			WC()->customer = new WC_Customer( get_current_user_id(), true );
+		}
+
+		if ( ! WC()->customer ) {
+			return;
+		}
+
+		if ( ! is_user_logged_in() && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO Golf Registration guest submission detected.' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
+		$contact = $this->get_checkout_billing_contact_from_meta( $meta );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO Golf Registration setting WooCommerce checkout customer billing data.' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
+		WC()->customer->set_billing_first_name( $contact['first_name'] );
+		WC()->customer->set_billing_last_name( $contact['last_name'] );
+		WC()->customer->set_billing_email( $contact['email'] );
+		WC()->customer->set_billing_phone( $contact['phone'] );
+		WC()->customer->set_billing_address_1( $contact['address_1'] );
+		WC()->customer->set_billing_city( $contact['city'] );
+		WC()->customer->set_billing_state( $contact['state'] );
+		WC()->customer->set_billing_postcode( $contact['postcode'] );
+		WC()->customer->set_billing_country( $contact['country'] );
+		WC()->customer->save();
+	}
+
+	/**
+	 * Gets checkout billing contact fields from registration meta.
+	 *
+	 * @param array<string,string> $meta Sanitized submitted meta.
+	 * @return array<string,string>
+	 */
+	private function get_checkout_billing_contact_from_meta( $meta ) {
+		$is_sponsor_only = isset( $meta['registration_type'] ) && 'sponsor_only' === $meta['registration_type'];
+		$name            = $is_sponsor_only && ! empty( $meta['sponsor_contact_name'] ) ? $meta['sponsor_contact_name'] : $meta['main_contact_name'];
+		$name_parts      = preg_split( '/\s+/', trim( sanitize_text_field( $name ) ), 2 );
+
+		return array(
+			'first_name' => isset( $name_parts[0] ) ? sanitize_text_field( $name_parts[0] ) : '',
+			'last_name'  => isset( $name_parts[1] ) ? sanitize_text_field( $name_parts[1] ) : '',
+			'email'      => sanitize_email( $is_sponsor_only && ! empty( $meta['sponsor_email'] ) ? $meta['sponsor_email'] : $meta['main_contact_email'] ),
+			'phone'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_phone'] ) ? $meta['sponsor_phone'] : $meta['main_contact_phone'] ),
+			'address_1'  => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_address'] ) ? $meta['sponsor_address'] : $meta['main_contact_address'] ),
+			'city'       => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_city'] ) ? $meta['sponsor_city'] : $meta['main_contact_city'] ),
+			'state'      => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_state'] ) ? $meta['sponsor_state'] : $meta['main_contact_state'] ),
+			'postcode'   => sanitize_text_field( $is_sponsor_only && ! empty( $meta['sponsor_zip'] ) ? $meta['sponsor_zip'] : $meta['main_contact_zip'] ),
+			'country'    => sanitize_text_field( ! empty( $meta['billing_country'] ) ? $meta['billing_country'] : 'US' ),
+		);
 	}
 
 	/**
