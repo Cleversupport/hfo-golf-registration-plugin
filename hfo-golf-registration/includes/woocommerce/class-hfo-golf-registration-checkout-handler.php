@@ -530,6 +530,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		}
 
 		$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
+		$this->link_order_to_customer_user( $order, $registration_id );
 
 		if ( method_exists( $order, 'add_order_note' ) ) {
 			$order->add_order_note(
@@ -542,6 +543,178 @@ class HFO_Golf_Registration_Checkout_Handler {
 				true
 			);
 		}
+	}
+
+	/**
+	 * Links a guest golf registration order to a customer user.
+	 *
+	 * @param WC_Order $order           WooCommerce order object.
+	 * @param int      $registration_id Registration post ID.
+	 * @return void
+	 */
+	private function link_order_to_customer_user( $order, $registration_id ) {
+		if ( ! $order || ! method_exists( $order, 'get_customer_id' ) || ! method_exists( $order, 'set_customer_id' ) ) {
+			return;
+		}
+
+		$user_id        = absint( $order->get_customer_id() );
+		$customer_email = $this->get_customer_email_for_registration_order( $order, $registration_id );
+
+		if ( 0 === $user_id ) {
+			if ( ! is_email( $customer_email ) ) {
+				return;
+			}
+
+			$existing_user_id = email_exists( $customer_email );
+
+			if ( $existing_user_id ) {
+				$user_id = absint( $existing_user_id );
+			} else {
+				$generated_password = wp_generate_password( 16, true, true );
+				$user_id            = wp_insert_user(
+					array(
+						'user_login' => $this->generate_unique_customer_username( $customer_email ),
+						'user_email' => $customer_email,
+						'user_pass'  => $generated_password,
+						'first_name' => $this->get_order_billing_field( $order, 'get_billing_first_name' ),
+						'last_name'  => $this->get_order_billing_field( $order, 'get_billing_last_name' ),
+						'role'       => 'customer',
+					)
+				);
+
+				if ( is_wp_error( $user_id ) ) {
+					return;
+				}
+
+				$this->send_customer_welcome_email( absint( $user_id ), $customer_email, $generated_password );
+			}
+		}
+
+		if ( 0 === $user_id ) {
+			return;
+		}
+
+		if ( ! is_email( $customer_email ) ) {
+			$user = get_user_by( 'id', $user_id );
+
+			if ( $user && is_email( $user->user_email ) ) {
+				$customer_email = $user->user_email;
+			}
+		}
+
+		$order->set_customer_id( $user_id );
+		$order->update_meta_data( '_hfo_golf_customer_user_linked', '1' );
+
+		if ( method_exists( $order, 'save' ) ) {
+			$order->save();
+		}
+
+		update_post_meta( $registration_id, 'hfo_golf_customer_user_id', $user_id );
+		update_post_meta( $registration_id, 'hfo_golf_customer_email', $customer_email );
+	}
+
+	/**
+	 * Gets the best customer email for a golf registration order.
+	 *
+	 * @param WC_Order $order           WooCommerce order object.
+	 * @param int      $registration_id Registration post ID.
+	 * @return string
+	 */
+	private function get_customer_email_for_registration_order( $order, $registration_id ) {
+		$customer_email = $this->get_order_billing_field( $order, 'get_billing_email' );
+
+		if ( ! is_email( $customer_email ) ) {
+			$customer_email = sanitize_email( get_post_meta( $registration_id, 'main_contact_email', true ) );
+		}
+
+		if ( ! is_email( $customer_email ) ) {
+			$customer_email = sanitize_email( get_post_meta( $registration_id, 'sponsor_email', true ) );
+		}
+
+		return is_email( $customer_email ) ? $customer_email : '';
+	}
+
+	/**
+	 * Gets a sanitized billing field from an order when the getter exists.
+	 *
+	 * @param WC_Order $order  WooCommerce order object.
+	 * @param string   $getter Getter method name.
+	 * @return string
+	 */
+	private function get_order_billing_field( $order, $getter ) {
+		if ( ! method_exists( $order, $getter ) ) {
+			return '';
+		}
+
+		$value = $order->{$getter}();
+
+		return is_scalar( $value ) ? sanitize_text_field( (string) $value ) : '';
+	}
+
+	/**
+	 * Generates a unique username for a new customer account.
+	 *
+	 * @param string $customer_email Customer email address.
+	 * @return string
+	 */
+	private function generate_unique_customer_username( $customer_email ) {
+		$username = sanitize_user( current( explode( '@', $customer_email ) ), true );
+
+		if ( '' === $username ) {
+			$username = 'customer';
+		}
+
+		$unique_username = $username;
+		$suffix          = 1;
+
+		while ( username_exists( $unique_username ) ) {
+			$unique_username = $username . $suffix;
+			++$suffix;
+		}
+
+		return $unique_username;
+	}
+
+	/**
+	 * Sends a custom welcome email with the generated usable password.
+	 *
+	 * @param int    $user_id            Customer user ID.
+	 * @param string $customer_email     Customer email address.
+	 * @param string $generated_password Generated customer password.
+	 * @return void
+	 */
+	private function send_customer_welcome_email( $user_id, $customer_email, $generated_password ) {
+		$user = get_user_by( 'id', $user_id );
+
+		if ( ! $user || ! is_email( $customer_email ) ) {
+			return;
+		}
+
+		$site_name = wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES );
+		$login_url = wp_login_url();
+		$subject   = sprintf(
+			/* translators: %s: site name. */
+			__( 'Welcome to %s', 'hfo-golf-registration' ),
+			$site_name
+		);
+		$message   = sprintf(
+			/* translators: 1: site name, 2: login URL, 3: username or email, 4: generated password. */
+			__( "Welcome to %1$s.
+
+Your customer account has been created for your golf registration order.
+
+Login URL: %2$s
+Username/Email: %3$s
+Password: %4$s
+
+You can log in with this password now. You may change it later from your account if you want, but it is not required.", 'hfo-golf-registration' ),
+			$site_name,
+			$login_url,
+			$user->user_login ? $user->user_login : $customer_email,
+			$generated_password
+		);
+
+		wp_mail( $customer_email, $subject, $message );
 	}
 
 	/**
