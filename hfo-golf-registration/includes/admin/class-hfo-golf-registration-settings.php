@@ -43,6 +43,13 @@ class HFO_Golf_Registration_Settings {
 	const DEFAULT_PRODUCTS_SECTION = 'hfo_golf_registration_default_products';
 
 	/**
+	 * Meal coupon access section ID.
+	 *
+	 * @var string
+	 */
+	const MEAL_COUPON_ACCESS_SECTION = 'hfo_golf_registration_meal_coupon_access';
+
+	/**
 	 * Frontend styling section ID.
 	 *
 	 * @var string
@@ -62,6 +69,13 @@ class HFO_Golf_Registration_Settings {
 	 * @var string
 	 */
 	const GITHUB_UPDATES_SECTION = 'hfo_golf_registration_github_updates';
+
+	/**
+	 * Option key for additional meal coupon manager roles.
+	 *
+	 * @var string
+	 */
+	const MEAL_COUPON_ALLOWED_ROLES_OPTION = 'hfo_golf_meal_coupon_allowed_roles';
 
 	/**
 	 * Option key for custom frontend CSS.
@@ -167,6 +181,16 @@ class HFO_Golf_Registration_Settings {
 
 		register_setting(
 			self::SETTINGS_GROUP,
+			self::MEAL_COUPON_ALLOWED_ROLES_OPTION,
+			array(
+				'type'              => 'array',
+				'sanitize_callback' => array( $this, 'sanitize_meal_coupon_allowed_roles' ),
+				'default'           => array(),
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
 			self::CUSTOM_FRONTEND_CSS_OPTION,
 			array(
 				'type'              => 'string',
@@ -230,6 +254,13 @@ class HFO_Golf_Registration_Settings {
 		);
 
 		add_settings_section(
+			self::MEAL_COUPON_ACCESS_SECTION,
+			esc_html__( 'Meal Coupon Access', 'hfo-golf-registration' ),
+			array( $this, 'render_meal_coupon_access_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_section(
 			self::FRONTEND_STYLING_SECTION,
 			esc_html__( 'Frontend Styling', 'hfo-golf-registration' ),
 			array( $this, 'render_frontend_styling_section' ),
@@ -248,6 +279,14 @@ class HFO_Golf_Registration_Settings {
 			esc_html__( 'GitHub Updates', 'hfo-golf-registration' ),
 			array( $this, 'render_github_updates_section' ),
 			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			self::MEAL_COUPON_ALLOWED_ROLES_OPTION,
+			esc_html__( 'Additional roles allowed to manage meal coupons', 'hfo-golf-registration' ),
+			array( $this, 'render_meal_coupon_allowed_roles_field' ),
+			self::PAGE_SLUG,
+			self::MEAL_COUPON_ACCESS_SECTION
 		);
 
 		add_settings_field(
@@ -377,6 +416,18 @@ class HFO_Golf_Registration_Settings {
 	}
 
 	/**
+	 * Renders the meal coupon access section description.
+	 *
+	 * @return void
+	 */
+	public function render_meal_coupon_access_section() {
+		printf(
+			'<p>%s</p>',
+			esc_html__( 'Select additional WordPress roles that should be allowed to create, disable, and view meal coupons. Administrators and the HFO Meal Coupon Manager role always have access.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
 	 * Renders the frontend styling section description.
 	 *
 	 * @return void
@@ -409,6 +460,48 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p>%s</p>',
 			esc_html__( 'WordPress checks GitHub Releases for plugin updates. A token is optional for public repositories and required if the GitHub repository is private.', 'hfo-golf-registration' )
+		);
+	}
+
+	/**
+	 * Renders the additional meal coupon role selector field.
+	 *
+	 * @return void
+	 */
+	public function render_meal_coupon_allowed_roles_field() {
+		$selected_roles = get_option( self::MEAL_COUPON_ALLOWED_ROLES_OPTION, array() );
+		$selected_roles = is_array( $selected_roles ) ? array_map( 'sanitize_key', $selected_roles ) : array();
+		$editable_roles = get_editable_roles();
+		$protected      = array( 'administrator', 'hfo_meal_coupon_manager' );
+
+		if ( empty( $editable_roles ) ) {
+			printf( '<p>%s</p>', esc_html__( 'No editable roles are available.', 'hfo-golf-registration' ) );
+			return;
+		}
+
+		echo '<fieldset>';
+
+		foreach ( $editable_roles as $role_slug => $role_details ) {
+			if ( in_array( $role_slug, $protected, true ) ) {
+				continue;
+			}
+
+			$role_name = isset( $role_details['name'] ) ? translate_user_role( $role_details['name'] ) : $role_slug;
+
+			printf(
+				'<label><input type="checkbox" name="%1$s[]" value="%2$s"%3$s /> %4$s</label><br />',
+				esc_attr( self::MEAL_COUPON_ALLOWED_ROLES_OPTION ),
+				esc_attr( $role_slug ),
+				checked( in_array( $role_slug, $selected_roles, true ), true, false ),
+				esc_html( $role_name )
+			);
+		}
+
+		echo '</fieldset>';
+
+		printf(
+			'<p class="description">%s</p>',
+			esc_html__( 'Administrators and the HFO Meal Coupon Manager role always keep meal coupon access and do not need to be selected.', 'hfo-golf-registration' )
 		);
 	}
 
@@ -678,6 +771,37 @@ class HFO_Golf_Registration_Settings {
 		);
 
 		return 0;
+	}
+
+	/**
+	 * Sanitizes additional meal coupon manager role slugs and syncs capabilities.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return array<int,string>
+	 */
+	public function sanitize_meal_coupon_allowed_roles( $value ) {
+		if ( ! is_array( $value ) ) {
+			$value = array();
+		}
+
+		$wp_roles = wp_roles();
+		$valid    = $wp_roles ? array_keys( $wp_roles->roles ) : array();
+		$excluded = array( 'administrator', 'hfo_meal_coupon_manager' );
+		$roles    = array();
+
+		foreach ( $value as $role_slug ) {
+			$role_slug = sanitize_key( wp_unslash( $role_slug ) );
+
+			if ( in_array( $role_slug, $valid, true ) && ! in_array( $role_slug, $excluded, true ) ) {
+				$roles[] = $role_slug;
+			}
+		}
+
+		$roles = array_values( array_unique( $roles ) );
+
+		HFO_Golf_Registration_Activator::sync_meal_coupon_role_capabilities( $roles );
+
+		return $roles;
 	}
 
 	/**
