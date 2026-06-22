@@ -199,6 +199,15 @@ class HFO_Golf_Event_Meta_Boxes {
 		);
 
 		add_meta_box(
+			'hfo_golf_event_email_configuration',
+			esc_html__( 'Email Configuration', 'hfo-golf-registration' ),
+			array( $this, 'render_email_configuration_meta_box' ),
+			HFO_Golf_Event_Post_Type::POST_TYPE,
+			'normal',
+			'default'
+		);
+
+		add_meta_box(
 			'hfo_golf_event_notifications',
 			esc_html__( 'Notifications', 'hfo-golf-registration' ),
 			array( $this, 'render_notifications_meta_box' ),
@@ -304,6 +313,27 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'discount_code_30', esc_html__( '30% Discount Code', 'hfo-golf-registration' ), $post->ID, 'text' );
 	}
 
+
+	/**
+	 * Renders the Email Configuration meta box.
+	 *
+	 * @param WP_Post $post Current post object.
+	 * @return void
+	 */
+	public function render_email_configuration_meta_box( $post ) {
+		$this->render_checkbox_field(
+			'hfo_event_email_enabled',
+			esc_html__( 'Enable event email for completed orders', 'hfo-golf-registration' ),
+			$post->ID
+		);
+		$this->render_input_field( 'hfo_event_email_subject', esc_html__( 'Email Subject', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_wysiwyg_field( 'hfo_event_email_body', esc_html__( 'Email Body', 'hfo-golf-registration' ), $post->ID );
+		printf(
+			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{order_id}</code></p>',
+			esc_html__( 'Available placeholders:', 'hfo-golf-registration' )
+		);
+	}
+
 	/**
 	 * Renders the Notifications meta box.
 	 *
@@ -348,6 +378,9 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'why_this_tournament_matters', 'html' );
 		$this->save_meta_value( $post_id, 'whats_included', 'html' );
 		$this->save_meta_value( $post_id, 'event_schedule', 'html' );
+		$this->save_meta_value( $post_id, 'hfo_event_email_enabled', 'checkbox' );
+		$this->save_meta_value( $post_id, 'hfo_event_email_subject', 'text' );
+		$this->save_meta_value( $post_id, 'hfo_event_email_body', 'html' );
 
 		foreach ( $this->get_price_fields() as $field ) {
 			$this->save_meta_value( $post_id, $field, 'price' );
@@ -433,6 +466,9 @@ class HFO_Golf_Event_Meta_Boxes {
 			case 'html':
 				return is_scalar( $value ) ? wp_kses_post( (string) $value ) : '';
 
+			case 'checkbox':
+				return ! empty( $value ) ? '1' : '0';
+
 			case 'time':
 				return $this->sanitize_time_value( $value );
 
@@ -477,6 +513,27 @@ class HFO_Golf_Event_Meta_Boxes {
 		}
 
 		return preg_match( '/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time ) ? $time : '';
+	}
+
+
+	/**
+	 * Renders a checkbox field.
+	 *
+	 * @param string $key     Meta key.
+	 * @param string $label   Field label.
+	 * @param int    $post_id Post ID.
+	 * @return void
+	 */
+	private function render_checkbox_field( $key, $label, $post_id ) {
+		$value = get_post_meta( $post_id, $key, true );
+		?>
+		<p>
+			<label for="<?php echo esc_attr( $key ); ?>">
+				<input type="checkbox" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="1" <?php checked( '1', (string) $value ); ?> />
+				<strong><?php echo esc_html( $label ); ?></strong>
+			</label>
+		</p>
+		<?php
 	}
 
 	/**

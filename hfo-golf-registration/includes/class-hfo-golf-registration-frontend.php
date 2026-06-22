@@ -203,8 +203,6 @@ class HFO_Golf_Registration_Frontend {
 			update_post_meta( $registration_id, $key, $value );
 		}
 
-		$this->send_confirmation_email( $main_contact_email, $event_id );
-		$this->send_admin_notification( $event_id, $registration_id, $main_contact_name, $main_contact_email );
 
 		$redirect_to = $this->get_redirect_url();
 		wp_safe_redirect( add_query_arg( 'hfo_registration_success', '1', $redirect_to ) );
@@ -242,33 +240,6 @@ class HFO_Golf_Registration_Frontend {
 		}
 
 		return 0.0;
-	}
-
-	private function send_confirmation_email( $to_email, $event_id ) {
-		if ( ! is_email( $to_email ) ) {
-			return;
-		}
-
-		$subject = __( 'Golf Registration Received', 'hfo-golf-registration' );
-		$message = sprintf( __( 'Thank you for registering for event #%d.', 'hfo-golf-registration' ), $event_id );
-
-		wp_mail( $to_email, $subject, $message );
-	}
-
-	private function send_admin_notification( $event_id, $registration_id, $main_contact_name, $main_contact_email ) {
-		$raw_emails = (string) get_post_meta( $event_id, 'notification_emails', true );
-		$emails     = array_filter( array_map( 'trim', explode( ',', $raw_emails ) ) );
-		$emails     = array_map( 'sanitize_email', $emails );
-		$emails     = array_filter( $emails, 'is_email' );
-
-		if ( empty( $emails ) ) {
-			return;
-		}
-
-		$subject = __( 'New Golf Registration Submitted', 'hfo-golf-registration' );
-		$message = sprintf( __( 'Registration #%1$d submitted by %2$s (%3$s).', 'hfo-golf-registration' ), $registration_id, $main_contact_name, $main_contact_email );
-
-		wp_mail( $emails, $subject, $message );
 	}
 
 	private function get_redirect_url() {
