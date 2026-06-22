@@ -3,7 +3,7 @@
  * Plugin Name: HFO Golf Registration
  * Plugin URI:  https://github.com/Cleversupport/hfo-golf-registration-plugin
  * Description: Base plugin structure for HFO golf events and registrations.
- * Version:     0.1.42
+ * Version:     0.1.43
  * Author:      HFO
  * Text Domain: hfo-golf-registration
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HFO_GOLF_REGISTRATION_VERSION', '0.1.42' );
+define( 'HFO_GOLF_REGISTRATION_VERSION', '0.1.43' );
 define( 'HFO_GOLF_REGISTRATION_FILE', __FILE__ );
 define( 'HFO_GOLF_REGISTRATION_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -24,6 +24,7 @@ require_once HFO_GOLF_REGISTRATION_PATH . 'includes/post-types/class-hfo-golf-re
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-event-meta-boxes.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-registration-meta-boxes.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/admin/class-hfo-golf-registration-settings.php';
+require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-email-engine.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/woocommerce/class-hfo-golf-registration-checkout-handler.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-activator.php';
 require_once HFO_GOLF_REGISTRATION_PATH . 'includes/class-hfo-golf-registration-deactivator.php';

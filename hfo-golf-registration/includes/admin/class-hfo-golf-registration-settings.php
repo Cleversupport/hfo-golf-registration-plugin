@@ -57,6 +57,13 @@ class HFO_Golf_Registration_Settings {
 	const FRONTEND_STYLING_SECTION = 'hfo_golf_registration_frontend_styling';
 
 	/**
+	 * Sponsor email section ID.
+	 *
+	 * @var string
+	 */
+	const SPONSOR_EMAIL_SECTION = 'hfo_golf_registration_sponsor_email';
+
+	/**
 	 * reCAPTCHA v3 section ID.
 	 *
 	 * @var string
@@ -125,6 +132,20 @@ class HFO_Golf_Registration_Settings {
 	 * @var string
 	 */
 	const CHECKOUT_CONFIRMATION_PAGE_OPTION = 'hfo_golf_checkout_confirmation_page_id';
+
+	/**
+	 * Option key for global sponsor email subject.
+	 *
+	 * @var string
+	 */
+	const SPONSOR_EMAIL_SUBJECT_OPTION = 'hfo_sponsor_email_subject';
+
+	/**
+	 * Option key for global sponsor email body.
+	 *
+	 * @var string
+	 */
+	const SPONSOR_EMAIL_BODY_OPTION = 'hfo_sponsor_email_body';
 
 	/**
 	 * Action name used to create default products.
@@ -225,6 +246,26 @@ class HFO_Golf_Registration_Settings {
 
 		register_setting(
 			self::SETTINGS_GROUP,
+			self::SPONSOR_EMAIL_SUBJECT_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
+			self::SPONSOR_EMAIL_BODY_OPTION,
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'wp_kses_post',
+				'default'           => '',
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
 			self::GITHUB_TOKEN_OPTION,
 			array(
 				'type'              => 'string',
@@ -298,6 +339,13 @@ class HFO_Golf_Registration_Settings {
 			self::FRONTEND_STYLING_SECTION,
 			esc_html__( 'Frontend Styling', 'hfo-golf-registration' ),
 			array( $this, 'render_frontend_styling_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_section(
+			self::SPONSOR_EMAIL_SECTION,
+			esc_html__( 'Global Sponsor Email', 'hfo-golf-registration' ),
+			array( $this, 'render_sponsor_email_section' ),
 			self::PAGE_SLUG
 		);
 
@@ -377,6 +425,22 @@ class HFO_Golf_Registration_Settings {
 			array( $this, 'render_recaptcha_minimum_score_field' ),
 			self::PAGE_SLUG,
 			self::RECAPTCHA_SECTION
+		);
+
+		add_settings_field(
+			self::SPONSOR_EMAIL_SUBJECT_OPTION,
+			esc_html__( 'Sponsor Email Subject', 'hfo-golf-registration' ),
+			array( $this, 'render_sponsor_email_subject_field' ),
+			self::PAGE_SLUG,
+			self::SPONSOR_EMAIL_SECTION
+		);
+
+		add_settings_field(
+			self::SPONSOR_EMAIL_BODY_OPTION,
+			esc_html__( 'Sponsor Email Body', 'hfo-golf-registration' ),
+			array( $this, 'render_sponsor_email_body_field' ),
+			self::PAGE_SLUG,
+			self::SPONSOR_EMAIL_SECTION
 		);
 
 		foreach ( $this->get_product_mapping_fields() as $field_key => $field ) {
@@ -486,6 +550,19 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p>%s</p>',
 			esc_html__( 'Edit the CSS used by the golf registration frontend form and event shortcodes. Leave blank to use the plugin default CSS.', 'hfo-golf-registration' )
+		);
+	}
+
+
+	/**
+	 * Renders the global sponsor email section description.
+	 *
+	 * @return void
+	 */
+	public function render_sponsor_email_section() {
+		printf(
+			'<p>%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{order_id}</code></p>',
+			esc_html__( 'Configure the shared sponsor email template. Available placeholders:', 'hfo-golf-registration' )
 		);
 	}
 
@@ -613,6 +690,43 @@ class HFO_Golf_Registration_Settings {
 		printf(
 			'<p class="description">%s</p>',
 			esc_html__( 'Used only for GitHub API and release download requests. The saved token is never displayed back in this field.', 'hfo-golf-registration' )
+		);
+	}
+
+
+	/**
+	 * Renders the global sponsor email subject field.
+	 *
+	 * @return void
+	 */
+	public function render_sponsor_email_subject_field() {
+		$value = (string) get_option( self::SPONSOR_EMAIL_SUBJECT_OPTION, '' );
+
+		printf(
+			'<input id="%1$s" name="%1$s" type="text" class="regular-text" value="%2$s" />',
+			esc_attr( self::SPONSOR_EMAIL_SUBJECT_OPTION ),
+			esc_attr( $value )
+		);
+	}
+
+	/**
+	 * Renders the global sponsor email body field.
+	 *
+	 * @return void
+	 */
+	public function render_sponsor_email_body_field() {
+		$value = (string) get_option( self::SPONSOR_EMAIL_BODY_OPTION, '' );
+
+		wp_editor(
+			$value,
+			self::SPONSOR_EMAIL_BODY_OPTION,
+			array(
+				'textarea_name' => self::SPONSOR_EMAIL_BODY_OPTION,
+				'media_buttons' => false,
+				'textarea_rows' => 8,
+				'teeny'         => true,
+				'quicktags'     => true,
+			)
 		);
 	}
 
