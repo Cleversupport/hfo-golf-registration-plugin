@@ -72,6 +72,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		add_action( 'add_meta_boxes', array( $this, 'add_checkout_actions_meta_box' ) );
 		add_action( 'admin_post_' . self::ACTION, array( $this, 'handle_send_to_checkout' ) );
 		add_action( 'admin_notices', array( $this, 'render_admin_notice' ) );
+		add_action( 'template_redirect', array( $this, 'capture_checkout_event_id_from_url' ) );
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'apply_custom_cart_item_prices' ) );
 		add_filter( 'woocommerce_coupon_is_valid', array( $this, 'validate_golf30_coupon' ), 10, 2 );
 		add_filter( 'woocommerce_get_item_data', array( $this, 'add_golf_event_to_cart_item_data' ), 10, 2 );
@@ -229,7 +230,9 @@ class HFO_Golf_Registration_Checkout_Handler {
 			wc_add_notice( __( 'Golf registration items were added to checkout.', 'hfo-golf-registration' ), 'success' );
 		}
 
-		wp_safe_redirect( wc_get_checkout_url() );
+		$checkout_url = add_query_arg( 'event', $event_id, wc_get_checkout_url() );
+
+		wp_safe_redirect( $checkout_url );
 		exit;
 	}
 
@@ -274,6 +277,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 		if ( WC()->session && method_exists( WC()->session, 'set' ) ) {
 			WC()->session->set( 'hfo_golf_registration_id', $registration_id );
+			WC()->session->set( 'hfo_golf_checkout_event_id', $event_id );
 		}
 
 		WC()->cart->empty_cart();
@@ -323,7 +327,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 			wc_add_notice( __( 'Golf registration items were added to checkout.', 'hfo-golf-registration' ), 'success' );
 		}
 
-		wp_safe_redirect( wc_get_checkout_url() );
+		$event_id     = $this->get_registration_event_id( $registration_id );
+		$checkout_url = $this->is_valid_event( $event_id ) ? add_query_arg( 'event', $event_id, wc_get_checkout_url() ) : wc_get_checkout_url();
+
+		wp_safe_redirect( $checkout_url );
 		exit;
 	}
 
@@ -438,6 +445,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 	 */
 	public function add_golf_registration_meta_to_order( $order, $data ) {
 		$golf_order_data = $this->get_golf_order_data_from_cart();
+		$session_event_id = $this->get_checkout_event_id_from_session();
 
 		if ( empty( $golf_order_data ) ) {
 			$session_registration_id = $this->get_registration_id_from_session();
@@ -450,15 +458,55 @@ class HFO_Golf_Registration_Checkout_Handler {
 			}
 		}
 
-		if ( empty( $golf_order_data ) || ! method_exists( $order, 'update_meta_data' ) ) {
+		if ( ! method_exists( $order, 'update_meta_data' ) ) {
 			return;
 		}
 
-		$order->update_meta_data( 'hfo_golf_registration_id', $golf_order_data['registration_id'] );
-		$order->update_meta_data( 'hfo_golf_event_id', $golf_order_data['event_id'] );
+		$registration_id = ! empty( $golf_order_data['registration_id'] ) ? absint( $golf_order_data['registration_id'] ) : 0;
+		$event_id        = $this->is_valid_event( $session_event_id ) ? $session_event_id : 0;
+
+		if ( ! $event_id && $order && method_exists( $order, 'get_meta' ) ) {
+			$existing_event_id = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
+
+			if ( $this->is_valid_event( $existing_event_id ) ) {
+				$event_id = $existing_event_id;
+			}
+		}
+
+		if ( ! $event_id && ! empty( $golf_order_data['event_id'] ) && $this->is_valid_event( $golf_order_data['event_id'] ) ) {
+			$event_id = absint( $golf_order_data['event_id'] );
+		}
+
+		if ( ! $event_id && $this->is_valid_registration( $registration_id ) ) {
+			$event_id = $this->get_registration_event_id( $registration_id );
+		}
+
+		if ( ! $registration_id && ! $event_id ) {
+			return;
+		}
+
+		if ( $registration_id ) {
+			$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
+		}
+
+		if ( $event_id ) {
+			$order->update_meta_data( 'hfo_golf_event_id', $event_id );
+		}
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'HFO registration_id: ' . $golf_order_data['registration_id'] );
+			error_log( 'HFO registration_id: ' . $registration_id );
 			error_log( 'HFO order meta registration_id: ' . $order->get_meta( 'hfo_golf_registration_id' ) );
+		}
+
+		if ( $event_id ) {
+			$order->update_meta_data( '_hfo_golf_event_saved_note_pending', '1' );
+
+			if ( $session_event_id === $event_id ) {
+				$order->update_meta_data( '_hfo_golf_checkout_event_captured_note_pending', '1' );
+			}
+		}
+
+		if ( function_exists( 'WC' ) && WC()->session && method_exists( WC()->session, 'set' ) ) {
+			WC()->session->set( 'hfo_golf_checkout_event_id', null );
 		}
 
 		if ( method_exists( $order, 'save' ) ) {
@@ -618,7 +666,11 @@ class HFO_Golf_Registration_Checkout_Handler {
 			if ( method_exists( $order, 'update_meta_data' ) ) {
 				$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
 
-				if ( ! empty( $golf_order_data['event_id'] ) ) {
+				$existing_event_id = method_exists( $order, 'get_meta' ) ? absint( $order->get_meta( 'hfo_golf_event_id', true ) ) : 0;
+
+				if ( $this->is_valid_event( $existing_event_id ) ) {
+					$order->update_meta_data( 'hfo_golf_event_id', $existing_event_id );
+				} elseif ( ! empty( $golf_order_data['event_id'] ) ) {
 					$order->update_meta_data( 'hfo_golf_event_id', absint( $golf_order_data['event_id'] ) );
 				}
 
@@ -626,6 +678,8 @@ class HFO_Golf_Registration_Checkout_Handler {
 					$order->save_meta_data();
 				}
 			}
+
+			$this->add_pending_event_id_order_notes( $order );
 
 			$this->sync_registration_meta_for_order_status( $registration_id, $order->get_id(), $order->get_status() );
 			$this->maybe_link_golf_order_to_customer_user( $order );
@@ -643,6 +697,36 @@ class HFO_Golf_Registration_Checkout_Handler {
 			}
 		} catch ( Throwable $e ) {
 			$this->track_customer_user_link_error( $order, 'fatal_error', $e->getMessage() );
+		}
+	}
+
+	/**
+	 * Adds deferred order notes for persisted checkout event IDs after the order exists.
+	 *
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return void
+	 */
+	private function add_pending_event_id_order_notes( $order ) {
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'add_order_note' ) || ! method_exists( $order, 'delete_meta_data' ) ) {
+			return;
+		}
+
+		$event_id = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
+
+		if ( ! $event_id || '1' !== (string) $order->get_meta( '_hfo_golf_event_saved_note_pending', true ) ) {
+			return;
+		}
+
+		if ( '1' === (string) $order->get_meta( '_hfo_golf_checkout_event_captured_note_pending', true ) ) {
+			$order->add_order_note( __( 'Golf event ID captured from checkout URL.', 'hfo-golf-registration' ) );
+			$order->delete_meta_data( '_hfo_golf_checkout_event_captured_note_pending' );
+		}
+
+		$order->add_order_note( sprintf( /* translators: %d: golf event post ID. */ __( 'Golf event ID saved to order: %d.', 'hfo-golf-registration' ), $event_id ) );
+		$order->delete_meta_data( '_hfo_golf_event_saved_note_pending' );
+
+		if ( method_exists( $order, 'save_meta_data' ) ) {
+			$order->save_meta_data();
 		}
 	}
 
@@ -1247,6 +1331,44 @@ You can log in with this password now. You may change it later from your account
 	}
 
 	/**
+	 * Captures a valid Golf Event ID from the checkout URL into the WooCommerce session.
+	 *
+	 * @return void
+	 */
+	public function capture_checkout_event_id_from_url() {
+		if ( ! function_exists( 'is_checkout' ) || ! is_checkout() || ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url() ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['event'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+
+		$event_id = absint( wp_unslash( $_GET['event'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+
+		if ( ! $this->is_valid_published_event( $event_id ) || ! function_exists( 'WC' ) || ! WC()->session || ! method_exists( WC()->session, 'set' ) ) {
+			return;
+		}
+
+		WC()->session->set( 'hfo_golf_checkout_event_id', $event_id );
+	}
+
+	/**
+	 * Gets a valid golf event ID stored in the WooCommerce session.
+	 *
+	 * @return int
+	 */
+	private function get_checkout_event_id_from_session() {
+		if ( ! function_exists( 'WC' ) || ! WC()->session || ! method_exists( WC()->session, 'get' ) ) {
+			return 0;
+		}
+
+		$event_id = absint( WC()->session->get( 'hfo_golf_checkout_event_id' ) );
+
+		return $this->is_valid_published_event( $event_id ) ? $event_id : 0;
+	}
+
+	/**
 	 * Gets a valid golf registration ID stored in the WooCommerce session.
 	 *
 	 * @return int
@@ -1420,6 +1542,18 @@ You can log in with this password now. You may change it later from your account
 		$post = get_post( $event_id );
 
 		return $post && HFO_Golf_Event_Post_Type::POST_TYPE === $post->post_type;
+	}
+
+	/**
+	 * Checks whether a related event post ID is a published Golf Event.
+	 *
+	 * @param int $event_id Event post ID.
+	 * @return bool
+	 */
+	private function is_valid_published_event( $event_id ) {
+		$post = get_post( $event_id );
+
+		return $post && HFO_Golf_Event_Post_Type::POST_TYPE === $post->post_type && 'publish' === $post->post_status;
 	}
 
 	/**
