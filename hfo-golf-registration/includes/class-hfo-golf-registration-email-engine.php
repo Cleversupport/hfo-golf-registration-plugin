@@ -52,6 +52,24 @@ function replace_hfo_email_placeholders( $content, $order ) {
 
 
 /**
+ * Normalizes supported WooCommerce hook payloads to an order ID.
+ *
+ * @param mixed $order_or_order_id Order ID, WC_Order object, or unexpected value.
+ * @return int WooCommerce order ID, or 0 when unavailable.
+ */
+function hfo_golf_normalize_order_id( $order_or_order_id ) {
+	if ( is_numeric( $order_or_order_id ) ) {
+		return absint( $order_or_order_id );
+	}
+
+	if ( is_object( $order_or_order_id ) && method_exists( $order_or_order_id, 'get_id' ) ) {
+		return absint( $order_or_order_id->get_id() );
+	}
+
+	return 0;
+}
+
+/**
  * Resolves a golf event ID for an order, falling back through the linked registration.
  *
  * @param int $order_id WooCommerce order ID.
@@ -108,7 +126,7 @@ function hfo_golf_resolve_event_id_for_order( $order_id ) {
  */
 function send_hfo_golf_event_email( $order_id ) {
 	try {
-		$order_id = absint( $order_id );
+		$order_id = hfo_golf_normalize_order_id( $order_id );
 
 		if ( ! $order_id || ! function_exists( 'wc_get_order' ) ) {
 			return false;
@@ -143,11 +161,25 @@ function send_hfo_golf_event_email( $order_id ) {
 		$email = method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '';
 
 		if ( ! is_email( $email ) ) {
-			throw new RuntimeException( __( 'Missing or invalid billing email.', 'hfo-golf-registration' ) );
+			$order->update_meta_data( '_hfo_event_email_status', 'skipped_invalid_email' );
+			$order->update_meta_data( '_hfo_event_email_error', __( 'Missing or invalid billing email.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Event email skipped: missing or invalid billing email.', 'hfo-golf-registration' ) );
+			}
+
+			$order->save_meta_data();
+			return false;
 		}
 
 		if ( '1' !== (string) get_post_meta( $event_id, 'hfo_event_email_enabled', true ) ) {
-			$order->update_meta_data( '_hfo_event_email_status', 'skipped_no_template' );
+			$order->update_meta_data( '_hfo_event_email_status', 'skipped_disabled' );
+			$order->update_meta_data( '_hfo_event_email_error', __( 'Event email is disabled for this event.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Event email skipped: event email is disabled for this event.', 'hfo-golf-registration' ) );
+			}
+
 			$order->save_meta_data();
 			return false;
 		}
@@ -157,6 +189,12 @@ function send_hfo_golf_event_email( $order_id ) {
 
 		if ( '' === trim( $subject ) || '' === trim( wp_strip_all_tags( $body ) ) ) {
 			$order->update_meta_data( '_hfo_event_email_status', 'skipped_no_template' );
+			$order->update_meta_data( '_hfo_event_email_error', __( 'Event email subject or body is empty.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Event email skipped: subject or body is empty.', 'hfo-golf-registration' ) );
+			}
+
 			$order->save_meta_data();
 			return false;
 		}
@@ -172,6 +210,11 @@ function send_hfo_golf_event_email( $order_id ) {
 
 		$order->update_meta_data( '_hfo_event_email_status', 'sent' );
 		$order->delete_meta_data( '_hfo_event_email_error' );
+
+		if ( method_exists( $order, 'add_order_note' ) ) {
+			$order->add_order_note( sprintf( /* translators: %s: recipient email address. */ __( 'Event email sent to %s.', 'hfo-golf-registration' ), $email ) );
+		}
+
 		$order->save_meta_data();
 
 		return true;
@@ -179,6 +222,11 @@ function send_hfo_golf_event_email( $order_id ) {
 		if ( isset( $order ) && $order && method_exists( $order, 'update_meta_data' ) ) {
 			$order->update_meta_data( '_hfo_event_email_status', 'failed' );
 			$order->update_meta_data( '_hfo_event_email_error', sanitize_text_field( $e->getMessage() ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( sprintf( /* translators: %s: error message. */ __( 'Event email failed: %s', 'hfo-golf-registration' ), sanitize_text_field( $e->getMessage() ) ) );
+			}
+
 			$order->save_meta_data();
 		}
 
@@ -198,7 +246,7 @@ function send_hfo_golf_event_email( $order_id ) {
  */
 function send_hfo_golf_sponsor_email( $order_id ) {
 	try {
-		$order_id = absint( $order_id );
+		$order_id = hfo_golf_normalize_order_id( $order_id );
 
 		if ( ! $order_id || ! function_exists( 'wc_get_order' ) ) {
 			return false;
@@ -206,33 +254,86 @@ function send_hfo_golf_sponsor_email( $order_id ) {
 
 		$order = wc_get_order( $order_id );
 
-		if ( ! $order || ! method_exists( $order, 'get_meta' ) ) {
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) || ! method_exists( $order, 'update_meta_data' ) ) {
 			return false;
 		}
 
+		if ( 'sent' === (string) $order->get_meta( '_hfo_sponsor_email_status', true ) ) {
+			return true;
+		}
+
 		if ( ! hfo_golf_order_is_sponsor_type( $order ) ) {
+			$order->update_meta_data( '_hfo_sponsor_email_status', 'skipped_not_sponsor' );
+			$order->update_meta_data( '_hfo_sponsor_email_error', __( 'Order does not contain a sponsor checkout item.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Sponsor email skipped: order is not a sponsor type.', 'hfo-golf-registration' ) );
+			}
+
+			$order->save_meta_data();
 			return false;
 		}
 
 		$email = method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '';
 
 		if ( ! is_email( $email ) ) {
-			throw new RuntimeException( __( 'Missing or invalid billing email.', 'hfo-golf-registration' ) );
+			$order->update_meta_data( '_hfo_sponsor_email_status', 'failed' );
+			$order->update_meta_data( '_hfo_sponsor_email_error', __( 'Missing or invalid billing email.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Sponsor email failed: missing or invalid billing email.', 'hfo-golf-registration' ) );
+			}
+
+			$order->save_meta_data();
+			return false;
 		}
 
 		$subject = (string) get_option( 'hfo_sponsor_email_subject', '' );
 		$body    = (string) get_option( 'hfo_sponsor_email_body', '' );
 
 		if ( '' === trim( $subject ) || '' === trim( wp_strip_all_tags( $body ) ) ) {
+			$order->update_meta_data( '_hfo_sponsor_email_status', 'skipped_no_template' );
+			$order->update_meta_data( '_hfo_sponsor_email_error', __( 'Sponsor email subject or body is empty.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Sponsor email skipped: subject or body is empty.', 'hfo-golf-registration' ) );
+			}
+
+			$order->save_meta_data();
 			return false;
 		}
 
 		$subject = wp_specialchars_decode( replace_hfo_email_placeholders( wp_strip_all_tags( $subject ), $order ), ENT_QUOTES );
 		$body    = wpautop( replace_hfo_email_placeholders( $body, $order ) );
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
+		$sent    = (bool) wp_mail( $email, $subject, $body, $headers );
 
-		return (bool) wp_mail( $email, $subject, $body, $headers );
+		if ( ! $sent ) {
+			throw new RuntimeException( __( 'wp_mail returned false.', 'hfo-golf-registration' ) );
+		}
+
+		$order->update_meta_data( '_hfo_sponsor_email_status', 'sent' );
+		$order->delete_meta_data( '_hfo_sponsor_email_error' );
+
+		if ( method_exists( $order, 'add_order_note' ) ) {
+			$order->add_order_note( sprintf( /* translators: %s: recipient email address. */ __( 'Sponsor email sent to %s.', 'hfo-golf-registration' ), $email ) );
+		}
+
+		$order->save_meta_data();
+
+		return true;
 	} catch ( Throwable $e ) {
+		if ( isset( $order ) && $order && method_exists( $order, 'update_meta_data' ) ) {
+			$order->update_meta_data( '_hfo_sponsor_email_status', 'failed' );
+			$order->update_meta_data( '_hfo_sponsor_email_error', sanitize_text_field( $e->getMessage() ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( sprintf( /* translators: %s: error message. */ __( 'Sponsor email failed: %s', 'hfo-golf-registration' ), sanitize_text_field( $e->getMessage() ) ) );
+			}
+
+			$order->save_meta_data();
+		}
+
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( 'HFO golf sponsor email failed: ' . $e->getMessage() );
 		}
@@ -244,9 +345,16 @@ function send_hfo_golf_sponsor_email( $order_id ) {
 /**
  * Safely sends all HFO golf checkout emails without interrupting checkout.
  *
- * @param int $order_id WooCommerce order ID.
+ * @param mixed $order_or_order_id Order ID, WC_Order object, or unexpected value.
+ * @param mixed ...$unused Additional hook arguments intentionally ignored.
  */
-function send_hfo_golf_checkout_emails( $order_id ) {
+function send_hfo_golf_checkout_emails( $order_or_order_id = null, ...$unused ) {
+	$order_id = hfo_golf_normalize_order_id( $order_or_order_id );
+
+	if ( ! $order_id ) {
+		return;
+	}
+
 	send_hfo_golf_event_email( $order_id );
 	send_hfo_golf_sponsor_email( $order_id );
 }
@@ -278,4 +386,7 @@ function hfo_golf_order_is_sponsor_type( $order ) {
 	return false;
 }
 
+add_action( 'woocommerce_order_status_processing', 'send_hfo_golf_checkout_emails', 20, 1 );
 add_action( 'woocommerce_checkout_order_processed', 'send_hfo_golf_checkout_emails', 20, 1 );
+add_action( 'woocommerce_store_api_checkout_order_processed', 'send_hfo_golf_checkout_emails', 20, 1 );
+add_action( 'woocommerce_payment_complete', 'send_hfo_golf_checkout_emails', 20, 1 );
