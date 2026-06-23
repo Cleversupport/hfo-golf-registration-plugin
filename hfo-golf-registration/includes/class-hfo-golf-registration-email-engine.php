@@ -112,7 +112,7 @@ function hfo_golf_get_event_id_from_registration( $registration_id ) {
 }
 
 /**
- * Resolves a golf event ID for an order, falling back through the linked registration.
+ * Resolves a golf event ID for an order, falling back through registration and line items.
  *
  * @param int $order_id WooCommerce order ID.
  * @return int Resolved event post ID, or 0 when unavailable.
@@ -120,33 +120,83 @@ function hfo_golf_get_event_id_from_registration( $registration_id ) {
 function hfo_golf_resolve_event_id_for_order( $order_id ) {
 	$order_id = absint( $order_id );
 
-	if ( ! $order_id ) {
+	if ( ! $order_id || ! function_exists( 'wc_get_order' ) ) {
 		return 0;
 	}
 
-	$event_id = absint( get_post_meta( $order_id, 'hfo_golf_event_id', true ) );
+	$order = wc_get_order( $order_id );
+
+	if ( ! $order || ! method_exists( $order, 'get_meta' ) ) {
+		return 0;
+	}
+
+	$event_id = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
 
 	if ( hfo_golf_is_valid_published_event( $event_id ) ) {
 		return $event_id;
 	}
 
-	$registration_id = absint( get_post_meta( $order_id, 'hfo_golf_registration_id', true ) );
+	$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
 
-	if ( ! $registration_id ) {
-		return 0;
-	}
+	if ( $registration_id ) {
+		$event_id = hfo_golf_get_event_id_from_registration( $registration_id );
 
-	$event_id = hfo_golf_get_event_id_from_registration( $registration_id );
+		if ( hfo_golf_is_valid_published_event( $event_id ) ) {
+			if ( method_exists( $order, 'update_meta_data' ) ) {
+				$order->update_meta_data( 'hfo_golf_event_id', $event_id );
 
-	if ( hfo_golf_is_valid_published_event( $event_id ) ) {
-		update_post_meta( $order_id, 'hfo_golf_event_id', $event_id );
+				if ( method_exists( $order, 'save_meta_data' ) ) {
+					$order->save_meta_data();
+				}
+			}
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'HFO event email: event_id resolved from registration_id.' );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO event email: event_id resolved from registration_id.' );
+			}
+
+			return $event_id;
 		}
 	}
 
-	return $event_id;
+	if ( ! method_exists( $order, 'get_items' ) ) {
+		return 0;
+	}
+
+	$line_item_event_meta_keys = array(
+		'hfo_golf_event_id',
+		'_hfo_golf_event_id',
+		'hfo_golf_registration_event_id',
+	);
+
+	foreach ( $order->get_items() as $item ) {
+		if ( ! is_object( $item ) || ! method_exists( $item, 'get_meta' ) ) {
+			continue;
+		}
+
+		foreach ( $line_item_event_meta_keys as $meta_key ) {
+			$event_id = absint( $item->get_meta( $meta_key, true ) );
+
+			if ( ! hfo_golf_is_valid_published_event( $event_id ) ) {
+				continue;
+			}
+
+			if ( method_exists( $order, 'update_meta_data' ) ) {
+				$order->update_meta_data( 'hfo_golf_event_id', $event_id );
+			}
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( sprintf( __( 'Golf event ID resolved from order line item: %d.', 'hfo-golf-registration' ), $event_id ) );
+			}
+
+			if ( method_exists( $order, 'save_meta_data' ) ) {
+				$order->save_meta_data();
+			}
+
+			return $event_id;
+		}
+	}
+
+	return 0;
 }
 
 /**
