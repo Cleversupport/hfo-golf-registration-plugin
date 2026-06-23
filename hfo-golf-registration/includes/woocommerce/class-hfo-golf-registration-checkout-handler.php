@@ -1135,14 +1135,7 @@ You can log in with this password now. You may change it later from your account
 	 * @return int
 	 */
 	private function get_registration_event_id( $registration_id ) {
-		$registration_id = absint( $registration_id );
-		$event_id        = absint( get_post_meta( $registration_id, 'related_event', true ) );
-
-		if ( $event_id ) {
-			return $event_id;
-		}
-
-		return absint( get_post_meta( $registration_id, 'hfo_golf_event_id', true ) );
+		return hfo_golf_get_event_id_from_registration( $registration_id );
 	}
 
 	/**

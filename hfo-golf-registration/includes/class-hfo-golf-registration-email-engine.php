@@ -70,6 +70,28 @@ function hfo_golf_normalize_order_id( $order_or_order_id ) {
 }
 
 /**
+ * Gets the related Golf Event ID for a registration using the checkout relationship logic.
+ *
+ * @param int $registration_id Registration post ID.
+ * @return int Resolved event post ID, or 0 when unavailable.
+ */
+function hfo_golf_get_event_id_from_registration( $registration_id ) {
+	$registration_id = absint( $registration_id );
+
+	if ( ! $registration_id ) {
+		return 0;
+	}
+
+	$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
+
+	if ( $event_id ) {
+		return $event_id;
+	}
+
+	return absint( get_post_meta( $registration_id, 'hfo_golf_event_id', true ) );
+}
+
+/**
  * Resolves a golf event ID for an order, falling back through the linked registration.
  *
  * @param int $order_id WooCommerce order ID.
@@ -94,28 +116,17 @@ function hfo_golf_resolve_event_id_for_order( $order_id ) {
 		return 0;
 	}
 
-	$registration_event_keys = array(
-		'related_event',
-		'golf_event_id',
-		'hfo_golf_event_id',
-		'event_id',
-	);
+	$event_id = hfo_golf_get_event_id_from_registration( $registration_id );
 
-	foreach ( $registration_event_keys as $meta_key ) {
-		$event_id = absint( get_post_meta( $registration_id, $meta_key, true ) );
+	if ( $event_id ) {
+		update_post_meta( $order_id, 'hfo_golf_event_id', $event_id );
 
-		if ( $event_id ) {
-			update_post_meta( $order_id, 'hfo_golf_event_id', $event_id );
-
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'HFO event email: event_id resolved from registration_id.' );
-			}
-
-			return $event_id;
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO event email: event_id resolved from registration_id.' );
 		}
 	}
 
-	return 0;
+	return $event_id;
 }
 
 /**
