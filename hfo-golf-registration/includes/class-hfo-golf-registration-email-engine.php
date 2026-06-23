@@ -50,6 +50,56 @@ function replace_hfo_email_placeholders( $content, $order ) {
 	return strtr( (string) $content, $replacements );
 }
 
+
+/**
+ * Resolves a golf event ID for an order, falling back through the linked registration.
+ *
+ * @param int $order_id WooCommerce order ID.
+ * @return int Resolved event post ID, or 0 when unavailable.
+ */
+function hfo_golf_resolve_event_id_for_order( $order_id ) {
+	$order_id = absint( $order_id );
+
+	if ( ! $order_id ) {
+		return 0;
+	}
+
+	$event_id = absint( get_post_meta( $order_id, 'hfo_golf_event_id', true ) );
+
+	if ( $event_id ) {
+		return $event_id;
+	}
+
+	$registration_id = absint( get_post_meta( $order_id, 'hfo_golf_registration_id', true ) );
+
+	if ( ! $registration_id ) {
+		return 0;
+	}
+
+	$registration_event_keys = array(
+		'related_event',
+		'golf_event_id',
+		'hfo_golf_event_id',
+		'event_id',
+	);
+
+	foreach ( $registration_event_keys as $meta_key ) {
+		$event_id = absint( get_post_meta( $registration_id, $meta_key, true ) );
+
+		if ( $event_id ) {
+			update_post_meta( $order_id, 'hfo_golf_event_id', $event_id );
+
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'HFO event email: event_id resolved from registration_id.' );
+			}
+
+			return $event_id;
+		}
+	}
+
+	return 0;
+}
+
 /**
  * Sends the configured HFO golf event email for a WooCommerce order.
  *
@@ -74,13 +124,21 @@ function send_hfo_golf_event_email( $order_id ) {
 			return true;
 		}
 
-		$event_id = absint( get_post_meta( $order_id, 'hfo_golf_event_id', true ) );
+		$event_id = hfo_golf_resolve_event_id_for_order( $order_id );
 
 		if ( empty( $event_id ) ) {
 			$order->update_meta_data( '_hfo_event_email_status', 'skipped_no_event' );
+			$order->update_meta_data( '_hfo_event_email_error', __( 'Could not resolve event ID from order or registration.', 'hfo-golf-registration' ) );
+
+			if ( method_exists( $order, 'add_order_note' ) ) {
+				$order->add_order_note( __( 'Event email skipped: could not resolve golf event from order or registration.', 'hfo-golf-registration' ) );
+			}
+
 			$order->save_meta_data();
 			return false;
 		}
+
+		$order->update_meta_data( 'hfo_golf_event_id', $event_id );
 
 		$email = method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '';
 
