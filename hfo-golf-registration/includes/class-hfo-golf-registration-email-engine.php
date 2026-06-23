@@ -52,6 +52,24 @@ function replace_hfo_email_placeholders( $content, $order ) {
 
 
 /**
+ * Checks whether a post ID is a published Golf Event.
+ *
+ * @param int $event_id Event post ID.
+ * @return bool
+ */
+function hfo_golf_is_valid_published_event( $event_id ) {
+	$event_id = absint( $event_id );
+
+	if ( ! $event_id || ! class_exists( 'HFO_Golf_Event_Post_Type' ) ) {
+		return false;
+	}
+
+	$post = get_post( $event_id );
+
+	return $post && HFO_Golf_Event_Post_Type::POST_TYPE === $post->post_type && 'publish' === $post->post_status;
+}
+
+/**
  * Normalizes supported WooCommerce hook payloads to an order ID.
  *
  * @param mixed $order_or_order_id Order ID, WC_Order object, or unexpected value.
@@ -84,11 +102,13 @@ function hfo_golf_get_event_id_from_registration( $registration_id ) {
 
 	$event_id = absint( get_post_meta( $registration_id, 'related_event', true ) );
 
-	if ( $event_id ) {
+	if ( hfo_golf_is_valid_published_event( $event_id ) ) {
 		return $event_id;
 	}
 
-	return absint( get_post_meta( $registration_id, 'hfo_golf_event_id', true ) );
+	$event_id = absint( get_post_meta( $registration_id, 'hfo_golf_event_id', true ) );
+
+	return hfo_golf_is_valid_published_event( $event_id ) ? $event_id : 0;
 }
 
 /**
@@ -106,7 +126,7 @@ function hfo_golf_resolve_event_id_for_order( $order_id ) {
 
 	$event_id = absint( get_post_meta( $order_id, 'hfo_golf_event_id', true ) );
 
-	if ( $event_id ) {
+	if ( hfo_golf_is_valid_published_event( $event_id ) ) {
 		return $event_id;
 	}
 
@@ -118,7 +138,7 @@ function hfo_golf_resolve_event_id_for_order( $order_id ) {
 
 	$event_id = hfo_golf_get_event_id_from_registration( $registration_id );
 
-	if ( $event_id ) {
+	if ( hfo_golf_is_valid_published_event( $event_id ) ) {
 		update_post_meta( $order_id, 'hfo_golf_event_id', $event_id );
 
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -155,7 +175,7 @@ function send_hfo_golf_event_email( $order_id ) {
 
 		$event_id = hfo_golf_resolve_event_id_for_order( $order_id );
 
-		if ( empty( $event_id ) ) {
+		if ( ! hfo_golf_is_valid_published_event( $event_id ) ) {
 			$order->update_meta_data( '_hfo_event_email_status', 'skipped_no_event' );
 			$order->update_meta_data( '_hfo_event_email_error', __( 'Could not resolve event ID from order or registration.', 'hfo-golf-registration' ) );
 
