@@ -22,7 +22,9 @@ function replace_hfo_email_placeholders( $content, $order ) {
 	}
 
 	$event_id = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
-	$event_location = '';
+	$event_location      = '';
+	$event_contact_name  = '';
+	$event_contact_phone = '';
 
 	if ( $event_id ) {
 		$event_location_parts = array_filter(
@@ -34,17 +36,21 @@ function replace_hfo_email_placeholders( $content, $order ) {
 			),
 			'strlen'
 		);
-		$event_location = ! empty( $event_location_parts ) ? implode( ', ', $event_location_parts ) : sanitize_text_field( get_post_meta( $event_id, 'event_location', true ) );
+		$event_location      = ! empty( $event_location_parts ) ? implode( ', ', $event_location_parts ) : sanitize_text_field( get_post_meta( $event_id, 'event_location', true ) );
+		$event_contact_name  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
+		$event_contact_phone = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
 	}
 
 	$replacements = array(
-		'{first_name}'     => method_exists( $order, 'get_billing_first_name' ) ? sanitize_text_field( $order->get_billing_first_name() ) : '',
-		'{last_name}'      => method_exists( $order, 'get_billing_last_name' ) ? sanitize_text_field( $order->get_billing_last_name() ) : '',
-		'{email}'          => method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '',
-		'{event_name}'     => $event_id ? sanitize_text_field( get_the_title( $event_id ) ) : '',
-		'{event_location}' => $event_location,
-		'{event_date}'     => $event_id ? sanitize_text_field( get_post_meta( $event_id, 'event_date', true ) ) : '',
-		'{order_id}'       => method_exists( $order, 'get_id' ) ? (string) absint( $order->get_id() ) : '',
+		'{first_name}'          => method_exists( $order, 'get_billing_first_name' ) ? sanitize_text_field( $order->get_billing_first_name() ) : '',
+		'{last_name}'           => method_exists( $order, 'get_billing_last_name' ) ? sanitize_text_field( $order->get_billing_last_name() ) : '',
+		'{email}'               => method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '',
+		'{event_name}'          => $event_id ? sanitize_text_field( get_the_title( $event_id ) ) : '',
+		'{event_location}'      => $event_location,
+		'{event_date}'          => $event_id ? sanitize_text_field( get_post_meta( $event_id, 'event_date', true ) ) : '',
+		'{event_contact_name}'  => $event_contact_name,
+		'{event_contact_phone}' => $event_contact_phone,
+		'{order_id}'            => method_exists( $order, 'get_id' ) ? (string) absint( $order->get_id() ) : '',
 	);
 
 	return strtr( (string) $content, $replacements );

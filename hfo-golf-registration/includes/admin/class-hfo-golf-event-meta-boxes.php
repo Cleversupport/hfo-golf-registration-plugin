@@ -245,6 +245,8 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'event_city', esc_html__( 'City', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_input_field( 'event_state', esc_html__( 'State', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_input_field( 'event_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'hfo_event_contact_name', esc_html__( 'Contact Person', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'hfo_event_contact_phone', esc_html__( 'Contact Phone', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_textarea_field(
 			'event_caption',
 			esc_html__( 'Event Caption', 'hfo-golf-registration' ),
@@ -329,7 +331,7 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'hfo_event_email_subject', esc_html__( 'Email Subject', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_wysiwyg_field( 'hfo_event_email_body', esc_html__( 'Email Body', 'hfo-golf-registration' ), $post->ID );
 		printf(
-			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{order_id}</code></p>',
+			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{event_contact_name}</code> <code>{event_contact_phone}</code> <code>{order_id}</code></p>',
 			esc_html__( 'Available placeholders:', 'hfo-golf-registration' )
 		);
 	}
@@ -371,6 +373,8 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'event_city', 'text' );
 		$this->save_meta_value( $post_id, 'event_state', 'text' );
 		$this->save_meta_value( $post_id, 'event_zip', 'text' );
+		$this->save_meta_value( $post_id, 'hfo_event_contact_name', 'text' );
+		$this->save_meta_value( $post_id, 'hfo_event_contact_phone', 'text' );
 		$this->save_meta_value( $post_id, 'event_caption', 'textarea' );
 		$this->save_meta_value( $post_id, 'registration_status', 'registration_status' );
 		$this->save_meta_value( $post_id, 'sponsor_packet_pdf_url', 'url' );

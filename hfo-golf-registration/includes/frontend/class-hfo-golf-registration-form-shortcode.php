@@ -237,6 +237,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$end_time       = (string) get_post_meta( $event_id, 'event_end_time', true );
 		$venue          = $this->get_event_venue( $event_id );
 		$address_parts  = $this->get_event_address_parts( $event_id );
+		$contact_name   = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
+		$contact_phone  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
 		$status         = sanitize_key( (string) get_post_meta( $event_id, 'registration_status', true ) );
 		$why            = (string) get_post_meta( $event_id, 'why_this_tournament_matters', true );
 		$included       = (string) get_post_meta( $event_id, 'whats_included', true );
@@ -255,6 +257,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php if ( '' !== $start_time || '' !== $end_time ) : ?><li><strong><?php esc_html_e( 'Time:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( $this->format_time_range( $start_time, $end_time ) ); ?></li><?php endif; ?>
 				<?php if ( '' !== $venue ) : ?><li><strong><?php esc_html_e( 'Venue:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( $venue ); ?></li><?php endif; ?>
 				<?php if ( ! empty( $address_parts ) ) : ?><li><strong><?php esc_html_e( 'Address:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( implode( ' ', $address_parts ) ); ?></li><?php endif; ?>
+				<?php if ( '' !== $contact_name || '' !== $contact_phone ) : ?><li><strong><?php esc_html_e( 'Contact:', 'hfo-golf-registration' ); ?></strong> <?php if ( '' !== $contact_name ) : ?><?php echo esc_html( $contact_name ); ?><?php endif; ?><?php if ( '' !== $contact_name && '' !== $contact_phone ) : ?><br /><?php endif; ?><?php if ( '' !== $contact_phone ) : ?><?php echo esc_html( $contact_phone ); ?><?php endif; ?></li><?php endif; ?>
 				<?php if ( '' !== $status ) : ?><li><strong><?php esc_html_e( 'Registration:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( ucwords( str_replace( '_', ' ', $status ) ) ); ?></li><?php endif; ?>
 			</ul>
 			<?php if ( '' !== trim( $why ) ) : ?>
