@@ -145,17 +145,17 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_participant_fields( 'captain', esc_html__( 'Captain / Player 1', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_2" data-team-only hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_2" hidden>
 				<h3><?php esc_html_e( 'Step 4: Member #2', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_2', esc_html__( 'Member #2', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_3" data-team-only hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_3" hidden>
 				<h3><?php esc_html_e( 'Step 5: Member #3', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_3', esc_html__( 'Member #3', 'hfo-golf-registration' ) ); ?>
 			</section>
 
-			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_4" data-team-only hidden>
+			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="member_4" hidden>
 				<h3><?php esc_html_e( 'Step 6: Member #4', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_participant_fields( 'member_4', esc_html__( 'Member #4', 'hfo-golf-registration' ) ); ?>
 			</section>
@@ -1245,9 +1245,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<li class="is-active" data-step-key="registration_type"><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="main_contact"><?php esc_html_e( 'Main Contact', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="captain" data-team-label="<?php esc_attr_e( 'Captain / Player 1', 'hfo-golf-registration' ); ?>" data-individual-label="<?php esc_attr_e( 'Player 1', 'hfo-golf-registration' ); ?>"><?php esc_html_e( 'Captain / Player 1', 'hfo-golf-registration' ); ?></li>
-			<li data-step-key="member_2" data-team-only><?php esc_html_e( 'Member #2', 'hfo-golf-registration' ); ?></li>
-			<li data-step-key="member_3" data-team-only><?php esc_html_e( 'Member #3', 'hfo-golf-registration' ); ?></li>
-			<li data-step-key="member_4" data-team-only><?php esc_html_e( 'Member #4', 'hfo-golf-registration' ); ?></li>
+			<li data-step-key="member_2"><?php esc_html_e( 'Member #2', 'hfo-golf-registration' ); ?></li>
+			<li data-step-key="member_3"><?php esc_html_e( 'Member #3', 'hfo-golf-registration' ); ?></li>
+			<li data-step-key="member_4"><?php esc_html_e( 'Member #4', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="additional_guests"><?php esc_html_e( 'Additional Guests', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="sponsorship"><?php esc_html_e( 'Sponsorship', 'hfo-golf-registration' ); ?></li>
 			<li data-step-key="review"><?php esc_html_e( 'Review & Checkout', 'hfo-golf-registration' ); ?></li>
