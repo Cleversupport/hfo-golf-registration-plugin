@@ -487,6 +487,11 @@ class HFO_Golf_Registration_Checkout_Handler {
 
 		if ( $registration_id ) {
 			$order->update_meta_data( 'hfo_golf_registration_id', $registration_id );
+
+			$team_name = sanitize_text_field( get_post_meta( $registration_id, 'hfo_golf_team_name', true ) );
+			if ( '' !== $team_name ) {
+				$order->update_meta_data( 'hfo_golf_team_name', $team_name );
+			}
 		}
 
 		if ( $event_id ) {
@@ -579,6 +584,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 			'hfo_golf_registration_item_label',
 			'hfo_golf_custom_price',
 			'hfo_golf_registration_custom_price',
+			'hfo_golf_team_name',
 			'_hfo_golf_registration_id',
 			'_hfo_golf_event_id',
 		);
@@ -605,6 +611,7 @@ class HFO_Golf_Registration_Checkout_Handler {
 		$item_type    = isset( $values['hfo_golf_registration_item_type'] ) ? sanitize_key( $values['hfo_golf_registration_item_type'] ) : '';
 		$item_label   = isset( $values['hfo_golf_registration_item_label'] ) ? sanitize_text_field( $values['hfo_golf_registration_item_label'] ) : '';
 		$custom_price = isset( $values['hfo_golf_registration_custom_price'] ) ? wc_format_decimal( $values['hfo_golf_registration_custom_price'] ) : '';
+		$team_name    = sanitize_text_field( get_post_meta( $registration_id, 'hfo_golf_team_name', true ) );
 
 		$item->add_meta_data( __( 'Event', 'hfo-golf-registration' ), $event_title, true );
 		$item->add_meta_data( 'hfo_golf_registration_id', $registration_id, true );
@@ -614,6 +621,9 @@ class HFO_Golf_Registration_Checkout_Handler {
 		$item->add_meta_data( 'hfo_golf_custom_price', $custom_price, true );
 		$item->add_meta_data( '_hfo_golf_registration_id', $registration_id, true );
 		$item->add_meta_data( '_hfo_golf_event_id', $event_id, true );
+		if ( '' !== $team_name ) {
+			$item->add_meta_data( 'hfo_golf_team_name', $team_name, true );
+		}
 	}
 
 	/**

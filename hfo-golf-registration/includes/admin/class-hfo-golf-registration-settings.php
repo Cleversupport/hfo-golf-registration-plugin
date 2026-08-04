@@ -561,7 +561,7 @@ class HFO_Golf_Registration_Settings {
 	 */
 	public function render_sponsor_email_section() {
 		printf(
-			'<p>%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{order_id}</code></p>',
+			'<p>%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{order_id}</code> <code>{team_name}</code></p>',
 			esc_html__( 'Configure the shared sponsor email template. Available placeholders:', 'hfo-golf-registration' )
 		);
 	}

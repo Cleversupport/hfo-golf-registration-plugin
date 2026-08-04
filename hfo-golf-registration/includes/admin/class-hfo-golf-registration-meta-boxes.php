@@ -123,6 +123,10 @@ class HFO_Golf_Registration_Meta_Boxes {
 		$this->render_save_nonce_field();
 
 		foreach ( $sections[ $section_id ]['fields'] as $key => $field ) {
+			if ( ! empty( $field['hide_empty'] ) && '' === trim( (string) get_post_meta( $post->ID, $key, true ) ) ) {
+				continue;
+			}
+
 			$this->render_field( $key, $field, $post->ID );
 		}
 	}
@@ -567,6 +571,11 @@ class HFO_Golf_Registration_Meta_Boxes {
 					'main_contact_zip'     => array(
 						'label' => esc_html__( 'ZIP', 'hfo-golf-registration' ),
 						'type'  => 'text',
+					),
+					'hfo_golf_team_name'   => array(
+						'label'      => esc_html__( 'Team Name', 'hfo-golf-registration' ),
+						'type'       => 'text',
+						'hide_empty' => true,
 					),
 				),
 			),

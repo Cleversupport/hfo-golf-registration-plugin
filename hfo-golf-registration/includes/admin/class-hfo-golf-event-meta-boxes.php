@@ -331,7 +331,7 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'hfo_event_email_subject', esc_html__( 'Email Subject', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_wysiwyg_field( 'hfo_event_email_body', esc_html__( 'Email Body', 'hfo-golf-registration' ), $post->ID );
 		printf(
-			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{event_contact_name}</code> <code>{event_contact_phone}</code> <code>{order_id}</code></p>',
+			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{event_contact_name}</code> <code>{event_contact_phone}</code> <code>{order_id}</code> <code>{team_name}</code></p>',
 			esc_html__( 'Available placeholders:', 'hfo-golf-registration' )
 		);
 	}

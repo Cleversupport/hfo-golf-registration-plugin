@@ -25,6 +25,12 @@ function replace_hfo_email_placeholders( $content, $order ) {
 	$event_location      = '';
 	$event_contact_name  = '';
 	$event_contact_phone = '';
+	$registration_id     = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+	$team_name           = sanitize_text_field( $order->get_meta( 'hfo_golf_team_name', true ) );
+
+	if ( '' === $team_name && $registration_id ) {
+		$team_name = sanitize_text_field( get_post_meta( $registration_id, 'hfo_golf_team_name', true ) );
+	}
 
 	if ( $event_id ) {
 		$event_location_parts = array_filter(
@@ -51,6 +57,7 @@ function replace_hfo_email_placeholders( $content, $order ) {
 		'{event_contact_name}'  => $event_contact_name,
 		'{event_contact_phone}' => $event_contact_phone,
 		'{order_id}'            => method_exists( $order, 'get_id' ) ? (string) absint( $order->get_id() ) : '',
+		'{team_name}'           => $team_name,
 	);
 
 	return strtr( (string) $content, $replacements );

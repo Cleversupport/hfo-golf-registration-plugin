@@ -135,6 +135,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_text_field( 'main_contact_city', esc_html__( 'City', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_state_select_field( 'main_contact_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_text_field( 'main_contact_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
+				<div data-team-only hidden>
+					<?php $this->render_text_field( 'hfo_golf_team_name', esc_html__( 'Team Name', 'hfo-golf-registration' ) ); ?>
+				</div>
 			</section>
 
 			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="captain" hidden>
@@ -196,6 +199,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<h3><?php esc_html_e( 'Step 9: Review & Checkout', 'hfo-golf-registration' ); ?></h3>
 				<dl class="hfo-golf-registration-review" aria-live="polite">
 					<dt><?php esc_html_e( 'Registration Type', 'hfo-golf-registration' ); ?></dt><dd data-summary="registration_type">&mdash;</dd>
+					<dt data-team-name-summary hidden><?php esc_html_e( 'Team Name', 'hfo-golf-registration' ); ?></dt><dd data-summary="hfo_golf_team_name" data-team-name-summary hidden></dd>
 					<dt><?php esc_html_e( 'Golf Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="golf_qty">0</dd>
 					<dt><?php esc_html_e( 'Player Lunch Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_lunch_qty">0</dd>
 					<dt><?php esc_html_e( 'Player Dinner Quantity', 'hfo-golf-registration' ); ?></dt><dd data-summary="player_dinner_qty">0</dd>
@@ -678,6 +682,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'main_contact_city'         => $this->sanitize_post_text( 'main_contact_city' ),
 			'main_contact_state'        => $this->sanitize_post_state( 'main_contact_state' ),
 			'main_contact_zip'          => $this->sanitize_post_text( 'main_contact_zip' ),
+			'hfo_golf_team_name'        => 'team' === $registration_type ? $this->sanitize_post_text( 'hfo_golf_team_name' ) : '',
 			'additional_lunch_count'    => (string) $this->sanitize_post_count( 'additional_lunch_count' ),
 			'additional_dinner_count'   => (string) $this->sanitize_post_count( 'additional_dinner_count' ),
 			'additional_guests_details' => $this->sanitize_post_textarea( 'additional_guests_details' ),
