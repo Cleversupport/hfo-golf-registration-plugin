@@ -15,6 +15,7 @@
 		additional_guests: 'Additional Guests'
 	};
 	var OPTIONAL_FIELD_NAMES = [
+		'hfo_golf_team_name',
 		'additional_lunch_count',
 		'additional_dinner_count',
 		'additional_guests_details'
@@ -234,6 +235,7 @@
 
 	function calculateReview(form) {
 		var registrationType = getFieldValue(form, 'registration_type') || 'individual';
+		var teamName = registrationType === 'team' ? getFieldValue(form, 'hfo_golf_team_name').trim() : '';
 		var canBillSponsorship = registrationType !== 'additional_guests';
 		var golfQty = 0;
 		var playerLunchQty = 0;
@@ -275,6 +277,10 @@
 		}
 
 		setSummary(form, 'registration_type', REGISTRATION_LABELS[registrationType] || registrationType);
+		setSummary(form, 'hfo_golf_team_name', teamName);
+		Array.prototype.forEach.call(form.querySelectorAll('[data-team-name-summary]'), function (node) {
+			node.hidden = teamName === '';
+		});
 		setSummary(form, 'golf_qty', String(golfQty));
 		setSummary(form, 'player_lunch_qty', String(playerLunchQty));
 		setSummary(form, 'player_dinner_qty', String(playerDinnerQty));
