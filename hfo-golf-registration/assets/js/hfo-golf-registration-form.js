@@ -162,6 +162,14 @@
 		field.setAttribute('aria-required', required ? 'true' : 'false');
 	}
 
+	function updateTeamOnlyVisibility(form) {
+		var isTeam = getFieldValue(form, 'registration_type') === 'team';
+
+		Array.prototype.forEach.call(form.querySelectorAll('[data-team-only]'), function (node) {
+			node.hidden = !isTeam;
+		});
+	}
+
 	function updateRequiredFieldsForVisibleControls(form) {
 		Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (field) {
 			if (!isControlVisible(field) || isCheckboxOrRadio(field) || isOptionalField(field, form) || shouldSkipGenericRequired(field, form)) {
@@ -179,6 +187,7 @@
 	function validateCurrentStep(form, currentStepKey) {
 		var currentStep = form.querySelector('[data-hfo-golf-registration-step][data-step-key="' + currentStepKey + '"]');
 
+		updateTeamOnlyVisibility(form);
 		updateRequiredFieldsForVisibleControls(form);
 
 		if (!currentStep || currentStep.hidden) {
@@ -348,13 +357,18 @@
 
 		normalizeHiddenParticipantsBeforeSubmit(form);
 		updateSponsorFieldVisibility(form);
+		updateTeamOnlyVisibility(form);
 		updateRequiredFieldsForVisibleControls(form);
 	}
 
 	function setupForm(form) {
+		updateTeamOnlyVisibility(form);
+
 		if (form.dataset.hfoGolfRegistrationSetup === '1') {
 			updateSponsorFieldVisibility(form);
+			updateTeamOnlyVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateTeamOnlyVisibility(form);
 			calculateReview(form);
 			return;
 		}
@@ -383,6 +397,7 @@
 		function showStepByKey(stepKey) {
 			var previousStepKey = currentStepKey;
 
+			updateTeamOnlyVisibility(form);
 			updateSponsorFieldVisibility(form);
 			calculateReview(form);
 
@@ -438,7 +453,9 @@
 			}
 
 			updateSponsorFieldVisibility(form);
+			updateTeamOnlyVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateTeamOnlyVisibility(form);
 			calculateReview(form);
 
 			return previousStepKey !== currentStepKey;
@@ -457,6 +474,7 @@
 		if (nextButton) {
 			nextButton.addEventListener('click', function () {
 				updateSponsorFieldVisibility(form);
+				updateTeamOnlyVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
 
 				if (!validateCurrentStep(form, currentStepKey)) {
@@ -472,8 +490,10 @@
 		}
 
 		form.addEventListener('input', function () {
+			updateTeamOnlyVisibility(form);
 			updateSponsorFieldVisibility(form);
 			updateRequiredFieldsForVisibleControls(form);
+			updateTeamOnlyVisibility(form);
 			calculateReview(form);
 		});
 
@@ -553,6 +573,7 @@
 		form.addEventListener('change', function (event) {
 			if (event.target && (event.target.name === 'sponsorship_level' || event.target.name === 'tee_sponsor_selected')) {
 				updateSponsorFieldVisibility(form);
+				updateTeamOnlyVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
 			}
 
@@ -561,9 +582,11 @@
 					scrollToFormTop(form);
 				}
 
+				updateTeamOnlyVisibility(form);
 				updateRequiredFieldsForVisibleControls(form);
 			}
 
+			updateTeamOnlyVisibility(form);
 			calculateReview(form);
 		});
 
