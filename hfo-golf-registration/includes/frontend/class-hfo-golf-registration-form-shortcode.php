@@ -235,19 +235,27 @@ class HFO_Golf_Registration_Form_Shortcode {
 			return '';
 		}
 
-		$caption        = (string) get_post_meta( $event_id, 'event_caption', true );
-		$date           = (string) get_post_meta( $event_id, 'event_date', true );
-		$start_time     = (string) get_post_meta( $event_id, 'event_start_time', true );
-		$end_time       = (string) get_post_meta( $event_id, 'event_end_time', true );
-		$venue          = $this->get_event_venue( $event_id );
-		$address_parts  = $this->get_event_address_parts( $event_id );
-		$contact_name   = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
-		$contact_phone  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
-		$status         = sanitize_key( (string) get_post_meta( $event_id, 'registration_status', true ) );
-		$why            = (string) get_post_meta( $event_id, 'why_this_tournament_matters', true );
-		$included       = (string) get_post_meta( $event_id, 'whats_included', true );
-		$packet_url     = (string) get_post_meta( $event_id, 'sponsor_packet_pdf_url', true );
-		$flyer_url      = (string) get_post_meta( $event_id, 'event_flyer_image_url', true );
+		$caption           = (string) get_post_meta( $event_id, 'event_caption', true );
+		$date              = (string) get_post_meta( $event_id, 'event_date', true );
+		$start_time        = (string) get_post_meta( $event_id, 'event_start_time', true );
+		$end_time          = (string) get_post_meta( $event_id, 'event_end_time', true );
+		$venue             = $this->get_event_venue( $event_id );
+		$address_parts     = $this->get_event_address_parts( $event_id );
+		$contact_name      = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
+		$contact_phone     = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
+		$status            = sanitize_key( (string) get_post_meta( $event_id, 'registration_status', true ) );
+		$why               = (string) get_post_meta( $event_id, 'why_this_tournament_matters', true );
+		$included          = (string) get_post_meta( $event_id, 'whats_included', true );
+		$packet_url        = (string) get_post_meta( $event_id, 'sponsor_packet_pdf_url', true );
+		$flyer_url         = (string) get_post_meta( $event_id, 'event_flyer_image_url', true );
+		$hotel_enabled     = '1' === (string) get_post_meta( $event_id, 'hfo_event_hotel_offer_enabled', true );
+		$hotel_title       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_title', true ) );
+		$hotel_description = sanitize_textarea_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
+		$hotel_image       = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_image', true ) );
+		$hotel_link        = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_link', true ) );
+		$hotel_label       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_link_label', true ) );
+		$hotel_deadline    = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_deadline', true ) );
+		$show_hotel        = $hotel_enabled && ( '' !== $hotel_title || '' !== $hotel_description || '' !== $hotel_image || '' !== $hotel_link || '' !== $hotel_deadline );
 
 		ob_start();
 		?>
@@ -264,6 +272,16 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php if ( '' !== $contact_name || '' !== $contact_phone ) : ?><li><strong><?php esc_html_e( 'Contact:', 'hfo-golf-registration' ); ?></strong> <?php if ( '' !== $contact_name ) : ?><?php echo esc_html( $contact_name ); ?><?php endif; ?><?php if ( '' !== $contact_name && '' !== $contact_phone ) : ?><br /><?php endif; ?><?php if ( '' !== $contact_phone ) : ?><?php echo esc_html( $contact_phone ); ?><?php endif; ?></li><?php endif; ?>
 				<?php if ( '' !== $status ) : ?><li><strong><?php esc_html_e( 'Registration:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( ucwords( str_replace( '_', ' ', $status ) ) ); ?></li><?php endif; ?>
 			</ul>
+			<?php if ( $show_hotel ) : ?>
+				<section class="hfo-golf-event-section hfo-golf-hotel-offer">
+					<h3><?php esc_html_e( 'Hotel Information', 'hfo-golf-registration' ); ?></h3>
+					<?php if ( '' !== $hotel_title ) : ?><h4><?php echo esc_html( $hotel_title ); ?></h4><?php endif; ?>
+					<?php if ( '' !== $hotel_image ) : ?><p class="hfo-golf-hotel-offer-image"><img src="<?php echo esc_url( $hotel_image ); ?>" alt="<?php echo esc_attr( '' !== $hotel_title ? $hotel_title : __( 'Hotel offer image', 'hfo-golf-registration' ) ); ?>" /></p><?php endif; ?>
+					<?php if ( '' !== $hotel_description ) : ?><p><?php echo nl2br( esc_html( $hotel_description ) ); ?></p><?php endif; ?>
+					<?php if ( '' !== $hotel_deadline ) : ?><p><strong><?php esc_html_e( 'Booking Deadline:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( $hotel_deadline ); ?></p><?php endif; ?>
+					<?php if ( '' !== $hotel_link ) : ?><p><a class="button hfo-golf-hotel-offer-link" href="<?php echo esc_url( $hotel_link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( '' !== $hotel_label ? $hotel_label : __( 'Book Preferred Rate', 'hfo-golf-registration' ) ); ?></a></p><?php endif; ?>
+				</section>
+			<?php endif; ?>
 			<?php if ( '' !== trim( $why ) ) : ?>
 				<section class="hfo-golf-event-section"><h3><?php esc_html_e( 'Why This Tournament Matters', 'hfo-golf-registration' ); ?></h3><?php echo wpautop( wp_kses_post( $why ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></section>
 			<?php endif; ?>

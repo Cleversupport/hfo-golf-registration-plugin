@@ -190,6 +190,15 @@ class HFO_Golf_Event_Meta_Boxes {
 		);
 
 		add_meta_box(
+			'hfo_golf_event_hotel_offer',
+			esc_html__( 'Hotel Offer / Preferred Hotel Rate', 'hfo-golf-registration' ),
+			array( $this, 'render_hotel_offer_meta_box' ),
+			HFO_Golf_Event_Post_Type::POST_TYPE,
+			'normal',
+			'default'
+		);
+
+		add_meta_box(
 			'hfo_golf_event_discounts',
 			esc_html__( 'Discounts', 'hfo-golf-registration' ),
 			array( $this, 'render_discounts_meta_box' ),
@@ -305,6 +314,28 @@ class HFO_Golf_Event_Meta_Boxes {
 	}
 
 	/**
+	 * Renders the optional hotel offer fields.
+	 *
+	 * @param WP_Post $post Current post object.
+	 * @return void
+	 */
+	public function render_hotel_offer_meta_box( $post ) {
+		$this->render_checkbox_field( 'hfo_event_hotel_offer_enabled', esc_html__( 'Show Hotel Offer', 'hfo-golf-registration' ), $post->ID );
+		$this->render_input_field_with_description(
+			'hfo_event_hotel_offer_image',
+			esc_html__( 'Hotel / QR Image', 'hfo-golf-registration' ),
+			$post->ID,
+			'url',
+			esc_html__( 'Optional image for hotel, QR code, or booking graphic.', 'hfo-golf-registration' )
+		);
+		$this->render_input_field( 'hfo_event_hotel_offer_title', esc_html__( 'Hotel Offer Title', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_textarea_field( 'hfo_event_hotel_offer_description', esc_html__( 'Hotel Offer Description', 'hfo-golf-registration' ), $post->ID );
+		$this->render_input_field( 'hfo_event_hotel_offer_link', esc_html__( 'Hotel Booking Link', 'hfo-golf-registration' ), $post->ID, 'url' );
+		$this->render_input_field( 'hfo_event_hotel_offer_link_label', esc_html__( 'Button Text', 'hfo-golf-registration' ), $post->ID, 'text' );
+		$this->render_input_field( 'hfo_event_hotel_offer_deadline', esc_html__( 'Booking Deadline', 'hfo-golf-registration' ), $post->ID, 'text' );
+	}
+
+	/**
 	 * Renders the Discounts meta box.
 	 *
 	 * @param WP_Post $post Current post object.
@@ -331,7 +362,7 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->render_input_field( 'hfo_event_email_subject', esc_html__( 'Email Subject', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_wysiwyg_field( 'hfo_event_email_body', esc_html__( 'Email Body', 'hfo-golf-registration' ), $post->ID );
 		printf(
-			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{event_contact_name}</code> <code>{event_contact_phone}</code> <code>{order_id}</code> <code>{team_name}</code></p>',
+			'<p class="description">%s <code>{first_name}</code> <code>{last_name}</code> <code>{email}</code> <code>{event_name}</code> <code>{event_location}</code> <code>{event_date}</code> <code>{event_contact_name}</code> <code>{event_contact_phone}</code> <code>{order_id}</code> <code>{team_name}</code> <code>{hotel_offer_title}</code> <code>{hotel_offer_description}</code> <code>{hotel_offer_link}</code> <code>{hotel_offer_link_label}</code> <code>{hotel_offer_deadline}</code> <code>{hotel_offer_image}</code></p>',
 			esc_html__( 'Available placeholders:', 'hfo-golf-registration' )
 		);
 	}
@@ -382,6 +413,13 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'why_this_tournament_matters', 'html' );
 		$this->save_meta_value( $post_id, 'whats_included', 'html' );
 		$this->save_meta_value( $post_id, 'event_schedule', 'html' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_enabled', 'checkbox_empty' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_image', 'url' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_title', 'text' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_description', 'textarea' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_link', 'url' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_link_label', 'text' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_deadline', 'text' );
 		$this->save_meta_value( $post_id, 'hfo_event_email_enabled', 'checkbox' );
 		$this->save_meta_value( $post_id, 'hfo_event_email_subject', 'text' );
 		$this->save_meta_value( $post_id, 'hfo_event_email_body', 'html' );
@@ -473,6 +511,9 @@ class HFO_Golf_Event_Meta_Boxes {
 			case 'checkbox':
 				return ! empty( $value ) ? '1' : '0';
 
+			case 'checkbox_empty':
+				return ! empty( $value ) ? '1' : '';
+
 			case 'time':
 				return $this->sanitize_time_value( $value );
 
@@ -555,6 +596,27 @@ class HFO_Golf_Event_Meta_Boxes {
 		<p>
 			<label for="<?php echo esc_attr( $key ); ?>"><strong><?php echo esc_html( $label ); ?></strong></label><br />
 			<input type="<?php echo esc_attr( $type ); ?>" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( $value ); ?>" class="widefat" />
+		</p>
+		<?php
+	}
+
+	/**
+	 * Renders a text-like input field with helper text.
+	 *
+	 * @param string $key         Meta key.
+	 * @param string $label       Field label.
+	 * @param int    $post_id     Post ID.
+	 * @param string $type        Input type.
+	 * @param string $description Field description.
+	 * @return void
+	 */
+	private function render_input_field_with_description( $key, $label, $post_id, $type, $description ) {
+		$value = get_post_meta( $post_id, $key, true );
+		?>
+		<p>
+			<label for="<?php echo esc_attr( $key ); ?>"><strong><?php echo esc_html( $label ); ?></strong></label><br />
+			<input type="<?php echo esc_attr( $type ); ?>" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>" value="<?php echo esc_attr( $value ); ?>" class="widefat" />
+			<br /><span class="description"><?php echo esc_html( $description ); ?></span>
 		</p>
 		<?php
 	}
