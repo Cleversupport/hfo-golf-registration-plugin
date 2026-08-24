@@ -22,11 +22,17 @@ function replace_hfo_email_placeholders( $content, $order ) {
 	}
 
 	$event_id = absint( $order->get_meta( 'hfo_golf_event_id', true ) );
-	$event_location      = '';
-	$event_contact_name  = '';
-	$event_contact_phone = '';
-	$registration_id     = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
-	$team_name           = sanitize_text_field( $order->get_meta( 'hfo_golf_team_name', true ) );
+	$event_location          = '';
+	$event_contact_name      = '';
+	$event_contact_phone     = '';
+	$hotel_offer_title       = '';
+	$hotel_offer_description = '';
+	$hotel_offer_link        = '';
+	$hotel_offer_link_label  = '';
+	$hotel_offer_deadline    = '';
+	$hotel_offer_image       = '';
+	$registration_id         = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+	$team_name               = sanitize_text_field( $order->get_meta( 'hfo_golf_team_name', true ) );
 
 	if ( '' === $team_name && $registration_id ) {
 		$team_name = sanitize_text_field( get_post_meta( $registration_id, 'hfo_golf_team_name', true ) );
@@ -42,22 +48,34 @@ function replace_hfo_email_placeholders( $content, $order ) {
 			),
 			'strlen'
 		);
-		$event_location      = ! empty( $event_location_parts ) ? implode( ', ', $event_location_parts ) : sanitize_text_field( get_post_meta( $event_id, 'event_location', true ) );
-		$event_contact_name  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
-		$event_contact_phone = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
+		$event_location          = ! empty( $event_location_parts ) ? implode( ', ', $event_location_parts ) : sanitize_text_field( get_post_meta( $event_id, 'event_location', true ) );
+		$event_contact_name      = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
+		$event_contact_phone     = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
+		$hotel_offer_title       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_title', true ) );
+		$hotel_offer_description = sanitize_textarea_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
+		$hotel_offer_link        = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_link', true ) );
+		$hotel_offer_link_label  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_link_label', true ) );
+		$hotel_offer_deadline    = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_deadline', true ) );
+		$hotel_offer_image       = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_image', true ) );
 	}
 
 	$replacements = array(
-		'{first_name}'          => method_exists( $order, 'get_billing_first_name' ) ? sanitize_text_field( $order->get_billing_first_name() ) : '',
-		'{last_name}'           => method_exists( $order, 'get_billing_last_name' ) ? sanitize_text_field( $order->get_billing_last_name() ) : '',
-		'{email}'               => method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '',
-		'{event_name}'          => $event_id ? sanitize_text_field( get_the_title( $event_id ) ) : '',
-		'{event_location}'      => $event_location,
-		'{event_date}'          => $event_id ? sanitize_text_field( get_post_meta( $event_id, 'event_date', true ) ) : '',
-		'{event_contact_name}'  => $event_contact_name,
-		'{event_contact_phone}' => $event_contact_phone,
-		'{order_id}'            => method_exists( $order, 'get_id' ) ? (string) absint( $order->get_id() ) : '',
-		'{team_name}'           => $team_name,
+		'{first_name}'              => method_exists( $order, 'get_billing_first_name' ) ? sanitize_text_field( $order->get_billing_first_name() ) : '',
+		'{last_name}'               => method_exists( $order, 'get_billing_last_name' ) ? sanitize_text_field( $order->get_billing_last_name() ) : '',
+		'{email}'                   => method_exists( $order, 'get_billing_email' ) ? sanitize_email( $order->get_billing_email() ) : '',
+		'{event_name}'              => $event_id ? sanitize_text_field( get_the_title( $event_id ) ) : '',
+		'{event_location}'          => $event_location,
+		'{event_date}'              => $event_id ? sanitize_text_field( get_post_meta( $event_id, 'event_date', true ) ) : '',
+		'{event_contact_name}'      => $event_contact_name,
+		'{event_contact_phone}'     => $event_contact_phone,
+		'{order_id}'                => method_exists( $order, 'get_id' ) ? (string) absint( $order->get_id() ) : '',
+		'{team_name}'               => $team_name,
+		'{hotel_offer_title}'       => $hotel_offer_title,
+		'{hotel_offer_description}' => $hotel_offer_description,
+		'{hotel_offer_link}'        => $hotel_offer_link,
+		'{hotel_offer_link_label}'  => $hotel_offer_link_label,
+		'{hotel_offer_deadline}'    => $hotel_offer_deadline,
+		'{hotel_offer_image}'       => $hotel_offer_image,
 	);
 
 	return strtr( (string) $content, $replacements );
