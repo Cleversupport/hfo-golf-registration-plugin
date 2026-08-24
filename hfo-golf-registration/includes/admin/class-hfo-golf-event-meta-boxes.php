@@ -329,7 +329,7 @@ class HFO_Golf_Event_Meta_Boxes {
 			esc_html__( 'Optional image for hotel, QR code, or booking graphic.', 'hfo-golf-registration' )
 		);
 		$this->render_input_field( 'hfo_event_hotel_offer_title', esc_html__( 'Hotel Offer Title', 'hfo-golf-registration' ), $post->ID, 'text' );
-		$this->render_textarea_field( 'hfo_event_hotel_offer_description', esc_html__( 'Hotel Offer Description', 'hfo-golf-registration' ), $post->ID );
+		$this->render_wysiwyg_field( 'hfo_event_hotel_offer_description', esc_html__( 'Hotel Offer Description', 'hfo-golf-registration' ), $post->ID );
 		$this->render_input_field( 'hfo_event_hotel_offer_link', esc_html__( 'Hotel Booking Link', 'hfo-golf-registration' ), $post->ID, 'url' );
 		$this->render_input_field( 'hfo_event_hotel_offer_link_label', esc_html__( 'Button Text', 'hfo-golf-registration' ), $post->ID, 'text' );
 		$this->render_input_field( 'hfo_event_hotel_offer_deadline', esc_html__( 'Booking Deadline', 'hfo-golf-registration' ), $post->ID, 'text' );
@@ -416,7 +416,7 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_enabled', 'checkbox_empty' );
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_image', 'url' );
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_title', 'text' );
-		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_description', 'textarea' );
+		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_description', 'html' );
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_link', 'url' );
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_link_label', 'text' );
 		$this->save_meta_value( $post_id, 'hfo_event_hotel_offer_deadline', 'text' );
