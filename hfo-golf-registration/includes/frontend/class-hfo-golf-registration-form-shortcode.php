@@ -250,7 +250,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$flyer_url         = (string) get_post_meta( $event_id, 'event_flyer_image_url', true );
 		$hotel_enabled     = '1' === (string) get_post_meta( $event_id, 'hfo_event_hotel_offer_enabled', true );
 		$hotel_title       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_title', true ) );
-		$hotel_description = sanitize_textarea_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
+		$hotel_description = wp_kses_post( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
 		$hotel_image       = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_image', true ) );
 		$hotel_link        = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_link', true ) );
 		$hotel_label       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_link_label', true ) );
@@ -277,7 +277,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 					<h3><?php esc_html_e( 'Hotel Information', 'hfo-golf-registration' ); ?></h3>
 					<?php if ( '' !== $hotel_title ) : ?><h4><?php echo esc_html( $hotel_title ); ?></h4><?php endif; ?>
 					<?php if ( '' !== $hotel_image ) : ?><p class="hfo-golf-hotel-offer-image"><img src="<?php echo esc_url( $hotel_image ); ?>" alt="<?php echo esc_attr( '' !== $hotel_title ? $hotel_title : __( 'Hotel offer image', 'hfo-golf-registration' ) ); ?>" /></p><?php endif; ?>
-					<?php if ( '' !== $hotel_description ) : ?><p><?php echo nl2br( esc_html( $hotel_description ) ); ?></p><?php endif; ?>
+					<?php if ( '' !== $hotel_description ) : ?><div class="hfo-golf-hotel-offer-description"><?php echo wpautop( $hotel_description ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></div><?php endif; ?>
 					<?php if ( '' !== $hotel_deadline ) : ?><p><strong><?php esc_html_e( 'Booking Deadline:', 'hfo-golf-registration' ); ?></strong> <?php echo esc_html( $hotel_deadline ); ?></p><?php endif; ?>
 					<?php if ( '' !== $hotel_link ) : ?><p><a class="button hfo-golf-hotel-offer-link" href="<?php echo esc_url( $hotel_link ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( '' !== $hotel_label ? $hotel_label : __( 'Book Preferred Rate', 'hfo-golf-registration' ) ); ?></a></p><?php endif; ?>
 				</section>

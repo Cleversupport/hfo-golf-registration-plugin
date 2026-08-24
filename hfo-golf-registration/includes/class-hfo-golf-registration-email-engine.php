@@ -52,7 +52,7 @@ function replace_hfo_email_placeholders( $content, $order ) {
 		$event_contact_name      = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_name', true ) );
 		$event_contact_phone     = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_contact_phone', true ) );
 		$hotel_offer_title       = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_title', true ) );
-		$hotel_offer_description = sanitize_textarea_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
+		$hotel_offer_description = wp_kses_post( get_post_meta( $event_id, 'hfo_event_hotel_offer_description', true ) );
 		$hotel_offer_link        = esc_url_raw( get_post_meta( $event_id, 'hfo_event_hotel_offer_link', true ) );
 		$hotel_offer_link_label  = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_link_label', true ) );
 		$hotel_offer_deadline    = sanitize_text_field( get_post_meta( $event_id, 'hfo_event_hotel_offer_deadline', true ) );
