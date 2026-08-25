@@ -14,6 +14,11 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 
 	const CAPABILITY = 'view_hfo_golf_registrations';
 	const ALLOWED_ROLES_OPTION = 'hfo_golf_registration_lookup_allowed_roles';
+	const EXPORT_CAPABILITY = 'export_hfo_golf_registrations';
+	const EXPORT_ALLOWED_ROLES_OPTION = 'hfo_golf_registration_export_allowed_roles';
+	const EXPORT_ACTION = 'hfo_golf_registration_export_csv';
+	const EXPORT_NONCE_ACTION = 'hfo_golf_registration_export_csv';
+	const EXPORT_NONCE_NAME = 'hfo_registration_export_nonce';
 	const NONCE_ACTION = 'hfo_golf_registration_lookup';
 	const NONCE_NAME = 'hfo_registration_lookup_nonce';
 	const PER_PAGE = 25;
@@ -21,6 +26,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 	/** Registers shortcode hooks. */
 	public function register_hooks() {
 		add_shortcode( 'hfo_golf_registration_lookup', array( $this, 'render_shortcode' ) );
+		add_action( 'admin_post_' . self::EXPORT_ACTION, array( $this, 'handle_export_csv' ) );
 	}
 
 	/**
@@ -38,6 +44,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 
 		$filters = $this->get_filters();
 		$rows    = $this->get_matching_rows( $filters );
+		$summary = $this->build_report_summary( $rows );
 		$page    = max( 1, $filters['page'] );
 		$pages   = max( 1, (int) ceil( count( $rows ) / self::PER_PAGE ) );
 		$page    = min( $page, $pages );
@@ -55,6 +62,10 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		<div class="hfo-golf-registration-lookup">
 			<h2><?php esc_html_e( 'Registration Lookup', 'hfo-golf-registration' ); ?></h2>
 			<?php $this->render_search_form( $filters ); ?>
+			<?php if ( current_user_can( self::EXPORT_CAPABILITY ) ) : ?>
+				<?php $this->render_export_csv_button( $filters ); ?>
+			<?php endif; ?>
+			<?php $this->render_report_summary( $summary ); ?>
 			<?php if ( empty( $rows ) ) : ?>
 				<p class="hfo-golf-registration-lookup-message"><?php esc_html_e( 'No registrations found for the selected filters.', 'hfo-golf-registration' ); ?></p>
 			<?php else : ?>
@@ -72,6 +83,16 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			return true;
 		}
 		$allowed = get_option( self::ALLOWED_ROLES_OPTION, array() );
+		$user    = wp_get_current_user();
+		return is_array( $allowed ) && (bool) array_intersect( array_map( 'sanitize_key', $allowed ), (array) $user->roles );
+	}
+
+	/** Determines export access by explicit capability or a selected role. */
+	private function current_user_can_export() {
+		if ( current_user_can( self::EXPORT_CAPABILITY ) ) {
+			return true;
+		}
+		$allowed = get_option( self::EXPORT_ALLOWED_ROLES_OPTION, array() );
 		$user    = wp_get_current_user();
 		return is_array( $allowed ) && (bool) array_intersect( array_map( 'sanitize_key', $allowed ), (array) $user->roles );
 	}
@@ -97,6 +118,22 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$filters['sponsor_level']    = isset( $_GET['hfo_lookup_sponsor'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sponsor'] ) ) : '';
 		$filters['page']             = isset( $_GET['hfo_lookup_page'] ) ? max( 1, absint( wp_unslash( $_GET['hfo_lookup_page'] ) ) ) : 1;
 
+		$filters['registration_type'] = in_array( $filters['registration_type'], array( 'individual', 'team', 'sponsor_only', 'additional_guests' ), true ) ? $filters['registration_type'] : '';
+		$filters['payment_status'] = in_array( $filters['payment_status'], array( 'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'on-hold' ), true ) ? $filters['payment_status'] : '';
+		$filters['sponsor_level'] = in_array( $filters['sponsor_level'], array( 'platinum', 'gold', 'silver', 'tee', 'none' ), true ) ? $filters['sponsor_level'] : '';
+		return $filters;
+	}
+
+	/** Gets and validates filters supplied to the authenticated export action. */
+	private function get_export_filters() {
+		$filters = array(
+			'keyword'           => isset( $_POST['hfo_lookup_keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['hfo_lookup_keyword'] ) ) : '',
+			'event'             => isset( $_POST['hfo_lookup_event'] ) ? absint( wp_unslash( $_POST['hfo_lookup_event'] ) ) : 0,
+			'registration_type' => isset( $_POST['hfo_lookup_type'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_type'] ) ) : '',
+			'payment_status'    => isset( $_POST['hfo_lookup_payment'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_payment'] ) ) : '',
+			'sponsor_level'     => isset( $_POST['hfo_lookup_sponsor'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_sponsor'] ) ) : '',
+			'page'              => 1,
+		);
 		$filters['registration_type'] = in_array( $filters['registration_type'], array( 'individual', 'team', 'sponsor_only', 'additional_guests' ), true ) ? $filters['registration_type'] : '';
 		$filters['payment_status'] = in_array( $filters['payment_status'], array( 'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'on-hold' ), true ) ? $filters['payment_status'] : '';
 		$filters['sponsor_level'] = in_array( $filters['sponsor_level'], array( 'platinum', 'gold', 'silver', 'tee', 'none' ), true ) ? $filters['sponsor_level'] : '';
@@ -195,6 +232,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'phone'              => sanitize_text_field( get_post_meta( $registration_id, 'main_contact_phone', true ) ),
 			'team'               => sanitize_text_field( get_post_meta( $registration_id, 'hfo_golf_team_name', true ) ),
 			'type'               => $this->label( $type, array( 'individual' => 'Individual', 'team' => 'Team', 'sponsor_only' => 'Sponsor Only', 'additional_guests' => 'Additional Guests' ) ),
+			'registration_type_key' => $type,
 			'sponsor'            => $this->label( $sponsor_key, array( 'platinum' => 'Platinum Sponsor', 'gold' => 'Gold Sponsor', 'silver' => 'Silver Sponsor', 'tee' => 'Tee Sponsor', 'none' => 'None' ) ),
 			'sponsor_level_key'  => $sponsor_key,
 			'tee_sponsor'        => $tee,
@@ -208,7 +246,75 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'payment_status'     => function_exists( 'wc_get_order_status_name' ) ? wc_get_order_status_name( $status ) : ucwords( str_replace( '-', ' ', $status ) ),
 			'total'              => $order ? (float) $order->get_total() : 0.0,
 			'date'               => get_the_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $registration_id ),
+			'sponsor_contact'    => sanitize_text_field( get_post_meta( $registration_id, 'sponsor_contact_name', true ) ),
+			'sponsor_email'      => sanitize_email( get_post_meta( $registration_id, 'sponsor_email', true ) ),
+			'sponsor_phone'      => sanitize_text_field( get_post_meta( $registration_id, 'sponsor_phone', true ) ),
 		);
+	}
+
+	/** Handles a secure, filtered CSV download. */
+	public function handle_export_csv() {
+		if ( ! is_user_logged_in() || ! $this->current_user_can_export() ) {
+			wp_die( esc_html__( 'You do not have permission to export golf registrations.', 'hfo-golf-registration' ) );
+		}
+		check_admin_referer( self::EXPORT_NONCE_ACTION, self::EXPORT_NONCE_NAME );
+		$filters  = $this->get_export_filters();
+		$rows     = $this->get_matching_rows( $filters );
+		$filename = 'hfo-golf-registrations-' . gmdate( 'Y-m-d' ) . '.csv';
+		if ( $filters['event'] ) {
+			$filename = 'hfo-golf-registrations-event-' . absint( $filters['event'] ) . '-' . gmdate( 'Y-m-d' ) . '.csv';
+		}
+		nocache_headers();
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		$output = fopen( 'php://output', 'w' );
+		if ( false === $output ) {
+			wp_die( esc_html__( 'The CSV export could not be created.', 'hfo-golf-registration' ) );
+		}
+		fputcsv( $output, array( 'Registration ID', 'Event', 'Event Date', 'Main Contact', 'Email', 'Phone', 'Team Name', 'Registration Type', 'Sponsor Level', 'Players', 'Lunch Guests', 'Dinner Guests', 'WooCommerce Order', 'Payment Status', 'Total Paid', 'Date Submitted', 'Sponsor Contact Name', 'Sponsor Email', 'Sponsor Phone' ) );
+		foreach ( $rows as $row ) {
+			$values = array( $row['id'], $row['event'], $row['event_date'], $row['contact'], $row['email'], $row['phone'], $row['team'], $row['type'], $row['sponsor'], $row['players'], $row['lunch'], $row['dinner'], $row['order_number'] ? '#' . $row['order_number'] : '', $row['payment_status'], number_format( $row['total'], 2, '.', '' ), $row['date'], $row['sponsor_contact'], $row['sponsor_email'], $row['sponsor_phone'] );
+			fputcsv( $output, array_map( array( $this, 'clean_csv_value' ), $values ) );
+		}
+		fclose( $output );
+		exit;
+	}
+
+	/** Removes markup and prevents spreadsheet formula interpretation. */
+	private function clean_csv_value( $value ) {
+		$value = wp_strip_all_tags( (string) $value );
+		return preg_match( '/^[=+\-@]/', $value ) ? "'" . $value : $value;
+	}
+
+	/** Builds totals from every matching registration, before pagination. */
+	private function build_report_summary( $rows ) {
+		$summary = array( 'total' => count( $rows ), 'paid' => 0.0, 'team' => 0, 'individual' => 0, 'sponsor_only' => 0, 'additional_guests' => 0, 'platinum' => 0, 'gold' => 0, 'silver' => 0, 'tee' => 0, 'lunch' => 0, 'dinner' => 0 );
+		foreach ( $rows as $row ) {
+			$summary['paid'] += (float) $row['total'];
+			if ( isset( $summary[ $row['registration_type_key'] ] ) ) {
+				++$summary[ $row['registration_type_key'] ];
+			}
+			if ( isset( $summary[ $row['sponsor_level_key'] ] ) && ! in_array( $row['sponsor_level_key'], array( 'none', 'tee' ), true ) ) {
+				++$summary[ $row['sponsor_level_key'] ];
+			}
+			if ( $row['tee_sponsor'] ) {
+				++$summary['tee'];
+			}
+			$summary['lunch']  += absint( $row['lunch'] );
+			$summary['dinner'] += absint( $row['dinner'] );
+		}
+		return $summary;
+	}
+
+	/** Renders the filtered report summary. */
+	private function render_report_summary( $summary ) {
+		$items = array( 'total' => __( 'Total Registrations', 'hfo-golf-registration' ), 'paid' => __( 'Total Paid', 'hfo-golf-registration' ), 'team' => __( 'Teams', 'hfo-golf-registration' ), 'individual' => __( 'Individual Registrations', 'hfo-golf-registration' ), 'sponsor_only' => __( 'Sponsor Only Registrations', 'hfo-golf-registration' ), 'additional_guests' => __( 'Additional Guests Registrations', 'hfo-golf-registration' ), 'platinum' => __( 'Platinum Sponsors', 'hfo-golf-registration' ), 'gold' => __( 'Gold Sponsors', 'hfo-golf-registration' ), 'silver' => __( 'Silver Sponsors', 'hfo-golf-registration' ), 'tee' => __( 'Tee Sponsors', 'hfo-golf-registration' ), 'lunch' => __( 'Lunch Guests', 'hfo-golf-registration' ), 'dinner' => __( 'Dinner Guests', 'hfo-golf-registration' ) );
+		echo '<section class="hfo-golf-registration-report-summary" aria-labelledby="hfo-registration-summary-heading"><h3 id="hfo-registration-summary-heading">' . esc_html__( 'Report Summary', 'hfo-golf-registration' ) . '</h3><div class="hfo-golf-registration-report-summary__grid">';
+		foreach ( $items as $key => $label ) {
+			$value = 'paid' === $key ? $this->format_price( $summary[ $key ] ) : $summary[ $key ];
+			echo '<div class="hfo-golf-registration-report-summary__card"><span>' . esc_html( $label ) . '</span><strong>' . esc_html( $value ) . '</strong></div>';
+		}
+		echo '</div></section>';
 	}
 
 	/** Gets display rows for registrations belonging to a WooCommerce customer. */
@@ -266,6 +372,27 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			<?php $this->render_select( 'hfo_lookup_payment', __( 'Payment Status', 'hfo-golf-registration' ), $filters['payment_status'], array( '' => __( 'All Payment Statuses', 'hfo-golf-registration' ), 'pending' => __( 'Pending', 'hfo-golf-registration' ), 'processing' => __( 'Processing', 'hfo-golf-registration' ), 'completed' => __( 'Completed', 'hfo-golf-registration' ), 'failed' => __( 'Failed', 'hfo-golf-registration' ), 'cancelled' => __( 'Cancelled', 'hfo-golf-registration' ), 'refunded' => __( 'Refunded', 'hfo-golf-registration' ), 'on-hold' => __( 'On Hold', 'hfo-golf-registration' ) ) ); ?>
 			<?php $this->render_select( 'hfo_lookup_sponsor', __( 'Sponsor Level', 'hfo-golf-registration' ), $filters['sponsor_level'], array( '' => __( 'All Sponsor Levels', 'hfo-golf-registration' ), 'platinum' => __( 'Platinum Sponsor', 'hfo-golf-registration' ), 'gold' => __( 'Gold Sponsor', 'hfo-golf-registration' ), 'silver' => __( 'Silver Sponsor', 'hfo-golf-registration' ), 'tee' => __( 'Tee Sponsor', 'hfo-golf-registration' ), 'none' => __( 'No Sponsor', 'hfo-golf-registration' ) ) ); ?>
 			<button type="submit"><?php esc_html_e( 'Search Registrations', 'hfo-golf-registration' ); ?></button>
+		</form>
+		<?php
+	}
+
+	/** Renders a separate authenticated CSV export form with the current filters. */
+	private function render_export_csv_button( $filters ) {
+		$fields = array(
+			'hfo_lookup_keyword' => $filters['keyword'],
+			'hfo_lookup_event'   => $filters['event'],
+			'hfo_lookup_type'    => $filters['registration_type'],
+			'hfo_lookup_payment' => $filters['payment_status'],
+			'hfo_lookup_sponsor' => $filters['sponsor_level'],
+		);
+		?>
+		<form class="hfo-golf-registration-export-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="<?php echo esc_attr( self::EXPORT_ACTION ); ?>" />
+			<?php wp_nonce_field( self::EXPORT_NONCE_ACTION, self::EXPORT_NONCE_NAME ); ?>
+			<?php foreach ( $fields as $name => $value ) : ?>
+				<input type="hidden" name="<?php echo esc_attr( $name ); ?>" value="<?php echo esc_attr( $value ); ?>" />
+			<?php endforeach; ?>
+			<button type="submit"><?php esc_html_e( 'Export CSV', 'hfo-golf-registration' ); ?></button>
 		</form>
 		<?php
 	}
