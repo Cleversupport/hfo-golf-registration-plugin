@@ -273,7 +273,8 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		}
 		fputcsv( $output, array( 'Registration ID', 'Event', 'Event Date', 'Main Contact', 'Email', 'Phone', 'Team Name', 'Registration Type', 'Sponsor Level', 'Players', 'Lunch Guests', 'Dinner Guests', 'WooCommerce Order', 'Payment Status', 'Total Paid', 'Date Submitted', 'Sponsor Contact Name', 'Sponsor Email', 'Sponsor Phone' ) );
 		foreach ( $rows as $row ) {
-			$values = array( $row['id'], $row['event'], $row['event_date'], $row['contact'], $row['email'], $row['phone'], $row['team'], $row['type'], $row['sponsor'], $row['players'], $row['lunch'], $row['dinner'], $row['order_number'] ? '#' . $row['order_number'] : '', $row['payment_status'], number_format( $row['total'], 2, '.', '' ), $row['date'], $row['sponsor_contact'], $row['sponsor_email'], $row['sponsor_phone'] );
+			$paid   = $this->row_is_paid( $row ) ? (float) $row['total'] : 0.0;
+			$values = array( $row['id'], $row['event'], $row['event_date'], $row['contact'], $row['email'], $row['phone'], $row['team'], $row['type'], $row['sponsor'], $row['players'], $row['lunch'], $row['dinner'], $row['order_number'] ? '#' . $row['order_number'] : '', $row['payment_status'], number_format( $paid, 2, '.', '' ), $row['date'], $row['sponsor_contact'], $row['sponsor_email'], $row['sponsor_phone'] );
 			fputcsv( $output, array_map( array( $this, 'clean_csv_value' ), $values ) );
 		}
 		fclose( $output );
@@ -286,11 +287,18 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		return preg_match( '/^[=+\-@]/', $value ) ? "'" . $value : $value;
 	}
 
+	/** Determines whether a row represents paid revenue. */
+	private function row_is_paid( $row ) {
+		return in_array( $row['payment_status_key'], array( 'processing', 'completed' ), true );
+	}
+
 	/** Builds totals from every matching registration, before pagination. */
 	private function build_report_summary( $rows ) {
 		$summary = array( 'total' => count( $rows ), 'paid' => 0.0, 'team' => 0, 'individual' => 0, 'sponsor_only' => 0, 'additional_guests' => 0, 'platinum' => 0, 'gold' => 0, 'silver' => 0, 'tee' => 0, 'lunch' => 0, 'dinner' => 0 );
 		foreach ( $rows as $row ) {
-			$summary['paid'] += (float) $row['total'];
+			if ( $this->row_is_paid( $row ) ) {
+				$summary['paid'] += (float) $row['total'];
+			}
 			if ( isset( $summary[ $row['registration_type_key'] ] ) ) {
 				++$summary[ $row['registration_type_key'] ];
 			}
