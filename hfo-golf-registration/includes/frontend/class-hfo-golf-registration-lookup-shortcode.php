@@ -170,7 +170,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 	}
 
 	/** Builds a safely displayable row from established registration meta. */
-	private function build_registration_lookup_row( $registration_id ) {
+	public function build_registration_lookup_row( $registration_id ) {
 		$event_id   = absint( get_post_meta( $registration_id, 'related_event', true ) );
 		$order_id   = absint( get_post_meta( $registration_id, 'woocommerce_order_id', true ) );
 		$order      = $order_id && function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : false;
@@ -180,10 +180,16 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$status     = $order ? sanitize_key( $order->get_status() ) : sanitize_key( (string) get_post_meta( $registration_id, 'payment_status', true ) );
 		$status     = 'paid' === $status ? 'completed' : ( 'unpaid' === $status ? 'pending' : $status );
 		$sponsor_key = $sponsor ? $sponsor : ( $tee ? 'tee' : 'none' );
+		$event_date  = $event_id ? sanitize_text_field( get_post_meta( $event_id, 'event_date', true ) ) : '';
+		if ( $event_date ) {
+			$timestamp  = strtotime( $event_date );
+			$event_date = $timestamp ? date_i18n( get_option( 'date_format' ), $timestamp ) : $event_date;
+		}
 
 		return array(
 			'id'                 => absint( $registration_id ),
 			'event'              => $event_id ? get_the_title( $event_id ) : '',
+			'event_date'         => $event_date,
 			'contact'            => sanitize_text_field( get_post_meta( $registration_id, 'main_contact_name', true ) ),
 			'email'              => sanitize_email( get_post_meta( $registration_id, 'main_contact_email', true ) ),
 			'phone'              => sanitize_text_field( get_post_meta( $registration_id, 'main_contact_phone', true ) ),
@@ -198,11 +204,50 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'order_id'           => $order_id,
 			'order_number'       => $order ? $order->get_order_number() : ( $order_id ? $order_id : '' ),
 			'order_edit_url'     => $order && is_callable( array( $order, 'get_edit_order_url' ) ) ? $order->get_edit_order_url() : get_edit_post_link( $order_id, 'raw' ),
+			'order_view_url'     => $order && is_callable( array( $order, 'get_view_order_url' ) ) ? $order->get_view_order_url() : '',
 			'payment_status_key' => $status,
 			'payment_status'     => function_exists( 'wc_get_order_status_name' ) ? wc_get_order_status_name( $status ) : ucwords( str_replace( '-', ' ', $status ) ),
 			'total'              => $order ? (float) $order->get_total() : 0.0,
 			'date'               => get_the_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $registration_id ),
 		);
+	}
+
+	/** Gets display rows for registrations belonging to a WooCommerce customer. */
+	public function get_customer_registration_rows( $user_id ) {
+		$user_id   = absint( $user_id );
+		$order_ids = array();
+		if ( $user_id && function_exists( 'wc_get_orders' ) ) {
+			$order_ids = array_map( 'absint', (array) wc_get_orders( array( 'customer_id' => $user_id, 'limit' => -1, 'return' => 'ids' ) ) );
+		}
+		$relationships = array(
+			'relation' => 'OR',
+			array( 'key' => 'hfo_golf_customer_user_id', 'value' => $user_id, 'compare' => '=' ),
+		);
+		if ( $order_ids ) {
+			$relationships[] = array( 'key' => 'woocommerce_order_id', 'value' => $order_ids, 'compare' => 'IN', 'type' => 'NUMERIC' );
+		}
+		$query = new WP_Query(
+			array(
+				'post_type' => HFO_Golf_Registration_Post_Type::POST_TYPE, 'post_status' => 'any', 'posts_per_page' => -1,
+				'orderby' => 'date', 'order' => 'DESC', 'fields' => 'ids', 'no_found_rows' => true,
+				'update_post_term_cache' => false,
+				'meta_query' => $relationships, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			)
+		);
+		$rows = array();
+		foreach ( $query->posts as $registration_id ) {
+			$linked_user_id = absint( get_post_meta( $registration_id, 'hfo_golf_customer_user_id', true ) );
+			$row            = $this->build_registration_lookup_row( $registration_id );
+			$order_owner    = 0;
+			if ( $row['order_id'] && function_exists( 'wc_get_order' ) ) {
+				$order       = wc_get_order( $row['order_id'] );
+				$order_owner = $order && is_callable( array( $order, 'get_customer_id' ) ) ? absint( $order->get_customer_id() ) : 0;
+			}
+			if ( $user_id === $linked_user_id || $user_id === $order_owner ) {
+				$rows[] = $row;
+			}
+		}
+		return $rows;
 	}
 
 	/** Returns a translated label where known. */

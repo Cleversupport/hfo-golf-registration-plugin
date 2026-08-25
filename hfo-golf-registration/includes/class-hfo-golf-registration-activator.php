@@ -22,6 +22,7 @@ class HFO_Golf_Registration_Activator {
 	public static function activate() {
 		HFO_Golf_Event_Post_Type::register();
 		HFO_Golf_Registration_Post_Type::register();
+		add_rewrite_endpoint( 'golf-registrations', EP_ROOT | EP_PAGES );
 		self::register_roles_and_capabilities();
 		update_option( 'hfo_golf_registration_installed_version', HFO_GOLF_REGISTRATION_VERSION );
 
