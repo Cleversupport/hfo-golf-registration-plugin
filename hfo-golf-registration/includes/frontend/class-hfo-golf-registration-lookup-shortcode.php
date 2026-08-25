@@ -215,6 +215,29 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		return $rows;
 	}
 
+	/**
+	 * Returns positive-value rows for reports, optionally limited to an event.
+	 *
+	 * This is the intentionally small public reporting API used by other frontend
+	 * views so registration querying and row normalization remain in one place.
+	 *
+	 * @param int $event_id Published golf event ID, or zero for every event.
+	 * @return array<int,array<string,mixed>>
+	 */
+	public function get_report_rows( $event_id = 0 ) {
+		$filters = array(
+			'keyword'             => '',
+			'event'               => absint( $event_id ),
+			'registration_type'   => '',
+			'payment_status'      => '',
+			'sponsor_level'       => '',
+			'include_zero_amount' => false,
+			'page'                => 1,
+		);
+
+		return $this->get_matching_rows( $filters );
+	}
+
 	/** Handles filters that depend on WooCommerce or combined stored values. */
 	private function row_matches_filters( $row, $filters ) {
 		if ( $filters['keyword'] && ctype_digit( $filters['keyword'] ) ) {

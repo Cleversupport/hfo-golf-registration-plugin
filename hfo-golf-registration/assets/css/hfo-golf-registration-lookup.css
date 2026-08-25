@@ -195,8 +195,152 @@
 	color: #8a1f11;
 }
 
+.hfo-golf-reports-dashboard {
+	--hfo-report-accent: #17633a;
+	--hfo-report-border: #dce4df;
+	max-width: 1200px;
+	margin: 0 auto;
+}
+
+.hfo-golf-reports-dashboard__header {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: end;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.hfo-golf-reports-dashboard__header h2 {
+	margin: 0;
+}
+
+.hfo-golf-reports-dashboard__filter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .6rem;
+}
+
+.hfo-golf-reports-dashboard__filter label {
+	font-weight: 700;
+}
+
+.hfo-golf-reports-dashboard__filter select,
+.hfo-golf-reports-dashboard__filter button {
+	min-height: 42px;
+	padding: .5rem .75rem;
+}
+
+.hfo-golf-reports-dashboard__filter button,
+.hfo-golf-reports-dashboard__button {
+	border: 1px solid var(--hfo-report-accent);
+	border-radius: 5px;
+	background: var(--hfo-report-accent);
+	color: #fff;
+	cursor: pointer;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.hfo-golf-reports-dashboard__kpis {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.hfo-golf-reports-dashboard__kpi {
+	display: flex;
+	min-height: 100px;
+	box-sizing: border-box;
+	flex-direction: column;
+	justify-content: space-between;
+	gap: .6rem;
+	padding: 1rem;
+	border: 1px solid var(--hfo-report-border);
+	border-top: 4px solid var(--hfo-report-accent);
+	border-radius: 7px;
+	background: #fff;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
+}
+
+.hfo-golf-reports-dashboard__kpi span {
+	font-size: .9rem;
+	color: #4d5b52;
+}
+
+.hfo-golf-reports-dashboard__kpi strong {
+	font-size: 1.55rem;
+	color: #17251c;
+}
+
+.hfo-golf-reports-dashboard__sections {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.hfo-golf-reports-dashboard__section {
+	padding: 1.25rem;
+	border: 1px solid var(--hfo-report-border);
+	border-radius: 7px;
+	background: #f8faf8;
+}
+
+.hfo-golf-reports-dashboard__section h3 {
+	margin-top: 0;
+}
+
+.hfo-golf-reports-dashboard__section dl {
+	margin: 0;
+}
+
+.hfo-golf-reports-dashboard__section dl div {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: .55rem 0;
+	border-bottom: 1px solid var(--hfo-report-border);
+}
+
+.hfo-golf-reports-dashboard__section dl div:last-child {
+	border-bottom: 0;
+}
+
+.hfo-golf-reports-dashboard__section dt,
+.hfo-golf-reports-dashboard__section dd {
+	margin: 0;
+}
+
+.hfo-golf-reports-dashboard__section dd {
+	font-weight: 700;
+}
+
+.hfo-golf-reports-dashboard__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .75rem;
+	margin-top: 1.5rem;
+}
+
+.hfo-golf-reports-dashboard__actions form {
+	margin: 0;
+}
+
+.hfo-golf-reports-dashboard__button {
+	display: inline-block;
+	box-sizing: border-box;
+	padding: .7rem 1rem;
+	line-height: 1.2;
+}
+
 @media (max-width: 900px) {
 	.hfo-golf-registration-card__fields {
+		grid-template-columns: 1fr;
+	}
+
+	.hfo-golf-reports-dashboard__sections {
 		grid-template-columns: 1fr;
 	}
 }
@@ -217,6 +361,15 @@
 
 	.hfo-golf-registration-card__actions .button {
 		box-sizing: border-box;
+		width: 100%;
+	}
+
+	.hfo-golf-reports-dashboard__filter,
+	.hfo-golf-reports-dashboard__filter select,
+	.hfo-golf-reports-dashboard__filter button,
+	.hfo-golf-reports-dashboard__actions,
+	.hfo-golf-reports-dashboard__actions form,
+	.hfo-golf-reports-dashboard__button {
 		width: 100%;
 	}
 }
