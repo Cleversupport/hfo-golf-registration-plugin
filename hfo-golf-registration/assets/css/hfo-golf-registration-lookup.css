@@ -329,10 +329,19 @@
 }
 
 .hfo-golf-reports-dashboard__button {
-	display: inline-block;
+	display: flex;
 	box-sizing: border-box;
+	align-items: center;
+	justify-content: center;
 	padding: .7rem 1rem;
+	color: #ffffff !important;
 	line-height: 1.2;
+	text-align: center;
+}
+
+.hfo-golf-reports-dashboard__button:hover,
+.hfo-golf-reports-dashboard__button:focus {
+	color: #ffffff !important;
 }
 
 @media (max-width: 900px) {
