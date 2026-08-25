@@ -44,6 +44,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 
 		$filters = $this->get_filters();
 		$rows    = $this->get_matching_rows( $filters );
+		$rows    = $this->sort_rows( $rows, $filters['sort'], $filters['sort_order'] );
 		$summary = $this->build_report_summary( $rows );
 		$page    = max( 1, $filters['page'] );
 		$pages   = max( 1, (int) ceil( count( $rows ) / self::PER_PAGE ) );
@@ -106,6 +107,8 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'payment_status'   => '',
 			'sponsor_level'    => '',
 			'page'             => 1,
+			'sort'             => '',
+			'sort_order'       => 'asc',
 		);
 		if ( empty( $_GET[ self::NONCE_NAME ] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET[ self::NONCE_NAME ] ) ), self::NONCE_ACTION ) ) {
 			return $filters;
@@ -117,11 +120,37 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$filters['payment_status']   = isset( $_GET['hfo_lookup_payment'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_payment'] ) ) : '';
 		$filters['sponsor_level']    = isset( $_GET['hfo_lookup_sponsor'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sponsor'] ) ) : '';
 		$filters['page']             = isset( $_GET['hfo_lookup_page'] ) ? max( 1, absint( wp_unslash( $_GET['hfo_lookup_page'] ) ) ) : 1;
+		$filters['sort']             = isset( $_GET['hfo_lookup_sort'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort'] ) ) : '';
+		$filters['sort_order']       = isset( $_GET['hfo_lookup_sort_order'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort_order'] ) ) : 'asc';
 
 		$filters['registration_type'] = in_array( $filters['registration_type'], array( 'individual', 'team', 'sponsor_only', 'additional_guests' ), true ) ? $filters['registration_type'] : '';
 		$filters['payment_status'] = in_array( $filters['payment_status'], array( 'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'on-hold' ), true ) ? $filters['payment_status'] : '';
 		$filters['sponsor_level'] = in_array( $filters['sponsor_level'], array( 'platinum', 'gold', 'silver', 'tee', 'none' ), true ) ? $filters['sponsor_level'] : '';
+		$filters['sort'] = in_array( $filters['sort'], array( 'order', 'event', 'type', 'payment', 'sponsor', 'players' ), true ) ? $filters['sort'] : '';
+		$filters['sort_order'] = 'desc' === $filters['sort_order'] ? 'desc' : 'asc';
 		return $filters;
+	}
+
+	/** Sorts filtered rows by a selected visible table column. */
+	private function sort_rows( $rows, $sort, $sort_order ) {
+		$keys = array( 'order' => 'order_number', 'event' => 'event', 'type' => 'type', 'payment' => 'payment_status', 'sponsor' => 'sponsor', 'players' => 'players' );
+		if ( ! isset( $keys[ $sort ] ) ) {
+			return $rows;
+		}
+		$key       = $keys[ $sort ];
+		$direction = 'desc' === $sort_order ? -1 : 1;
+		usort(
+			$rows,
+			static function ( $left, $right ) use ( $key, $direction ) {
+				if ( in_array( $key, array( 'order_number', 'players' ), true ) ) {
+					$result = (int) $left[ $key ] <=> (int) $right[ $key ];
+				} else {
+					$result = strnatcasecmp( (string) $left[ $key ], (string) $right[ $key ] );
+				}
+				return $direction * $result;
+			}
+		);
+		return $rows;
 	}
 
 	/** Gets and validates filters supplied to the authenticated export action. */
@@ -223,6 +252,15 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			$event_date = $timestamp ? date_i18n( get_option( 'date_format' ), $timestamp ) : $event_date;
 		}
 
+		$stored_players = absint( get_post_meta( $registration_id, 'golf_qty', true ) );
+		if ( 'team' === $type ) {
+			$players = $stored_players ? $stored_players : 4;
+		} elseif ( 'individual' === $type ) {
+			$players = 1;
+		} else {
+			$players = 0;
+		}
+
 		return array(
 			'id'                 => absint( $registration_id ),
 			'event'              => $event_id ? get_the_title( $event_id ) : '',
@@ -236,7 +274,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'sponsor'            => $this->label( $sponsor_key, array( 'platinum' => 'Platinum Sponsor', 'gold' => 'Gold Sponsor', 'silver' => 'Silver Sponsor', 'tee' => 'Tee Sponsor', 'none' => 'None' ) ),
 			'sponsor_level_key'  => $sponsor_key,
 			'tee_sponsor'        => $tee,
-			'players'            => absint( get_post_meta( $registration_id, 'golf_qty', true ) ),
+			'players'            => $players,
 			'lunch'              => absint( get_post_meta( $registration_id, 'additional_lunch_count', true ) ),
 			'dinner'             => absint( get_post_meta( $registration_id, 'additional_dinner_count', true ) ),
 			'order_id'           => $order_id,
@@ -319,6 +357,9 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$items = array( 'total' => __( 'Total Registrations', 'hfo-golf-registration' ), 'paid' => __( 'Total Paid', 'hfo-golf-registration' ), 'team' => __( 'Teams', 'hfo-golf-registration' ), 'individual' => __( 'Individual Registrations', 'hfo-golf-registration' ), 'sponsor_only' => __( 'Sponsor Only Registrations', 'hfo-golf-registration' ), 'additional_guests' => __( 'Additional Guests Registrations', 'hfo-golf-registration' ), 'platinum' => __( 'Platinum Sponsors', 'hfo-golf-registration' ), 'gold' => __( 'Gold Sponsors', 'hfo-golf-registration' ), 'silver' => __( 'Silver Sponsors', 'hfo-golf-registration' ), 'tee' => __( 'Tee Sponsors', 'hfo-golf-registration' ), 'lunch' => __( 'Lunch Guests', 'hfo-golf-registration' ), 'dinner' => __( 'Dinner Guests', 'hfo-golf-registration' ) );
 		echo '<section class="hfo-golf-registration-report-summary" aria-labelledby="hfo-registration-summary-heading"><h3 id="hfo-registration-summary-heading">' . esc_html__( 'Report Summary', 'hfo-golf-registration' ) . '</h3><div class="hfo-golf-registration-report-summary__grid">';
 		foreach ( $items as $key => $label ) {
+			if ( 'paid' === $key && (float) $summary[ $key ] <= 0 ) {
+				continue;
+			}
 			$value = 'paid' === $key ? $this->format_price( $summary[ $key ] ) : $summary[ $key ];
 			echo '<div class="hfo-golf-registration-report-summary__card"><span>' . esc_html( $label ) . '</span><strong>' . esc_html( $value ) . '</strong></div>';
 		}
@@ -374,6 +415,10 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		?>
 		<form class="hfo-golf-registration-lookup-form" method="get">
 			<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_NAME ); ?>
+			<?php if ( $filters['sort'] ) : ?>
+				<input type="hidden" name="hfo_lookup_sort" value="<?php echo esc_attr( $filters['sort'] ); ?>" />
+				<input type="hidden" name="hfo_lookup_sort_order" value="<?php echo esc_attr( $filters['sort_order'] ); ?>" />
+			<?php endif; ?>
 			<label><?php esc_html_e( 'Keyword', 'hfo-golf-registration' ); ?><input type="search" name="hfo_lookup_keyword" value="<?php echo esc_attr( $filters['keyword'] ); ?>" /></label>
 			<label><?php esc_html_e( 'Event', 'hfo-golf-registration' ); ?><select name="hfo_lookup_event"><option value="0"><?php esc_html_e( 'All Events', 'hfo-golf-registration' ); ?></option><?php foreach ( $events as $event ) : ?><option value="<?php echo esc_attr( $event->ID ); ?>" <?php selected( $filters['event'], $event->ID ); ?>><?php echo esc_html( get_the_title( $event ) ); ?></option><?php endforeach; ?></select></label>
 			<?php $this->render_select( 'hfo_lookup_type', __( 'Registration Type', 'hfo-golf-registration' ), $filters['registration_type'], array( '' => __( 'All Types', 'hfo-golf-registration' ), 'individual' => __( 'Individual', 'hfo-golf-registration' ), 'team' => __( 'Team', 'hfo-golf-registration' ), 'sponsor_only' => __( 'Sponsor Only', 'hfo-golf-registration' ), 'additional_guests' => __( 'Additional Guests', 'hfo-golf-registration' ) ) ); ?>
@@ -416,14 +461,29 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 
 	/** Renders the results table. */
 	private function render_results_table( $rows ) {
-		$headers = array( 'Registration ID', 'Event', 'Main Contact', 'Email', 'Phone', 'Team Name', 'Registration Type', 'Sponsor Level', 'Players', 'Lunch Guests', 'Dinner Guests', 'WooCommerce Order', 'Payment Status', 'Total Paid', 'Date Submitted' );
+		$headers = array( 'order' => '# Order', 'event' => 'Event', '' => 'Main Contact', 'email' => 'Email', 'phone' => 'Phone', 'type' => 'Registration Type', 'team' => 'Team Name', 'payment' => 'Payment Status', 'sponsor' => 'Sponsor Level', 'players' => 'Players' );
 		?>
-		<div class="hfo-golf-registration-lookup-table-wrap"><table><thead><tr><?php foreach ( $headers as $header ) : ?><th scope="col"><?php echo esc_html( $header ); ?></th><?php endforeach; ?></tr></thead><tbody>
+		<div class="hfo-golf-registration-lookup-table-wrap"><table><thead><tr><?php foreach ( $headers as $sort => $header ) : ?><th scope="col"><?php $this->render_sortable_header( $header, $sort ); ?></th><?php endforeach; ?></tr></thead><tbody>
 		<?php foreach ( $rows as $row ) : ?>
-			<tr><td><?php echo esc_html( $row['id'] ); ?></td><td><?php echo esc_html( $row['event'] ); ?></td><td><?php echo esc_html( $row['contact'] ); ?></td><td><?php echo esc_html( $row['email'] ); ?></td><td><?php echo esc_html( $row['phone'] ); ?></td><td><?php echo esc_html( $row['team'] ); ?></td><td><?php echo esc_html( $row['type'] ); ?></td><td><?php echo esc_html( $row['sponsor'] ); ?></td><td><?php echo esc_html( $row['players'] ); ?></td><td><?php echo esc_html( $row['lunch'] ); ?></td><td><?php echo esc_html( $row['dinner'] ); ?></td><td><?php $this->render_order( $row ); ?></td><td><?php echo esc_html( $row['payment_status'] ); ?></td><td><?php echo esc_html( $this->format_price( $row['total'] ) ); ?></td><td><?php echo esc_html( $row['date'] ); ?></td></tr>
+			<tr><td><?php $this->render_order( $row ); ?></td><td><?php echo esc_html( $row['event'] ); ?></td><td><?php echo esc_html( $row['contact'] ); ?></td><td><?php echo esc_html( $row['email'] ); ?></td><td><?php echo esc_html( $row['phone'] ); ?></td><td><?php echo esc_html( $row['type'] ); ?></td><td><?php echo esc_html( $row['team'] ); ?></td><td><?php echo esc_html( $row['payment_status'] ); ?></td><td><?php echo esc_html( $row['sponsor'] ); ?></td><td><?php echo esc_html( $row['players'] ); ?></td></tr>
 		<?php endforeach; ?>
 		</tbody></table></div>
 		<?php
+	}
+
+	/** Renders a table heading, linking sortable columns while preserving filters. */
+	private function render_sortable_header( $label, $sort ) {
+		$sortable = array( 'order', 'event', 'type', 'payment', 'sponsor', 'players' );
+		if ( ! in_array( $sort, $sortable, true ) ) {
+			echo esc_html( $label );
+			return;
+		}
+		$current   = isset( $_GET['hfo_lookup_sort'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort'] ) ) : '';
+		$order     = isset( $_GET['hfo_lookup_sort_order'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort_order'] ) ) : 'asc';
+		$next      = $sort === $current && 'asc' === $order ? 'desc' : 'asc';
+		$indicator = $sort === $current ? ( 'asc' === $order ? ' \u2191' : ' \u2193' ) : '';
+		$url       = add_query_arg( array( 'hfo_lookup_sort' => $sort, 'hfo_lookup_sort_order' => $next, 'hfo_lookup_page' => 1 ) );
+		echo '<a class="hfo-golf-registration-sort" href="' . esc_url( $url ) . '">' . esc_html( $label . $indicator ) . '</a>';
 	}
 
 	/** Renders an order number as plain text. */
