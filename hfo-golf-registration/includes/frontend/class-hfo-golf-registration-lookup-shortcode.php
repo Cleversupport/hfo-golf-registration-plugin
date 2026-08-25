@@ -482,7 +482,14 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$order     = isset( $_GET['hfo_lookup_sort_order'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort_order'] ) ) : 'asc';
 		$next      = $sort === $current && 'asc' === $order ? 'desc' : 'asc';
 		$indicator = $sort === $current ? ( 'asc' === $order ? ' \u2191' : ' \u2193' ) : '';
-		$url       = add_query_arg( array( 'hfo_lookup_sort' => $sort, 'hfo_lookup_sort_order' => $next, 'hfo_lookup_page' => 1 ) );
+		$url       = add_query_arg(
+			array(
+				'hfo_lookup_sort'                => $sort,
+				'hfo_lookup_sort_order'          => $next,
+				'hfo_lookup_page'                => 1,
+				'hfo_registration_lookup_nonce' => wp_create_nonce( self::NONCE_ACTION ),
+			)
+		);
 		echo '<a class="hfo-golf-registration-sort" href="' . esc_url( $url ) . '">' . esc_html( $label . $indicator ) . '</a>';
 	}
 
