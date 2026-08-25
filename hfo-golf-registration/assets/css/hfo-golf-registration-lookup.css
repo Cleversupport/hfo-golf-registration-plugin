@@ -1,3 +1,151 @@
-.hfo-golf-registration-lookup-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;align-items:end;margin:1rem 0 1.5rem}.hfo-golf-registration-lookup-form label{display:flex;flex-direction:column;gap:.35rem;font-weight:600}.hfo-golf-registration-lookup-form input,.hfo-golf-registration-lookup-form select,.hfo-golf-registration-lookup-form button{min-height:42px;padding:.5rem}.hfo-golf-registration-lookup-table-wrap{overflow-x:auto}.hfo-golf-registration-lookup table{width:100%;border-collapse:collapse;font-size:.9rem}.hfo-golf-registration-lookup th,.hfo-golf-registration-lookup td{padding:.65rem;border:1px solid #ddd;text-align:left;vertical-align:top;white-space:nowrap}.hfo-golf-registration-lookup th{background:#f5f5f5}.hfo-golf-registration-lookup-pagination{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}.hfo-golf-registration-lookup-pagination a,.hfo-golf-registration-lookup-pagination span{border:1px solid #ccc;padding:.35rem .65rem}.hfo-golf-registration-lookup-pagination span{font-weight:700;background:#f5f5f5}.hfo-golf-registration-lookup-message--error{color:#8a1f11}
+.hfo-golf-registration-lookup-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 1rem;
+	align-items: end;
+	margin: 1rem 0 1.5rem;
+}
 
-@media (max-width:767px){.hfo-golf-registration-my-account .hfo-golf-registration-lookup-table-wrap{overflow:visible}.hfo-golf-registration-my-account table,.hfo-golf-registration-my-account tbody,.hfo-golf-registration-my-account tr,.hfo-golf-registration-my-account td{display:block;width:100%}.hfo-golf-registration-my-account thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}.hfo-golf-registration-my-account tr{box-sizing:border-box;margin:0 0 1rem;border:1px solid #ddd;background:#fff}.hfo-golf-registration-my-account td{box-sizing:border-box;display:grid;grid-template-columns:minmax(115px,40%) 1fr;gap:.75rem;border:0;border-bottom:1px solid #eee;white-space:normal}.hfo-golf-registration-my-account td:last-child{border-bottom:0}.hfo-golf-registration-my-account td:before{content:attr(data-label);font-weight:700}}
+.hfo-golf-registration-lookup-form label {
+	display: flex;
+	flex-direction: column;
+	gap: .35rem;
+	font-weight: 600;
+}
+
+.hfo-golf-registration-lookup-form input,
+.hfo-golf-registration-lookup-form select,
+.hfo-golf-registration-lookup-form button {
+	min-height: 42px;
+	padding: .5rem;
+}
+
+.hfo-golf-registration-lookup-table-wrap {
+	overflow-x: auto;
+}
+
+.hfo-golf-registration-lookup table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: .9rem;
+}
+
+.hfo-golf-registration-lookup th,
+.hfo-golf-registration-lookup td {
+	padding: .65rem;
+	border: 1px solid #ddd;
+	text-align: left;
+	vertical-align: top;
+	white-space: nowrap;
+}
+
+.hfo-golf-registration-lookup th {
+	background: #f5f5f5;
+}
+
+.hfo-golf-registration-cards {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+	width: 100%;
+	min-width: 0;
+}
+
+.hfo-golf-registration-card {
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+	padding: 1.25rem;
+	border: 1px solid #e1e1e1;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+}
+
+.hfo-golf-registration-card__fields {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	column-gap: 2rem;
+	margin: 0;
+}
+
+.hfo-golf-registration-card__field {
+	display: grid;
+	grid-template-columns: minmax(125px, 38%) minmax(0, 1fr);
+	gap: .75rem;
+	padding: .7rem 0;
+	border-bottom: 1px solid #eee;
+}
+
+.hfo-golf-registration-card__field dt,
+.hfo-golf-registration-card__field dd {
+	min-width: 0;
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.hfo-golf-registration-card__field dt {
+	font-weight: 700;
+	color: #444;
+}
+
+.hfo-golf-registration-card__actions {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: .75rem;
+	margin-top: 1.25rem;
+}
+
+.hfo-golf-registration-card__actions .button {
+	white-space: normal;
+	text-align: center;
+}
+
+.hfo-golf-registration-lookup-pagination {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+	margin-top: 1rem;
+}
+
+.hfo-golf-registration-lookup-pagination a,
+.hfo-golf-registration-lookup-pagination span {
+	padding: .35rem .65rem;
+	border: 1px solid #ccc;
+}
+
+.hfo-golf-registration-lookup-pagination span {
+	font-weight: 700;
+	background: #f5f5f5;
+}
+
+.hfo-golf-registration-lookup-message--error {
+	color: #8a1f11;
+}
+
+@media (max-width: 900px) {
+	.hfo-golf-registration-card__fields {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 480px) {
+	.hfo-golf-registration-card {
+		padding: 1rem;
+	}
+
+	.hfo-golf-registration-card__field {
+		grid-template-columns: 1fr;
+		gap: .25rem;
+	}
+
+	.hfo-golf-registration-card__actions {
+		flex-direction: column;
+	}
+
+	.hfo-golf-registration-card__actions .button {
+		box-sizing: border-box;
+		width: 100%;
+	}
+}

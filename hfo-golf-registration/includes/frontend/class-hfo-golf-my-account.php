@@ -54,35 +54,67 @@ class HFO_Golf_My_Account {
 			<h2><?php esc_html_e( 'Golf Registrations', 'hfo-golf-registration' ); ?></h2>
 			<?php if ( empty( $rows ) ) : ?>
 				<p class="hfo-golf-registration-lookup-message"><?php esc_html_e( 'You do not have any golf registrations yet.', 'hfo-golf-registration' ); ?></p>
-			<?php else : $this->render_table( $rows ); endif; ?>
+			<?php else : $this->render_cards( $rows ); endif; ?>
 		</div>
 		<?php
 	}
 
-	/** Renders the shared registration data in a responsive table/card structure. */
-	private function render_table( $rows ) {
-		$headers = array( 'Event Name', 'Event Date', 'Registration Type', 'Team Name', 'Sponsor Level', 'Players Count', 'Lunch Guests', 'Dinner Guests', 'Order Number', 'Payment Status', 'Total Paid' );
+	/** Renders each registration as a vertically stacked card. */
+	private function render_cards( $rows ) {
+		$fields = array(
+			'event'          => __( 'Event Name', 'hfo-golf-registration' ),
+			'event_date'     => __( 'Event Date', 'hfo-golf-registration' ),
+			'type'           => __( 'Registration Type', 'hfo-golf-registration' ),
+			'team'           => __( 'Team Name', 'hfo-golf-registration' ),
+			'sponsor'        => __( 'Sponsor Level', 'hfo-golf-registration' ),
+			'payment_status' => __( 'Payment Status', 'hfo-golf-registration' ),
+			'contact'        => __( 'Main Contact', 'hfo-golf-registration' ),
+			'email'          => __( 'Email', 'hfo-golf-registration' ),
+			'phone'          => __( 'Phone', 'hfo-golf-registration' ),
+			'players'        => __( 'Players Count', 'hfo-golf-registration' ),
+			'lunch'          => __( 'Lunch Guests', 'hfo-golf-registration' ),
+			'dinner'         => __( 'Dinner Guests', 'hfo-golf-registration' ),
+		);
 		?>
-		<div class="hfo-golf-registration-lookup-table-wrap"><table><thead><tr><?php foreach ( $headers as $header ) : ?><th scope="col"><?php echo esc_html( $header ); ?></th><?php endforeach; ?></tr></thead><tbody>
-		<?php foreach ( $rows as $row ) : ?><tr>
-			<?php $this->cell( $headers[0], $row['event'] ); $this->cell( $headers[1], $row['event_date'] ); $this->cell( $headers[2], $row['type'] ); $this->cell( $headers[3], $row['team'] ); $this->cell( $headers[4], $row['sponsor'] ); $this->cell( $headers[5], $row['players'] ); $this->cell( $headers[6], $row['lunch'] ); $this->cell( $headers[7], $row['dinner'] ); ?>
-			<td data-label="<?php echo esc_attr( $headers[8] ); ?>"><?php $this->render_order( $row ); ?></td>
-			<?php $this->cell( $headers[9], $row['payment_status'] ); $this->cell( $headers[10], $this->format_price( $row['total'] ) ); ?>
-		</tr><?php endforeach; ?></tbody></table></div>
+		<div class="hfo-golf-registration-cards">
+			<?php foreach ( $rows as $row ) : ?>
+				<article class="hfo-golf-registration-card">
+					<dl class="hfo-golf-registration-card__fields">
+						<?php foreach ( $fields as $key => $label ) : ?>
+							<?php $this->render_field( $label, $row[ $key ] ); ?>
+						<?php endforeach; ?>
+						<?php $this->render_field( __( 'Order Number', 'hfo-golf-registration' ), $row['order_number'] ? '#' . $row['order_number'] : '' ); ?>
+						<?php $this->render_field( __( 'Total Paid', 'hfo-golf-registration' ), $this->format_price( $row['total'] ) ); ?>
+					</dl>
+					<?php $this->render_actions( $row ); ?>
+				</article>
+			<?php endforeach; ?>
+		</div>
 		<?php
 	}
 
-	/** Outputs one escaped table value. */
-	private function cell( $label, $value ) { echo '<td data-label="' . esc_attr( $label ) . '">' . esc_html( '' === (string) $value ? '—' : $value ) . '</td>'; }
+	/** Outputs one escaped label/value row. */
+	private function render_field( $label, $value ) {
+		?>
+		<div class="hfo-golf-registration-card__field">
+			<dt><?php echo esc_html( $label ); ?></dt>
+			<dd><?php echo esc_html( '' === (string) $value ? '—' : $value ); ?></dd>
+		</div>
+		<?php
+	}
 
-	/** Outputs a permitted customer/admin order link, or an unlinked order number. */
-	private function render_order( $row ) {
-		if ( ! $row['order_number'] ) { echo esc_html( '—' ); return; }
+	/** Outputs the permitted order action when an order URL is available. */
+	private function render_actions( $row ) {
+		if ( ! $row['order_number'] ) { return; }
 		$url = '';
 		if ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_shop_orders' ) ) { $url = $row['order_edit_url']; }
 		elseif ( current_user_can( 'view_order', $row['order_id'] ) ) { $url = $row['order_view_url']; }
-		echo '#' . esc_html( $row['order_number'] );
-		if ( $url ) { echo ' <a href="' . esc_url( $url ) . '">' . esc_html__( 'View Order', 'hfo-golf-registration' ) . '</a>'; }
+		if ( ! $url ) { return; }
+		?>
+		<div class="hfo-golf-registration-card__actions">
+			<a class="button" href="<?php echo esc_url( $url ); ?>"><?php esc_html_e( 'View Order', 'hfo-golf-registration' ); ?></a>
+		</div>
+		<?php
 	}
 
 	/** Returns a plain-text localized currency value. */
