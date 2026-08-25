@@ -203,8 +203,6 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'dinner'             => absint( get_post_meta( $registration_id, 'additional_dinner_count', true ) ),
 			'order_id'           => $order_id,
 			'order_number'       => $order ? $order->get_order_number() : ( $order_id ? $order_id : '' ),
-			'order_edit_url'     => $order && is_callable( array( $order, 'get_edit_order_url' ) ) ? $order->get_edit_order_url() : get_edit_post_link( $order_id, 'raw' ),
-			'order_view_url'     => $order && is_callable( array( $order, 'get_view_order_url' ) ) ? $order->get_view_order_url() : '',
 			'payment_status_key' => $status,
 			'payment_status'     => function_exists( 'wc_get_order_status_name' ) ? wc_get_order_status_name( $status ) : ucwords( str_replace( '-', ' ', $status ) ),
 			'total'              => $order ? (float) $order->get_total() : 0.0,
@@ -292,18 +290,13 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		<?php
 	}
 
-	/** Renders an order number, linked only for users with order management access. */
+	/** Renders an order number as plain text. */
 	private function render_order( $row ) {
 		if ( ! $row['order_number'] ) {
 			echo '&mdash;';
 			return;
 		}
-		$url = ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_shop_orders' ) ) ? $row['order_edit_url'] : '';
-		if ( $url ) {
-			echo '<a href="' . esc_url( $url ) . '">#' . esc_html( $row['order_number'] ) . '</a>';
-		} else {
-			echo '#' . esc_html( $row['order_number'] );
-		}
+		echo '#' . esc_html( $row['order_number'] );
 	}
 
 	/** Formats currency without returning unescaped markup. */
