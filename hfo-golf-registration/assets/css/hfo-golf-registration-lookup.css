@@ -24,6 +24,42 @@
 	overflow-x: auto;
 }
 
+.hfo-golf-registration-export-form {
+	margin: -0.5rem 0 1.5rem;
+}
+
+.hfo-golf-registration-export-form button {
+	padding: .6rem 1rem;
+}
+
+.hfo-golf-registration-report-summary {
+	margin: 1.5rem 0;
+}
+
+.hfo-golf-registration-report-summary__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: .75rem;
+}
+
+.hfo-golf-registration-report-summary__card {
+	display: flex;
+	flex-direction: column;
+	gap: .3rem;
+	padding: 1rem;
+	border: 1px solid #ddd;
+	border-radius: 6px;
+	background: #f8f8f8;
+}
+
+.hfo-golf-registration-report-summary__card span {
+	font-size: .85rem;
+}
+
+.hfo-golf-registration-report-summary__card strong {
+	font-size: 1.2rem;
+}
+
 .hfo-golf-registration-lookup table {
 	width: 100%;
 	border-collapse: collapse;
