@@ -461,11 +461,11 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 
 	/** Renders the results table. */
 	private function render_results_table( $rows ) {
-		$headers = array( 'order' => '# Order', 'event' => 'Event', '' => 'Main Contact', 'email' => 'Email', 'phone' => 'Phone', 'type' => 'Registration Type', 'team' => 'Team Name', 'payment' => 'Payment Status', 'sponsor' => 'Sponsor Level', 'players' => 'Players' );
+		$headers = array( 'order' => '# Order', 'event' => 'Event', '' => 'Main Contact', 'email' => 'Email', 'phone' => 'Phone', 'type' => 'Registration Type', 'team' => 'Team Name', 'payment' => 'Payment Status', 'sponsor' => 'Sponsor Level', 'players' => 'Players', 'amount' => 'Order Amount' );
 		?>
 		<div class="hfo-golf-registration-lookup-table-wrap"><table><thead><tr><?php foreach ( $headers as $sort => $header ) : ?><th scope="col"><?php $this->render_sortable_header( $header, $sort ); ?></th><?php endforeach; ?></tr></thead><tbody>
 		<?php foreach ( $rows as $row ) : ?>
-			<tr><td><?php $this->render_order( $row ); ?></td><td><?php echo esc_html( $row['event'] ); ?></td><td><?php echo esc_html( $row['contact'] ); ?></td><td><?php echo esc_html( $row['email'] ); ?></td><td><?php echo esc_html( $row['phone'] ); ?></td><td><?php echo esc_html( $row['type'] ); ?></td><td><?php echo esc_html( $row['team'] ); ?></td><td><?php echo esc_html( $row['payment_status'] ); ?></td><td><?php echo esc_html( $row['sponsor'] ); ?></td><td><?php echo esc_html( $row['players'] ); ?></td></tr>
+			<tr><td><?php $this->render_order( $row ); ?></td><td><?php echo esc_html( $row['event'] ); ?></td><td><?php echo esc_html( $row['contact'] ); ?></td><td><?php echo esc_html( $row['email'] ); ?></td><td><?php echo esc_html( $row['phone'] ); ?></td><td><?php echo esc_html( $row['type'] ); ?></td><td><?php echo esc_html( $row['team'] ); ?></td><td><?php echo esc_html( $row['payment_status'] ); ?></td><td><?php echo esc_html( $row['sponsor'] ); ?></td><td><?php echo esc_html( $row['players'] ); ?></td><td><?php echo esc_html( $this->format_price( $row['total'] ) ); ?></td></tr>
 		<?php endforeach; ?>
 		</tbody></table></div>
 		<?php
@@ -481,7 +481,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$current   = isset( $_GET['hfo_lookup_sort'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort'] ) ) : '';
 		$order     = isset( $_GET['hfo_lookup_sort_order'] ) ? sanitize_key( wp_unslash( $_GET['hfo_lookup_sort_order'] ) ) : 'asc';
 		$next      = $sort === $current && 'asc' === $order ? 'desc' : 'asc';
-		$indicator = $sort === $current ? ( 'asc' === $order ? ' \u2191' : ' \u2193' ) : '';
+		$indicator = $sort === $current ? ( 'asc' === $order ? ' ↑' : ' ↓' ) : '';
 		$url       = add_query_arg(
 			array(
 				'hfo_lookup_sort'                => $sort,
