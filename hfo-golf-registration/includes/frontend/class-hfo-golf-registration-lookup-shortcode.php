@@ -156,12 +156,13 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 	/** Gets and validates filters supplied to the authenticated export action. */
 	private function get_export_filters() {
 		$filters = array(
-			'keyword'           => isset( $_POST['hfo_lookup_keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['hfo_lookup_keyword'] ) ) : '',
-			'event'             => isset( $_POST['hfo_lookup_event'] ) ? absint( wp_unslash( $_POST['hfo_lookup_event'] ) ) : 0,
-			'registration_type' => isset( $_POST['hfo_lookup_type'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_type'] ) ) : '',
-			'payment_status'    => isset( $_POST['hfo_lookup_payment'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_payment'] ) ) : '',
-			'sponsor_level'     => isset( $_POST['hfo_lookup_sponsor'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_sponsor'] ) ) : '',
-			'page'              => 1,
+			'keyword'             => isset( $_POST['hfo_lookup_keyword'] ) ? sanitize_text_field( wp_unslash( $_POST['hfo_lookup_keyword'] ) ) : '',
+			'event'               => isset( $_POST['hfo_lookup_event'] ) ? absint( wp_unslash( $_POST['hfo_lookup_event'] ) ) : 0,
+			'registration_type'   => isset( $_POST['hfo_lookup_type'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_type'] ) ) : '',
+			'payment_status'      => isset( $_POST['hfo_lookup_payment'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_payment'] ) ) : '',
+			'sponsor_level'       => isset( $_POST['hfo_lookup_sponsor'] ) ? sanitize_key( wp_unslash( $_POST['hfo_lookup_sponsor'] ) ) : '',
+			'include_zero_amount' => isset( $_POST['hfo_include_zero_amount'] ) && 'yes' === sanitize_key( wp_unslash( $_POST['hfo_include_zero_amount'] ) ),
+			'page'                => 1,
 		);
 		$filters['registration_type'] = in_array( $filters['registration_type'], array( 'individual', 'team', 'sponsor_only', 'additional_guests' ), true ) ? $filters['registration_type'] : '';
 		$filters['payment_status'] = in_array( $filters['payment_status'], array( 'pending', 'processing', 'completed', 'failed', 'cancelled', 'refunded', 'on-hold' ), true ) ? $filters['payment_status'] : '';
@@ -203,6 +204,9 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		$rows = array();
 		foreach ( $query->posts as $registration_id ) {
 			$row = $this->build_registration_lookup_row( $registration_id );
+			if ( empty( $filters['include_zero_amount'] ) && (float) $row['total'] <= 0 ) {
+				continue;
+			}
 			if ( ! $this->row_matches_filters( $row, $filters ) ) {
 				continue;
 			}
@@ -330,10 +334,14 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		return in_array( $row['payment_status_key'], array( 'processing', 'completed' ), true );
 	}
 
-	/** Builds totals from every matching registration, before pagination. */
+	/** Builds totals from positive-value matching registrations, before pagination. */
 	private function build_report_summary( $rows ) {
-		$summary = array( 'total' => count( $rows ), 'paid' => 0.0, 'team' => 0, 'individual' => 0, 'sponsor_only' => 0, 'additional_guests' => 0, 'platinum' => 0, 'gold' => 0, 'silver' => 0, 'tee' => 0, 'lunch' => 0, 'dinner' => 0 );
+		$summary = array( 'total' => 0, 'paid' => 0.0, 'team' => 0, 'individual' => 0, 'sponsor_only' => 0, 'additional_guests' => 0, 'platinum' => 0, 'gold' => 0, 'silver' => 0, 'tee' => 0, 'lunch' => 0, 'dinner' => 0 );
 		foreach ( $rows as $row ) {
+			if ( (float) $row['total'] <= 0 ) {
+				continue;
+			}
+			++$summary['total'];
 			if ( $this->row_is_paid( $row ) ) {
 				$summary['paid'] += (float) $row['total'];
 			}
@@ -445,6 +453,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			<?php foreach ( $fields as $name => $value ) : ?>
 				<input type="hidden" name="<?php echo esc_attr( $name ); ?>" value="<?php echo esc_attr( $value ); ?>" />
 			<?php endforeach; ?>
+			<?php $this->render_select( 'hfo_include_zero_amount', __( 'Include Zero Amount Orders', 'hfo-golf-registration' ), 'no', array( 'no' => __( 'No', 'hfo-golf-registration' ), 'yes' => __( 'Yes', 'hfo-golf-registration' ) ) ); ?>
 			<button type="submit"><?php esc_html_e( 'Export CSV', 'hfo-golf-registration' ); ?></button>
 		</form>
 		<?php
