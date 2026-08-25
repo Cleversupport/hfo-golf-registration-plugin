@@ -49,6 +49,9 @@ class HFO_Golf_Registration {
 		$registration_lookup_shortcode = new HFO_Golf_Registration_Lookup_Shortcode();
 		$registration_lookup_shortcode->register_hooks();
 
+		$my_account = new HFO_Golf_My_Account( $registration_lookup_shortcode );
+		$my_account->register_hooks();
+
 		$jetformbuilder = new HFO_Golf_Registration_JetFormBuilder();
 		$jetformbuilder->register_hooks();
 	}
