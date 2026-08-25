@@ -106,9 +106,7 @@ class HFO_Golf_My_Account {
 	/** Outputs the permitted order action when an order URL is available. */
 	private function render_actions( $row ) {
 		if ( ! $row['order_number'] ) { return; }
-		$url = '';
-		if ( current_user_can( 'manage_woocommerce' ) || current_user_can( 'edit_shop_orders' ) ) { $url = $row['order_edit_url']; }
-		elseif ( current_user_can( 'view_order', $row['order_id'] ) ) { $url = $row['order_view_url']; }
+		$url = $row['order_view_url'];
 		if ( ! $url ) { return; }
 		?>
 		<div class="hfo-golf-registration-card__actions">
