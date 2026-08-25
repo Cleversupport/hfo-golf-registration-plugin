@@ -79,6 +79,18 @@
 	background: #f5f5f5;
 }
 
+.hfo-golf-registration-sort {
+	display: inline-block;
+	color: inherit;
+	font-weight: inherit;
+	text-decoration: none;
+}
+
+.hfo-golf-registration-sort:hover,
+.hfo-golf-registration-sort:focus {
+	text-decoration: underline;
+}
+
 .hfo-golf-registration-cards {
 	display: flex;
 	flex-direction: column;
