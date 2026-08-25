@@ -49,6 +49,9 @@ class HFO_Golf_Registration_Settings {
 	 */
 	const MEAL_COUPON_ACCESS_SECTION = 'hfo_golf_registration_meal_coupon_access';
 
+	/** Registration lookup access section ID. */
+	const REGISTRATION_LOOKUP_ACCESS_SECTION = 'hfo_golf_registration_lookup_access';
+
 	/**
 	 * Frontend styling section ID.
 	 *
@@ -90,6 +93,9 @@ class HFO_Golf_Registration_Settings {
 	 * @var string
 	 */
 	const MEAL_COUPON_ACCESS_MESSAGE_OPTION = 'hfo_golf_meal_coupon_access_message';
+
+	/** Option key for registration lookup roles. */
+	const REGISTRATION_LOOKUP_ALLOWED_ROLES_OPTION = 'hfo_golf_registration_lookup_allowed_roles';
 
 	/**
 	 * Option key for custom frontend CSS.
@@ -236,6 +242,16 @@ class HFO_Golf_Registration_Settings {
 
 		register_setting(
 			self::SETTINGS_GROUP,
+			self::REGISTRATION_LOOKUP_ALLOWED_ROLES_OPTION,
+			array(
+				'type'              => 'array',
+				'sanitize_callback' => array( $this, 'sanitize_registration_lookup_allowed_roles' ),
+				'default'           => array(),
+			)
+		);
+
+		register_setting(
+			self::SETTINGS_GROUP,
 			self::CUSTOM_FRONTEND_CSS_OPTION,
 			array(
 				'type'              => 'string',
@@ -336,6 +352,13 @@ class HFO_Golf_Registration_Settings {
 		);
 
 		add_settings_section(
+			self::REGISTRATION_LOOKUP_ACCESS_SECTION,
+			esc_html__( 'Registration Lookup Access', 'hfo-golf-registration' ),
+			array( $this, 'render_registration_lookup_access_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_section(
 			self::FRONTEND_STYLING_SECTION,
 			esc_html__( 'Frontend Styling', 'hfo-golf-registration' ),
 			array( $this, 'render_frontend_styling_section' ),
@@ -377,6 +400,14 @@ class HFO_Golf_Registration_Settings {
 			array( $this, 'render_meal_coupon_access_message_field' ),
 			self::PAGE_SLUG,
 			self::MEAL_COUPON_ACCESS_SECTION
+		);
+
+		add_settings_field(
+			self::REGISTRATION_LOOKUP_ALLOWED_ROLES_OPTION,
+			esc_html__( 'Registration Lookup Access Roles', 'hfo-golf-registration' ),
+			array( $this, 'render_registration_lookup_allowed_roles_field' ),
+			self::PAGE_SLUG,
+			self::REGISTRATION_LOOKUP_ACCESS_SECTION
 		);
 
 		add_settings_field(
@@ -541,6 +572,11 @@ class HFO_Golf_Registration_Settings {
 		);
 	}
 
+	/** Renders the registration lookup access section description. */
+	public function render_registration_lookup_access_section() {
+		printf( '<p>%s</p>', esc_html__( 'Choose the WordPress roles that may securely search registrations from the frontend. Administrators always have access.', 'hfo-golf-registration' ) );
+	}
+
 	/**
 	 * Renders the frontend styling section description.
 	 *
@@ -630,6 +666,34 @@ class HFO_Golf_Registration_Settings {
 			'<p class="description">%s</p>',
 			esc_html__( 'Administrators and the HFO Meal Coupon Manager role always keep meal coupon access and do not need to be selected.', 'hfo-golf-registration' )
 		);
+	}
+
+	/** Renders the registration lookup role checkboxes. */
+	public function render_registration_lookup_allowed_roles_field() {
+		$selected = get_option( self::REGISTRATION_LOOKUP_ALLOWED_ROLES_OPTION, array() );
+		$selected = is_array( $selected ) ? array_map( 'sanitize_key', $selected ) : array();
+		$roles    = get_editable_roles();
+
+		if ( empty( $roles ) ) {
+			printf( '<p>%s</p>', esc_html__( 'No editable roles are available.', 'hfo-golf-registration' ) );
+			return;
+		}
+
+		echo '<fieldset>';
+		foreach ( $roles as $slug => $details ) {
+			if ( 'administrator' === $slug ) {
+				continue;
+			}
+			printf(
+				'<label><input type="checkbox" name="%1$s[]" value="%2$s"%3$s /> %4$s</label><br />',
+				esc_attr( self::REGISTRATION_LOOKUP_ALLOWED_ROLES_OPTION ),
+				esc_attr( $slug ),
+				checked( in_array( $slug, $selected, true ), true, false ),
+				esc_html( isset( $details['name'] ) ? translate_user_role( $details['name'] ) : $slug )
+			);
+		}
+		echo '</fieldset>';
+		printf( '<p class="description">%s</p>', esc_html__( 'Administrators always keep registration lookup access and do not need to be selected.', 'hfo-golf-registration' ) );
 	}
 
 	/**
@@ -1011,6 +1075,28 @@ class HFO_Golf_Registration_Settings {
 
 		HFO_Golf_Registration_Activator::sync_meal_coupon_role_capabilities( $roles );
 
+		return $roles;
+	}
+
+	/**
+	 * Sanitizes registration lookup roles and updates their capability.
+	 *
+	 * @param mixed $value Raw option value.
+	 * @return array<int,string>
+	 */
+	public function sanitize_registration_lookup_allowed_roles( $value ) {
+		$value = is_array( $value ) ? $value : array();
+		$wp_roles = wp_roles();
+		$valid = $wp_roles ? array_keys( $wp_roles->roles ) : array();
+		$roles = array();
+		foreach ( $value as $slug ) {
+			$slug = sanitize_key( wp_unslash( $slug ) );
+			if ( 'administrator' !== $slug && in_array( $slug, $valid, true ) ) {
+				$roles[] = $slug;
+			}
+		}
+		$roles = array_values( array_unique( $roles ) );
+		HFO_Golf_Registration_Activator::sync_registration_lookup_role_capabilities( $roles );
 		return $roles;
 	}
 
