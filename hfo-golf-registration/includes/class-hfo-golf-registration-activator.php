@@ -57,9 +57,11 @@ class HFO_Golf_Registration_Activator {
 		$administrator = get_role( 'administrator' );
 		if ( $administrator ) {
 			$administrator->add_cap( 'manage_hfo_meal_coupons' );
+			$administrator->add_cap( 'view_hfo_golf_registrations' );
 		}
 
 		self::sync_meal_coupon_role_capabilities();
+		self::sync_registration_lookup_role_capabilities();
 	}
 
 	/**
@@ -100,6 +102,37 @@ class HFO_Golf_Registration_Activator {
 			}
 
 			$role->remove_cap( 'manage_hfo_meal_coupons' );
+		}
+	}
+
+	/**
+	 * Synchronizes registration lookup access with the configured roles.
+	 *
+	 * @param array|null $allowed_roles Optional sanitized role slugs.
+	 * @return void
+	 */
+	public static function sync_registration_lookup_role_capabilities( $allowed_roles = null ) {
+		$wp_roles = wp_roles();
+		if ( ! $wp_roles ) {
+			return;
+		}
+
+		if ( null === $allowed_roles ) {
+			$allowed_roles = get_option( 'hfo_golf_registration_lookup_allowed_roles', array() );
+		}
+		$allowed_roles  = is_array( $allowed_roles ) ? array_map( 'sanitize_key', $allowed_roles ) : array();
+		$roles_to_allow = array_unique( array_merge( $allowed_roles, array( 'administrator' ) ) );
+
+		foreach ( array_keys( $wp_roles->roles ) as $role_slug ) {
+			$role = get_role( $role_slug );
+			if ( ! $role ) {
+				continue;
+			}
+			if ( in_array( $role_slug, $roles_to_allow, true ) ) {
+				$role->add_cap( 'view_hfo_golf_registrations' );
+			} else {
+				$role->remove_cap( 'view_hfo_golf_registrations' );
+			}
 		}
 	}
 }
