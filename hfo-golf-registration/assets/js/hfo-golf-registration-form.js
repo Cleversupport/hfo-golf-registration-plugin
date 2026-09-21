@@ -9,10 +9,10 @@
 		silver: 'Silver Sponsor'
 	};
 	var REGISTRATION_LABELS = {
-		team: 'Team',
-		individual: 'Individual',
-		sponsor_only: 'Sponsor Only',
-		additional_guests: 'Additional Guests'
+		team: 'Team Registration',
+		individual: 'Individual Player Registration',
+		additional_guests: 'Guest Meal Registration',
+		sponsor_only: 'Sponsor Registration'
 	};
 	var OPTIONAL_FIELD_NAMES = [
 		'hfo_golf_team_name',

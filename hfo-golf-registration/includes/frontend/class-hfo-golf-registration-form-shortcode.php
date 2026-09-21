@@ -116,10 +116,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 					'registration_type',
 					esc_html__( 'Registration Type', 'hfo-golf-registration' ),
 					array(
-						'team'              => esc_html__( 'Team', 'hfo-golf-registration' ),
-						'individual'        => esc_html__( 'Individual', 'hfo-golf-registration' ),
-						'sponsor_only'      => esc_html__( 'Sponsor Only', 'hfo-golf-registration' ),
-						'additional_guests' => esc_html__( 'Additional Guests', 'hfo-golf-registration' ),
+						'team'              => esc_html__( 'Team Registration', 'hfo-golf-registration' ),
+						'individual'        => esc_html__( 'Individual Player Registration', 'hfo-golf-registration' ),
+						'additional_guests' => esc_html__( 'Guest Meal Registration', 'hfo-golf-registration' ),
+						'sponsor_only'      => esc_html__( 'Sponsor Registration', 'hfo-golf-registration' ),
 					),
 					true
 				);
@@ -392,7 +392,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 		}
 
 		if ( 'sponsor_only' === $meta['registration_type'] && '' === $meta['sponsorship_level'] && '1' !== $meta['tee_sponsor_selected'] ) {
-			wp_die( esc_html__( 'Please select at least one sponsorship item for Sponsor Only registration.', 'hfo-golf-registration' ) );
+			wp_die( esc_html__( 'Please select at least one sponsorship item for Sponsor Registration.', 'hfo-golf-registration' ) );
 		}
 
 		if ( ! $this->has_billable_checkout_items( $meta ) ) {
@@ -588,7 +588,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			}
 		}
 
-		return __( 'Sponsor Only', 'hfo-golf-registration' );
+		return __( 'Sponsor Registration', 'hfo-golf-registration' );
 	}
 
 	/**
