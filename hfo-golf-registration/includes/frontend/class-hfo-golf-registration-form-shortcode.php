@@ -165,7 +165,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<?php $this->render_number_field( 'additional_lunch_count', esc_html__( 'Additional Lunch Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_number_field( 'additional_dinner_count', esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ) ); ?>
 				<div data-hfo-golf-guest-names hidden>
-					<?php $this->render_textarea_field( 'hfo_golf_guest_names', esc_html__( 'Guest Name(s)', 'hfo-golf-registration' ), esc_html__( 'Enter one guest name per line.', 'hfo-golf-registration' ) ); ?>
+					<?php $this->render_textarea_field( 'hfo_golf_guest_names', esc_html__( 'Guest Name(s)', 'hfo-golf-registration' ), esc_html__( 'Enter one guest name per line or separate names with commas.', 'hfo-golf-registration' ) ); ?>
 				</div>
 			</section>
 
@@ -706,7 +706,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'additional_lunch_count'    => (string) $this->sanitize_post_count( 'additional_lunch_count' ),
 			'additional_dinner_count'   => (string) $this->sanitize_post_count( 'additional_dinner_count' ),
 			'additional_guests_details' => $this->sanitize_post_textarea( 'additional_guests_details' ),
-			'hfo_golf_guest_names'      => $this->sanitize_post_textarea( 'hfo_golf_guest_names' ),
+			'hfo_golf_guest_names'      => hfo_golf_normalize_guest_names( $this->sanitize_post_textarea( 'hfo_golf_guest_names' ) ),
 			'sponsorship_level'         => $sponsorship_level,
 			'tee_sponsor_selected'      => $tee_sponsor_selected,
 			'sponsorship_amount'        => '0.00',
