@@ -464,6 +464,21 @@ function hfo_golf_internal_email_row( $label, $value, $multiline = false ) {
 	return '<tr><th style="padding:7px 12px 7px 0;text-align:left;vertical-align:top;white-space:nowrap">' . esc_html( $label ) . '</th><td style="padding:7px 0">' . $display . '</td></tr>';
 }
 
+/** Returns an internal-email row with each normalized guest in its own list item. */
+function hfo_golf_internal_email_guest_names_row( $label, $value ) {
+	$normalized = hfo_golf_normalize_guest_names( $value );
+	if ( '' === $normalized ) {
+		return '';
+	}
+
+	$items = '';
+	foreach ( explode( "\n", $normalized ) as $name ) {
+		$items .= '<li>' . esc_html( $name ) . '</li>';
+	}
+
+	return '<tr><th style="padding:7px 12px 7px 0;text-align:left;vertical-align:top;white-space:nowrap">' . esc_html( $label ) . '</th><td style="padding:7px 0"><ul style="margin:0;padding-left:18px">' . $items . '</ul></td></tr>';
+}
+
 /** Wraps internal-email rows in an operational section. */
 function hfo_golf_internal_email_section( $heading, $rows ) {
 	return '' === $rows ? '' : '<h2 style="font-size:16px;margin:26px 0 8px;border-bottom:2px solid #A058BB;padding-bottom:6px">' . esc_html( $heading ) . '</h2><table role="presentation" style="border-collapse:collapse;width:100%">' . $rows . '</table>';
@@ -589,7 +604,7 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		}
 		$lunch = absint( $get( 'additional_lunch_count' ) ); $dinner = absint( $get( 'additional_dinner_count' ) );
 		$meals = '';
-		if ( $lunch + $dinner > 0 ) { $meals .= hfo_golf_internal_email_row( __( 'Lunch Guests', 'hfo-golf-registration' ), $lunch ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Dinner Guests', 'hfo-golf-registration' ), $dinner ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Guest Name(s)', 'hfo-golf-registration' ), $get( 'hfo_golf_guest_names' ), true ); }
+		if ( $lunch + $dinner > 0 ) { $meals .= hfo_golf_internal_email_row( __( 'Lunch Guests', 'hfo-golf-registration' ), $lunch ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Dinner Guests', 'hfo-golf-registration' ), $dinner ?: '' ); $meals .= hfo_golf_internal_email_guest_names_row( __( 'Guest Name(s)', 'hfo-golf-registration' ), $get( 'hfo_golf_guest_names' ) ); }
 		$purchaser_heading = 'additional_guests' === $type ? __( 'PURCHASER / ATTENDEE INFORMATION', 'hfo-golf-registration' ) : __( 'PURCHASER INFORMATION', 'hfo-golf-registration' );
 		$event_title = sanitize_text_field( get_the_title( $event_id ) );
 		$body = '<div style="font-family:Arial,sans-serif;max-width:680px;color:#222"><h1 style="color:#A058BB">' . esc_html( $event_title ) . '</h1><p><strong>' . esc_html( $labels[ $type ] ) . '</strong></p>' . hfo_golf_internal_email_section( __( 'ORDER INFORMATION', 'hfo-golf-registration' ), $order_rows ) . hfo_golf_internal_email_section( $purchaser_heading, $purchaser ) . $specific . hfo_golf_internal_email_section( __( 'GUEST MEALS', 'hfo-golf-registration' ), $meals ) . '</div>';

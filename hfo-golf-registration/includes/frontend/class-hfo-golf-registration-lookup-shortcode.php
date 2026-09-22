@@ -304,7 +304,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'players'            => $players,
 			'lunch'              => absint( get_post_meta( $registration_id, 'additional_lunch_count', true ) ),
 			'dinner'             => absint( get_post_meta( $registration_id, 'additional_dinner_count', true ) ),
-			'guest_names'        => sanitize_textarea_field( get_post_meta( $registration_id, 'hfo_golf_guest_names', true ) ),
+			'guest_names'        => hfo_golf_normalize_guest_names( get_post_meta( $registration_id, 'hfo_golf_guest_names', true ) ),
 			'order_id'           => $order_id,
 			'order_number'       => $order ? $order->get_order_number() : ( $order_id ? $order_id : '' ),
 			'order_view_url'     => $order && is_callable( array( $order, 'get_view_order_url' ) ) ? $order->get_view_order_url() : '',

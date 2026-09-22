@@ -205,7 +205,9 @@ class HFO_Golf_Registration_Meta_Boxes {
 	 */
 	private function save_meta_value( $post_id, $key, $type ) {
 		$value = isset( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : '';
-		$value = $this->sanitize_meta_value( $value, $type );
+		$value = 'hfo_golf_guest_names' === $key
+			? hfo_golf_normalize_guest_names( $value )
+			: $this->sanitize_meta_value( $value, $type );
 
 		update_post_meta( $post_id, $key, $value );
 	}
