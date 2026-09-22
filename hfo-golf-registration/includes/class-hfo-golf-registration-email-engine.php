@@ -466,7 +466,58 @@ function hfo_golf_internal_email_row( $label, $value, $multiline = false ) {
 
 /** Wraps internal-email rows in an operational section. */
 function hfo_golf_internal_email_section( $heading, $rows ) {
-	return '' === $rows ? '' : '<h2 style="font-size:16px;margin:26px 0 8px;border-bottom:2px solid #1d4f35;padding-bottom:6px">' . esc_html( $heading ) . '</h2><table role="presentation" style="border-collapse:collapse;width:100%">' . $rows . '</table>';
+	return '' === $rows ? '' : '<h2 style="font-size:16px;margin:26px 0 8px;border-bottom:2px solid #A058BB;padding-bottom:6px">' . esc_html( $heading ) . '</h2><table role="presentation" style="border-collapse:collapse;width:100%">' . $rows . '</table>';
+}
+
+/**
+ * Gets the standard WooCommerce transaction ID or the installed Authorize.net
+ * gateway's persisted payment/transaction ID metadata.
+ *
+ * Gateway extensions can vary the exact key used for their admin-visible
+ * Authorize.net Payment ID. Inspecting the order's existing metadata avoids
+ * coupling this plugin to a guessed gateway-specific key.
+ *
+ * @param WC_Order $order WooCommerce order object.
+ * @return string
+ */
+function hfo_golf_get_order_transaction_id( $order ) {
+	if ( ! $order || ! method_exists( $order, 'get_transaction_id' ) ) {
+		return '';
+	}
+
+	$transaction_id = trim( sanitize_text_field( $order->get_transaction_id() ) );
+
+	if ( '' !== $transaction_id || ! method_exists( $order, 'get_meta_data' ) ) {
+		return $transaction_id;
+	}
+
+	foreach ( $order->get_meta_data() as $meta ) {
+		if ( ! is_object( $meta ) || ! method_exists( $meta, 'get_data' ) ) {
+			continue;
+		}
+
+		$meta_data = $meta->get_data();
+
+		if ( ! isset( $meta_data['key'], $meta_data['value'] ) || ! is_scalar( $meta_data['value'] ) ) {
+			continue;
+		}
+
+		$normalized_key = strtolower( preg_replace( '/[^a-z0-9]+/i', '_', (string) $meta_data['key'] ) );
+		$is_authorize   = false !== strpos( $normalized_key, 'authorize_net' ) || false !== strpos( $normalized_key, 'authorizenet' ) || false !== strpos( $normalized_key, 'authnet' );
+		$is_identifier  = false !== strpos( $normalized_key, 'payment_id' ) || false !== strpos( $normalized_key, 'transaction_id' ) || false !== strpos( $normalized_key, 'trans_id' );
+
+		if ( ! $is_authorize || ! $is_identifier ) {
+			continue;
+		}
+
+		$transaction_id = trim( sanitize_text_field( (string) $meta_data['value'] ) );
+
+		if ( '' !== $transaction_id ) {
+			return $transaction_id;
+		}
+	}
+
+	return '';
 }
 
 /** Sends the event-configured, registration-type-aware internal notification. */
@@ -509,7 +560,7 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		$order_rows .= hfo_golf_internal_email_row( __( 'Registration Date', 'hfo-golf-registration' ), $created ? $created->date_i18n( get_option( 'date_format' ) ) : '' );
 		$order_rows .= hfo_golf_internal_email_row( __( 'Registration Type', 'hfo-golf-registration' ), $labels[ $type ] );
 		$order_rows .= hfo_golf_internal_email_row( __( 'Amount Paid', 'hfo-golf-registration' ), wp_strip_all_tags( $order->get_formatted_order_total() ) );
-		$order_rows .= hfo_golf_internal_email_row( __( 'Transaction ID', 'hfo-golf-registration' ), sanitize_text_field( $order->get_transaction_id() ) );
+		$order_rows .= hfo_golf_internal_email_row( __( 'Transaction ID', 'hfo-golf-registration' ), hfo_golf_get_order_transaction_id( $order ) );
 		$full_name = trim( sanitize_text_field( $order->get_formatted_billing_full_name() ) );
 		$full_name = $full_name ?: sanitize_text_field( $get( 'main_contact_name' ) );
 		$address = implode( ', ', array_filter( array_map( 'sanitize_text_field', array( $order->get_billing_address_1(), $order->get_billing_city(), $order->get_billing_state(), $order->get_billing_postcode() ) ) ) );
@@ -537,7 +588,7 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		if ( $lunch + $dinner > 0 ) { $meals .= hfo_golf_internal_email_row( __( 'Lunch Guests', 'hfo-golf-registration' ), $lunch ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Dinner Guests', 'hfo-golf-registration' ), $dinner ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Guest Name(s)', 'hfo-golf-registration' ), $get( 'hfo_golf_guest_names' ), true ); }
 		$purchaser_heading = 'additional_guests' === $type ? __( 'PURCHASER / ATTENDEE INFORMATION', 'hfo-golf-registration' ) : __( 'PURCHASER INFORMATION', 'hfo-golf-registration' );
 		$event_title = sanitize_text_field( get_the_title( $event_id ) );
-		$body = '<div style="font-family:Arial,sans-serif;max-width:680px;color:#222"><h1 style="color:#1d4f35">' . esc_html( $event_title ) . '</h1><p><strong>' . esc_html( $labels[ $type ] ) . '</strong></p>' . hfo_golf_internal_email_section( __( 'ORDER INFORMATION', 'hfo-golf-registration' ), $order_rows ) . hfo_golf_internal_email_section( $purchaser_heading, $purchaser ) . $specific . hfo_golf_internal_email_section( __( 'GUEST MEALS', 'hfo-golf-registration' ), $meals ) . '</div>';
+		$body = '<div style="font-family:Arial,sans-serif;max-width:680px;color:#222"><h1 style="color:#A058BB">' . esc_html( $event_title ) . '</h1><p><strong>' . esc_html( $labels[ $type ] ) . '</strong></p>' . hfo_golf_internal_email_section( __( 'ORDER INFORMATION', 'hfo-golf-registration' ), $order_rows ) . hfo_golf_internal_email_section( $purchaser_heading, $purchaser ) . $specific . hfo_golf_internal_email_section( __( 'GUEST MEALS', 'hfo-golf-registration' ), $meals ) . '</div>';
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' ); foreach ( $cc as $email ) { $headers[] = 'Cc: ' . $email; }
 		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sending' ); $order->save_meta_data();
 		if ( ! wp_mail( $to, sprintf( 'New %s Registration – %s', $event_title, $labels[ $type ] ), $body, $headers ) ) { throw new RuntimeException( 'wp_mail returned false.' ); }
