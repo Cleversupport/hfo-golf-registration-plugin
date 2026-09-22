@@ -612,8 +612,8 @@ class HFO_Golf_Registration_Meta_Boxes {
 						'label' => esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ),
 						'type'  => 'count',
 					),
-					'additional_guests_details' => array(
-						'label' => esc_html__( 'Additional Guests Details', 'hfo-golf-registration' ),
+					'hfo_golf_guest_names'      => array(
+						'label' => esc_html__( 'Guest Name(s)', 'hfo-golf-registration' ),
 						'type'  => 'textarea',
 					),
 				),
