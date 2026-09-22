@@ -540,15 +540,19 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		if ( '1' !== (string) get_post_meta( $event_id, 'hfo_event_internal_notification_enabled', true ) ) {
 			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_disabled' ); $order->save_meta_data(); return false;
 		}
-		$to = sanitize_email( get_post_meta( $event_id, 'hfo_event_internal_notification_to', true ) );
-		if ( ! is_email( $to ) ) {
+		$recipients = array();
+		foreach ( preg_split( '/[\r\n,]+/', (string) get_post_meta( $event_id, 'notification_emails', true ) ) as $candidate ) {
+			$candidate = sanitize_email( trim( $candidate ) );
+			if ( is_email( $candidate ) && ! isset( $recipients[ strtolower( $candidate ) ] ) ) {
+				$recipients[ strtolower( $candidate ) ] = $candidate;
+			}
+		}
+		$recipients = array_values( $recipients );
+		if ( empty( $recipients ) ) {
 			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_no_recipient' ); $order->save_meta_data(); return false;
 		}
-		$cc = array();
-		foreach ( preg_split( '/[\s,;]+/', (string) get_post_meta( $event_id, 'hfo_event_internal_notification_cc', true ) ) as $candidate ) {
-			$candidate = sanitize_email( $candidate );
-			if ( is_email( $candidate ) ) { $cc[ strtolower( $candidate ) ] = $candidate; }
-		}
+		$to = array_shift( $recipients );
+		$cc = $recipients;
 		$type = sanitize_key( get_post_meta( $registration_id, 'registration_type', true ) );
 		$labels = array( 'team' => 'Team Registration', 'individual' => 'Individual Player Registration', 'additional_guests' => 'Guest Meal Registration', 'sponsor_only' => 'Sponsor Registration' );
 		if ( ! isset( $labels[ $type ] ) ) {
@@ -593,7 +597,7 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sending' ); $order->save_meta_data();
 		if ( ! wp_mail( $to, sprintf( 'New %s Registration – %s', $event_title, $labels[ $type ] ), $body, $headers ) ) { throw new RuntimeException( 'wp_mail returned false.' ); }
 		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sent' ); $order->update_meta_data( '_hfo_internal_organizer_email_sent_at', current_time( 'mysql', true ) );
-		$order->add_order_note( sprintf( __( 'Internal organizer registration notification sent to %s.', 'hfo-golf-registration' ), $to ) ); $order->save_meta_data(); return true;
+		$order->add_order_note( sprintf( __( 'Internal organizer registration notification sent to: %s', 'hfo-golf-registration' ), implode( ', ', array_merge( array( $to ), $cc ) ) ) ); $order->save_meta_data(); return true;
 	} catch ( Throwable $e ) {
 		if ( $order && method_exists( $order, 'update_meta_data' ) ) { $order->update_meta_data( '_hfo_internal_organizer_email_status', 'failed' ); $order->add_order_note( __( 'Internal organizer registration notification could not be sent.', 'hfo-golf-registration' ) ); $order->save_meta_data(); }
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) { error_log( 'HFO internal organizer email failed: ' . sanitize_text_field( $e->getMessage() ) ); }

@@ -375,13 +375,11 @@ class HFO_Golf_Event_Meta_Boxes {
 	 */
 	public function render_notifications_meta_box( $post ) {
 		$this->render_checkbox_field( 'hfo_event_internal_notification_enabled', esc_html__( 'Enable Internal Registration Notification', 'hfo-golf-registration' ), $post->ID );
-		$this->render_input_field( 'hfo_event_internal_notification_to', esc_html__( 'Internal Notification To', 'hfo-golf-registration' ), $post->ID, 'email' );
-		$this->render_textarea_field( 'hfo_event_internal_notification_cc', esc_html__( 'Internal Notification CC', 'hfo-golf-registration' ), $post->ID, esc_html__( 'Separate multiple email addresses with commas or new lines. Invalid addresses are ignored.', 'hfo-golf-registration' ) );
 		$this->render_textarea_field(
 			'notification_emails',
 			esc_html__( 'Notification Emails', 'hfo-golf-registration' ),
 			$post->ID,
-			esc_html__( 'Separate multiple email addresses with commas.', 'hfo-golf-registration' )
+			esc_html__( 'Enter organizer email addresses separated by commas or new lines.', 'hfo-golf-registration' )
 		);
 		$this->render_textarea_field( 'thank_you_message', esc_html__( 'Thank You Message', 'hfo-golf-registration' ), $post->ID );
 	}
@@ -427,8 +425,6 @@ class HFO_Golf_Event_Meta_Boxes {
 		$this->save_meta_value( $post_id, 'hfo_event_email_subject', 'text' );
 		$this->save_meta_value( $post_id, 'hfo_event_email_body', 'html' );
 		$this->save_meta_value( $post_id, 'hfo_event_internal_notification_enabled', 'checkbox' );
-		$this->save_meta_value( $post_id, 'hfo_event_internal_notification_to', 'email' );
-		$this->save_meta_value( $post_id, 'hfo_event_internal_notification_cc', 'emails' );
 
 		foreach ( $this->get_price_fields() as $field ) {
 			$this->save_meta_value( $post_id, $field, 'price' );
@@ -533,20 +529,20 @@ class HFO_Golf_Event_Meta_Boxes {
 	}
 
 	/**
-	 * Sanitizes a comma-separated list of email addresses.
+	 * Sanitizes a comma- or newline-separated list of email addresses.
 	 *
 	 * @param mixed $value Raw value.
 	 * @return string
 	 */
 	private function sanitize_email_list( $value ) {
-		$emails = is_scalar( $value ) ? explode( ',', (string) $value ) : array();
+		$emails = is_scalar( $value ) ? preg_split( '/[\r\n,]+/', (string) $value ) : array();
 		$valid  = array();
 
 		foreach ( $emails as $email ) {
 			$email = sanitize_email( trim( $email ) );
 
-			if ( is_email( $email ) ) {
-				$valid[] = $email;
+			if ( is_email( $email ) && ! isset( $valid[ strtolower( $email ) ] ) ) {
+				$valid[ strtolower( $email ) ] = $email;
 			}
 		}
 
