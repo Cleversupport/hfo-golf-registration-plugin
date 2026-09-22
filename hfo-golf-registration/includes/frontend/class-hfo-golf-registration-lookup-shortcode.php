@@ -304,6 +304,7 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 			'players'            => $players,
 			'lunch'              => absint( get_post_meta( $registration_id, 'additional_lunch_count', true ) ),
 			'dinner'             => absint( get_post_meta( $registration_id, 'additional_dinner_count', true ) ),
+			'guest_names'        => sanitize_textarea_field( get_post_meta( $registration_id, 'hfo_golf_guest_names', true ) ),
 			'order_id'           => $order_id,
 			'order_number'       => $order ? $order->get_order_number() : ( $order_id ? $order_id : '' ),
 			'order_view_url'     => $order && is_callable( array( $order, 'get_view_order_url' ) ) ? $order->get_view_order_url() : '',
@@ -336,10 +337,10 @@ class HFO_Golf_Registration_Lookup_Shortcode {
 		if ( false === $output ) {
 			wp_die( esc_html__( 'The CSV export could not be created.', 'hfo-golf-registration' ) );
 		}
-		fputcsv( $output, array( 'Registration ID', 'Event', 'Event Date', 'Main Contact', 'Email', 'Phone', 'Team Name', 'Registration Type', 'Sponsor Level', 'Players', 'Lunch Guests', 'Dinner Guests', 'WooCommerce Order', 'Payment Status', 'Total Paid', 'Date Submitted', 'Sponsor Contact Name', 'Sponsor Email', 'Sponsor Phone' ) );
+		fputcsv( $output, array( 'Registration ID', 'Event', 'Event Date', 'Main Contact', 'Email', 'Phone', 'Team Name', 'Registration Type', 'Sponsor Level', 'Players', 'Lunch Guests', 'Dinner Guests', 'Guest Names', 'WooCommerce Order', 'Payment Status', 'Total Paid', 'Date Submitted', 'Sponsor Contact Name', 'Sponsor Email', 'Sponsor Phone' ) );
 		foreach ( $rows as $row ) {
 			$paid   = $this->row_is_paid( $row ) ? (float) $row['total'] : 0.0;
-			$values = array( $row['id'], $row['event'], $row['event_date'], $row['contact'], $row['email'], $row['phone'], $row['team'], $row['type'], $row['sponsor'], $row['players'], $row['lunch'], $row['dinner'], $row['order_number'] ? '#' . $row['order_number'] : '', $row['payment_status'], number_format( $paid, 2, '.', '' ), $row['date'], $row['sponsor_contact'], $row['sponsor_email'], $row['sponsor_phone'] );
+			$values = array( $row['id'], $row['event'], $row['event_date'], $row['contact'], $row['email'], $row['phone'], $row['team'], $row['type'], $row['sponsor'], $row['players'], $row['lunch'], $row['dinner'], preg_replace( '/\R+/', ' | ', $row['guest_names'] ), $row['order_number'] ? '#' . $row['order_number'] : '', $row['payment_status'], number_format( $paid, 2, '.', '' ), $row['date'], $row['sponsor_contact'], $row['sponsor_email'], $row['sponsor_phone'] );
 			fputcsv( $output, array_map( array( $this, 'clean_csv_value' ), $values ) );
 		}
 		fclose( $output );

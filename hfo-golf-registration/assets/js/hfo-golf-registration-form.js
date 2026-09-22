@@ -17,8 +17,7 @@
 	var OPTIONAL_FIELD_NAMES = [
 		'hfo_golf_team_name',
 		'additional_lunch_count',
-		'additional_dinner_count',
-		'additional_guests_details'
+		'additional_dinner_count'
 	];
 
 	function getField(form, name) {
@@ -102,11 +101,7 @@
 	}
 
 	function isOptionalField(field, form) {
-		if (field.name === 'additional_guests_details' && getFieldValue(form, 'registration_type') === 'additional_guests') {
-			return false;
-		}
-
-		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1 || /_handicap$/.test(field.name);
+		return OPTIONAL_FIELD_NAMES.indexOf(field.name) !== -1;
 	}
 
 	function shouldSkipGenericRequired(field, form) {
@@ -137,7 +132,8 @@
 	}
 
 	function updateAdditionalGuestsCustomValidity(form) {
-		var details = getField(form, 'additional_guests_details');
+		var guestNames = getField(form, 'hfo_golf_guest_names');
+		var guestNamesWrapper = form.querySelector('[data-hfo-golf-guest-names]');
 		var lunchCount = getField(form, 'additional_lunch_count');
 		var dinnerCount = getField(form, 'additional_dinner_count');
 		var message = '';
@@ -152,8 +148,12 @@
 			}
 		});
 
-		if (details && typeof details.setCustomValidity === 'function' && message === '') {
-			details.setCustomValidity('');
+		var hasMeals = getNumericFieldValue(form, 'additional_lunch_count') + getNumericFieldValue(form, 'additional_dinner_count') > 0;
+		if (guestNamesWrapper) {
+			guestNamesWrapper.hidden = !hasMeals;
+		}
+		if (guestNames && typeof guestNames.setCustomValidity === 'function') {
+			guestNames.setCustomValidity(hasMeals && guestNames.value.trim() === '' ? 'Please enter at least one guest name.' : '');
 		}
 	}
 
