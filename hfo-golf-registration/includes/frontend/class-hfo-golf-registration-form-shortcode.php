@@ -164,7 +164,9 @@ class HFO_Golf_Registration_Form_Shortcode {
 				<h3><?php esc_html_e( 'Step 7: Additional Guests', 'hfo-golf-registration' ); ?></h3>
 				<?php $this->render_number_field( 'additional_lunch_count', esc_html__( 'Additional Lunch Count', 'hfo-golf-registration' ) ); ?>
 				<?php $this->render_number_field( 'additional_dinner_count', esc_html__( 'Additional Dinner Count', 'hfo-golf-registration' ) ); ?>
-				<?php $this->render_textarea_field( 'additional_guests_details', esc_html__( 'Additional Guests Details', 'hfo-golf-registration' ) ); ?>
+				<div data-hfo-golf-guest-names hidden>
+					<?php $this->render_textarea_field( 'hfo_golf_guest_names', esc_html__( 'Guest Name(s)', 'hfo-golf-registration' ), esc_html__( 'Enter one guest name per line.', 'hfo-golf-registration' ) ); ?>
+				</div>
 			</section>
 
 			<section class="hfo-golf-registration-step" data-hfo-golf-registration-step data-step-key="sponsorship" hidden>
@@ -378,6 +380,10 @@ class HFO_Golf_Registration_Form_Shortcode {
 		}
 
 		$meta = $this->get_sanitized_submission_meta( $event_id );
+		$this->validate_golfer_handicaps( $meta );
+		if ( absint( $meta['additional_lunch_count'] ) + absint( $meta['additional_dinner_count'] ) > 0 && '' === trim( (string) $meta['hfo_golf_guest_names'] ) ) {
+			wp_die( esc_html__( 'Please enter at least one guest name.', 'hfo-golf-registration' ) );
+		}
 
 		if ( 'sponsor_only' !== $meta['registration_type'] && ! is_email( $meta['main_contact_email'] ) ) {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
@@ -668,10 +674,6 @@ class HFO_Golf_Registration_Form_Shortcode {
 			wp_die( esc_html__( 'Please enter a valid main contact email address.', 'hfo-golf-registration' ) );
 		}
 
-		if ( '' === trim( (string) $meta['additional_guests_details'] ) ) {
-			wp_die( esc_html__( 'Please enter additional guest details.', 'hfo-golf-registration' ) );
-		}
-
 		if ( absint( $meta['additional_lunch_count'] ) + absint( $meta['additional_dinner_count'] ) <= 0 ) {
 			wp_die( esc_html__( 'Please enter at least one additional lunch or dinner guest.', 'hfo-golf-registration' ) );
 		}
@@ -704,6 +706,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			'additional_lunch_count'    => (string) $this->sanitize_post_count( 'additional_lunch_count' ),
 			'additional_dinner_count'   => (string) $this->sanitize_post_count( 'additional_dinner_count' ),
 			'additional_guests_details' => $this->sanitize_post_textarea( 'additional_guests_details' ),
+			'hfo_golf_guest_names'      => $this->sanitize_post_textarea( 'hfo_golf_guest_names' ),
 			'sponsorship_level'         => $sponsorship_level,
 			'tee_sponsor_selected'      => $tee_sponsor_selected,
 			'sponsorship_amount'        => '0.00',
@@ -733,6 +736,16 @@ class HFO_Golf_Registration_Form_Shortcode {
 		$calculated = $this->calculate_quantities_and_totals( $event_id, $meta );
 
 		return array_merge( $meta, $calculated );
+	}
+
+	/** Enforces a non-blank flexible-text handicap for each actual golfer. */
+	private function validate_golfer_handicaps( $meta ) {
+		$participants = 'team' === $meta['registration_type'] ? array( 'captain', 'member_2', 'member_3', 'member_4' ) : ( 'individual' === $meta['registration_type'] ? array( 'captain' ) : array() );
+		foreach ( $participants as $participant ) {
+			if ( '' === trim( (string) $meta[ $participant . '_handicap' ] ) ) {
+				wp_die( esc_html__( 'Please enter a handicap or status for each golfer.', 'hfo-golf-registration' ) );
+			}
+		}
 	}
 
 	/**
@@ -1291,7 +1304,7 @@ class HFO_Golf_Registration_Form_Shortcode {
 			<?php $this->render_text_field( $prefix . '_city', esc_html__( 'City', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_state_select_field( $prefix . '_state', esc_html__( 'State', 'hfo-golf-registration' ) ); ?>
 			<?php $this->render_text_field( $prefix . '_zip', esc_html__( 'ZIP', 'hfo-golf-registration' ) ); ?>
-			<?php $this->render_text_field( $prefix . '_handicap', esc_html__( 'Verified Handicap', 'hfo-golf-registration' ) ); ?>
+			<?php $this->render_text_field( $prefix . '_handicap', esc_html__( 'Handicap', 'hfo-golf-registration' ), true, 50 ); ?>
 			<input type="hidden" name="<?php echo esc_attr( $prefix . '_golf_selected' ); ?>" value="1" />
 			<?php $this->render_checkbox_field( $prefix . '_lunch_selected', esc_html__( 'Lunch', 'hfo-golf-registration' ), true ); ?>
 			<?php $this->render_checkbox_field( $prefix . '_dinner_selected', esc_html__( 'Dinner', 'hfo-golf-registration' ), true ); ?>
@@ -1307,8 +1320,8 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @param bool   $required Whether the field is required.
 	 * @return void
 	 */
-	private function render_text_field( $name, $label, $required = false ) {
-		$this->render_input_field( $name, $label, 'text', $required );
+	private function render_text_field( $name, $label, $required = false, $maxlength = 0 ) {
+		$this->render_input_field( $name, $label, 'text', $required, '', $maxlength );
 	}
 
 	/**
@@ -1364,11 +1377,11 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @param string $step Number step.
 	 * @return void
 	 */
-	private function render_input_field( $name, $label, $type, $required = false, $step = '' ) {
+	private function render_input_field( $name, $label, $type, $required = false, $step = '', $maxlength = 0 ) {
 		?>
 		<p class="hfo-golf-registration-field">
 			<label for="<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label>
-			<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="<?php echo esc_attr( $type ); ?>"<?php echo $required ? ' required' : ''; ?><?php echo 'number' === $type ? ' min="0"' : ''; ?><?php echo '' !== $step ? ' step="' . esc_attr( $step ) . '"' : ''; ?> />
+			<input id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" type="<?php echo esc_attr( $type ); ?>"<?php echo $required ? ' required' : ''; ?><?php echo 'number' === $type ? ' min="0"' : ''; ?><?php echo '' !== $step ? ' step="' . esc_attr( $step ) . '"' : ''; ?><?php echo $maxlength > 0 ? ' maxlength="' . esc_attr( $maxlength ) . '"' : ''; ?> />
 		</p>
 		<?php
 	}
@@ -1430,11 +1443,12 @@ class HFO_Golf_Registration_Form_Shortcode {
 	 * @param string $label Field label.
 	 * @return void
 	 */
-	private function render_textarea_field( $name, $label ) {
+	private function render_textarea_field( $name, $label, $help = '' ) {
 		?>
 		<p class="hfo-golf-registration-field hfo-golf-registration-field--wide">
 			<label for="<?php echo esc_attr( $name ); ?>"><?php echo esc_html( $label ); ?></label>
 			<textarea id="<?php echo esc_attr( $name ); ?>" name="<?php echo esc_attr( $name ); ?>" rows="4"></textarea>
+			<?php if ( '' !== $help ) : ?><span class="description"><?php echo esc_html( $help ); ?></span><?php endif; ?>
 		</p>
 		<?php
 	}

@@ -492,6 +492,10 @@ class HFO_Golf_Registration_Checkout_Handler {
 			if ( '' !== $team_name ) {
 				$order->update_meta_data( 'hfo_golf_team_name', $team_name );
 			}
+			$guest_names = sanitize_textarea_field( get_post_meta( $registration_id, 'hfo_golf_guest_names', true ) );
+			if ( '' !== trim( $guest_names ) ) {
+				$order->update_meta_data( 'hfo_golf_guest_names', $guest_names );
+			}
 		}
 
 		if ( $event_id ) {

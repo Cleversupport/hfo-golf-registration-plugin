@@ -454,6 +454,102 @@ function send_hfo_golf_sponsor_email( $order_id ) {
 	}
 }
 
+/** Returns a non-empty internal-email table row. */
+function hfo_golf_internal_email_row( $label, $value, $multiline = false ) {
+	$value = trim( (string) $value );
+	if ( '' === $value ) {
+		return '';
+	}
+	$display = $multiline ? nl2br( esc_html( $value ) ) : esc_html( $value );
+	return '<tr><th style="padding:7px 12px 7px 0;text-align:left;vertical-align:top;white-space:nowrap">' . esc_html( $label ) . '</th><td style="padding:7px 0">' . $display . '</td></tr>';
+}
+
+/** Wraps internal-email rows in an operational section. */
+function hfo_golf_internal_email_section( $heading, $rows ) {
+	return '' === $rows ? '' : '<h2 style="font-size:16px;margin:26px 0 8px;border-bottom:2px solid #1d4f35;padding-bottom:6px">' . esc_html( $heading ) . '</h2><table role="presentation" style="border-collapse:collapse;width:100%">' . $rows . '</table>';
+}
+
+/** Sends the event-configured, registration-type-aware internal notification. */
+function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
+	$order = null;
+	try {
+		$order_id = hfo_golf_normalize_order_id( $order_or_order_id );
+		$order    = $order_id && function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : false;
+		if ( ! $order || ! method_exists( $order, 'get_meta' ) || in_array( (string) $order->get_meta( '_hfo_internal_organizer_email_status', true ), array( 'sent', 'sending' ), true ) ) {
+			return false;
+		}
+		$registration_id = absint( $order->get_meta( 'hfo_golf_registration_id', true ) );
+		if ( ! $registration_id || HFO_Golf_Registration_Post_Type::POST_TYPE !== get_post_type( $registration_id ) ) {
+			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_no_registration' ); $order->save_meta_data(); return false;
+		}
+		if ( ! $order->is_paid() && ! in_array( $order->get_status(), array( 'processing', 'completed' ), true ) ) {
+			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_unpaid' ); $order->save_meta_data(); return false;
+		}
+		$event_id = hfo_golf_resolve_event_id_for_order( $order_id );
+		if ( '1' !== (string) get_post_meta( $event_id, 'hfo_event_internal_notification_enabled', true ) ) {
+			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_disabled' ); $order->save_meta_data(); return false;
+		}
+		$to = sanitize_email( get_post_meta( $event_id, 'hfo_event_internal_notification_to', true ) );
+		if ( ! is_email( $to ) ) {
+			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_no_recipient' ); $order->save_meta_data(); return false;
+		}
+		$cc = array();
+		foreach ( preg_split( '/[\s,;]+/', (string) get_post_meta( $event_id, 'hfo_event_internal_notification_cc', true ) ) as $candidate ) {
+			$candidate = sanitize_email( $candidate );
+			if ( is_email( $candidate ) ) { $cc[ strtolower( $candidate ) ] = $candidate; }
+		}
+		$type = sanitize_key( get_post_meta( $registration_id, 'registration_type', true ) );
+		$labels = array( 'team' => 'Team Registration', 'individual' => 'Individual Player Registration', 'additional_guests' => 'Guest Meal Registration', 'sponsor_only' => 'Sponsor Registration' );
+		if ( ! isset( $labels[ $type ] ) ) {
+			$order->update_meta_data( '_hfo_internal_organizer_email_status', 'skipped_no_registration' ); $order->save_meta_data(); return false;
+		}
+		$get = static function ( $key ) use ( $registration_id ) { return get_post_meta( $registration_id, $key, true ); };
+		$created = $order->get_date_created();
+		$order_rows  = hfo_golf_internal_email_row( __( 'Order Number', 'hfo-golf-registration' ), '#' . $order->get_order_number() );
+		$order_rows .= hfo_golf_internal_email_row( __( 'Registration Date', 'hfo-golf-registration' ), $created ? $created->date_i18n( get_option( 'date_format' ) ) : '' );
+		$order_rows .= hfo_golf_internal_email_row( __( 'Registration Type', 'hfo-golf-registration' ), $labels[ $type ] );
+		$order_rows .= hfo_golf_internal_email_row( __( 'Amount Paid', 'hfo-golf-registration' ), wp_strip_all_tags( $order->get_formatted_order_total() ) );
+		$order_rows .= hfo_golf_internal_email_row( __( 'Transaction ID', 'hfo-golf-registration' ), sanitize_text_field( $order->get_transaction_id() ) );
+		$full_name = trim( sanitize_text_field( $order->get_formatted_billing_full_name() ) );
+		$full_name = $full_name ?: sanitize_text_field( $get( 'main_contact_name' ) );
+		$address = implode( ', ', array_filter( array_map( 'sanitize_text_field', array( $order->get_billing_address_1(), $order->get_billing_city(), $order->get_billing_state(), $order->get_billing_postcode() ) ) ) );
+		$purchaser  = hfo_golf_internal_email_row( __( 'Full Name', 'hfo-golf-registration' ), $full_name );
+		$purchaser .= hfo_golf_internal_email_row( __( 'Email Address', 'hfo-golf-registration' ), $order->get_billing_email() ?: $get( 'main_contact_email' ) );
+		$purchaser .= hfo_golf_internal_email_row( __( 'Phone Number', 'hfo-golf-registration' ), $order->get_billing_phone() ?: $get( 'main_contact_phone' ) );
+		$purchaser .= hfo_golf_internal_email_row( __( 'Billing Address', 'hfo-golf-registration' ), $address );
+		$specific = '';
+		if ( 'team' === $type || 'individual' === $type ) {
+			if ( 'team' === $type ) { $specific .= hfo_golf_internal_email_row( __( 'Team Name', 'hfo-golf-registration' ), $get( 'hfo_golf_team_name' ) ); }
+			$players = 'team' === $type ? array( 'captain' => 'Team Captain', 'member_2' => 'Player 2', 'member_3' => 'Player 3', 'member_4' => 'Player 4' ) : array( 'captain' => 'Player' );
+			foreach ( $players as $key => $label ) { $specific .= hfo_golf_internal_email_row( __( $label, 'hfo-golf-registration' ), $get( $key . '_name' ) ); $specific .= hfo_golf_internal_email_row( __( 'Handicap', 'hfo-golf-registration' ), $get( $key . '_handicap' ) ); }
+			$specific = hfo_golf_internal_email_section( 'team' === $type ? __( 'GOLF TEAM INFORMATION', 'hfo-golf-registration' ) : __( 'PLAYER INFORMATION', 'hfo-golf-registration' ), $specific );
+		} elseif ( 'sponsor_only' === $type ) {
+			$specific .= hfo_golf_internal_email_row( __( 'Sponsor Name', 'hfo-golf-registration' ), $get( 'sponsor_program_name' ) );
+			$specific .= hfo_golf_internal_email_row( __( 'Sponsor Level', 'hfo-golf-registration' ), $get( 'sponsorship_level' ) ? ucwords( $get( 'sponsorship_level' ) ) : '' );
+			$specific .= hfo_golf_internal_email_row( __( 'Sponsor Contact Name', 'hfo-golf-registration' ), $get( 'sponsor_contact_name' ) );
+			$specific .= hfo_golf_internal_email_row( __( 'Sponsor Email', 'hfo-golf-registration' ), $get( 'sponsor_email' ) );
+			$specific .= hfo_golf_internal_email_row( __( 'Sponsor Phone', 'hfo-golf-registration' ), $get( 'sponsor_phone' ) );
+			$specific .= hfo_golf_internal_email_row( __( 'Tee Sponsor', 'hfo-golf-registration' ), '1' === $get( 'tee_sponsor_selected' ) ? __( 'Yes', 'hfo-golf-registration' ) : '' );
+			$specific = hfo_golf_internal_email_section( __( 'SPONSOR INFORMATION', 'hfo-golf-registration' ), $specific );
+		}
+		$lunch = absint( $get( 'additional_lunch_count' ) ); $dinner = absint( $get( 'additional_dinner_count' ) );
+		$meals = '';
+		if ( $lunch + $dinner > 0 ) { $meals .= hfo_golf_internal_email_row( __( 'Lunch Guests', 'hfo-golf-registration' ), $lunch ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Dinner Guests', 'hfo-golf-registration' ), $dinner ?: '' ); $meals .= hfo_golf_internal_email_row( __( 'Guest Name(s)', 'hfo-golf-registration' ), $get( 'hfo_golf_guest_names' ), true ); }
+		$purchaser_heading = 'additional_guests' === $type ? __( 'PURCHASER / ATTENDEE INFORMATION', 'hfo-golf-registration' ) : __( 'PURCHASER INFORMATION', 'hfo-golf-registration' );
+		$event_title = sanitize_text_field( get_the_title( $event_id ) );
+		$body = '<div style="font-family:Arial,sans-serif;max-width:680px;color:#222"><h1 style="color:#1d4f35">' . esc_html( $event_title ) . '</h1><p><strong>' . esc_html( $labels[ $type ] ) . '</strong></p>' . hfo_golf_internal_email_section( __( 'ORDER INFORMATION', 'hfo-golf-registration' ), $order_rows ) . hfo_golf_internal_email_section( $purchaser_heading, $purchaser ) . $specific . hfo_golf_internal_email_section( __( 'GUEST MEALS', 'hfo-golf-registration' ), $meals ) . '</div>';
+		$headers = array( 'Content-Type: text/html; charset=UTF-8' ); foreach ( $cc as $email ) { $headers[] = 'Cc: ' . $email; }
+		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sending' ); $order->save_meta_data();
+		if ( ! wp_mail( $to, sprintf( 'New %s Registration – %s', $event_title, $labels[ $type ] ), $body, $headers ) ) { throw new RuntimeException( 'wp_mail returned false.' ); }
+		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sent' ); $order->update_meta_data( '_hfo_internal_organizer_email_sent_at', current_time( 'mysql', true ) );
+		$order->add_order_note( sprintf( __( 'Internal organizer registration notification sent to %s.', 'hfo-golf-registration' ), $to ) ); $order->save_meta_data(); return true;
+	} catch ( Throwable $e ) {
+		if ( $order && method_exists( $order, 'update_meta_data' ) ) { $order->update_meta_data( '_hfo_internal_organizer_email_status', 'failed' ); $order->add_order_note( __( 'Internal organizer registration notification could not be sent.', 'hfo-golf-registration' ) ); $order->save_meta_data(); }
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) { error_log( 'HFO internal organizer email failed: ' . sanitize_text_field( $e->getMessage() ) ); }
+		return false;
+	}
+}
+
 /**
  * Safely sends all HFO golf checkout emails without interrupting checkout.
  *
@@ -502,3 +598,6 @@ add_action( 'woocommerce_order_status_processing', 'send_hfo_golf_checkout_email
 add_action( 'woocommerce_checkout_order_processed', 'send_hfo_golf_checkout_emails', 20, 1 );
 add_action( 'woocommerce_store_api_checkout_order_processed', 'send_hfo_golf_checkout_emails', 20, 1 );
 add_action( 'woocommerce_payment_complete', 'send_hfo_golf_checkout_emails', 20, 1 );
+add_action( 'woocommerce_payment_complete', 'send_hfo_golf_internal_organizer_email', 30, 1 );
+add_action( 'woocommerce_order_status_processing', 'send_hfo_golf_internal_organizer_email', 30, 1 );
+add_action( 'woocommerce_order_status_completed', 'send_hfo_golf_internal_organizer_email', 30, 1 );
