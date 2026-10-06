@@ -608,8 +608,14 @@ function send_hfo_golf_internal_organizer_email( $order_or_order_id ) {
 		$purchaser_heading = 'additional_guests' === $type ? __( 'PURCHASER / ATTENDEE INFORMATION', 'hfo-golf-registration' ) : __( 'PURCHASER INFORMATION', 'hfo-golf-registration' );
 		$event_title = sanitize_text_field( get_the_title( $event_id ) );
 		$body = '<div style="font-family:Arial,sans-serif;max-width:680px;color:#222"><h1 style="color:#A058BB">' . esc_html( $event_title ) . '</h1><p><strong>' . esc_html( $labels[ $type ] ) . '</strong></p>' . hfo_golf_internal_email_section( __( 'ORDER INFORMATION', 'hfo-golf-registration' ), $order_rows ) . hfo_golf_internal_email_section( $purchaser_heading, $purchaser ) . $specific . hfo_golf_internal_email_section( __( 'GUEST MEALS', 'hfo-golf-registration' ), $meals ) . '</div>';
-		$headers = array( 'Content-Type: text/html; charset=UTF-8' ); foreach ( $cc as $email ) { $headers[] = 'Cc: ' . $email; }
+		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
+		if ( ! empty( $cc ) ) {
+			$headers[] = 'Cc: ' . implode( ', ', $cc );
+		}
 		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sending' ); $order->save_meta_data();
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'HFO organizer email recipients: To: ' . $to . '; CC: ' . implode( ', ', $cc ) );
+		}
 		if ( ! wp_mail( $to, sprintf( 'New %s Registration – %s', $event_title, $labels[ $type ] ), $body, $headers ) ) { throw new RuntimeException( 'wp_mail returned false.' ); }
 		$order->update_meta_data( '_hfo_internal_organizer_email_status', 'sent' ); $order->update_meta_data( '_hfo_internal_organizer_email_sent_at', current_time( 'mysql', true ) );
 		$order->add_order_note( sprintf( __( 'Internal organizer registration notification sent to: %s', 'hfo-golf-registration' ), implode( ', ', array_merge( array( $to ), $cc ) ) ) ); $order->save_meta_data(); return true;
